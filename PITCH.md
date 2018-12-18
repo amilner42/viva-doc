@@ -23,6 +23,29 @@
     - to acquire more customers it's critical to allow existing codebases to join and not just new projects, so the
       app has to work retroactively
 
+##### What are the industries current solutions?
+
+- when someone notices an issue, they usually file an issue on github and at some point someone reviews it and merges it
+  with whatever branch they're on, eventually that branch gets merged back into master and possibly deployed to some
+  auto-doc-generator upon deploy
+- when people push new code, any decent company will have code review, and in that code review people will often
+  force others to write docs on new functions
+  - the issue is not brand new functions (usually) but modifying existing functions
+
+##### How much do the current solutions suck compared to your solution, what's the potential impact of your solution? Is this a 10x improvement?
+
+The horror stories of terrible documentation are ubiquitous. Getting people to properly document code has always been
+a struggle. Part of the issue is that code changes so frequently so people feel they are wasting time if they spend
+too much time documenting things, OTOH when people don't document enough a huge amount of time is wasted struggling
+with poor documentation; laziness and deadlines are big factors towards poor documentation as well.
+
+There doesn't seem to be any direct challenge to this app, it's experimenting in a new direction.
+
+With the large amount of poor documentation, it's a market with billions of dollars of opportunity. It would be
+valuable to try to quantify the impact of the app through feedback from the users, although it may be difficult to
+accurately quantify the hours saved.
+
+
 ###### What’s The result of a nice solution?
 
 - d/c become outdated less
