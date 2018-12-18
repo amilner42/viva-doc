@@ -1,0 +1,2392 @@
+[
+  {
+    "sha": "7cdd62707f785824b216a1630ca08761bfbbfcd8",
+    "node_id": "MDY6Q29tbWl0NzY4ODgxNDQ6N2NkZDYyNzA3Zjc4NTgyNGIyMTZhMTYzMGNhMDg3NjFiZmJiZmNkOA==",
+    "commit": {
+      "author": {
+        "name": "Arie Milner",
+        "email": "amilner42@gmail.com",
+        "date": "2018-06-15T23:48:16Z"
+      },
+      "committer": {
+        "name": "GitHub",
+        "email": "noreply@github.com",
+        "date": "2018-06-15T23:48:16Z"
+      },
+      "message": "Merge pull request #234 from amilner42/161-base-msg\n\n161 base msg",
+      "tree": {
+        "sha": "196fc439115c06627af0749fa2b9b93ba2323200",
+        "url": "https://api.github.com/repos/amilner42/code-tidbit/git/trees/196fc439115c06627af0749fa2b9b93ba2323200"
+      },
+      "url": "https://api.github.com/repos/amilner42/code-tidbit/git/commits/7cdd62707f785824b216a1630ca08761bfbbfcd8",
+      "comment_count": 0,
+      "verification": {
+        "verified": true,
+        "reason": "valid",
+        "signature": "-----BEGIN PGP SIGNATURE-----\n\nwsBcBAABCAAQBQJbJFBACRBK7hj4Ov3rIwAAdHIIAG5ZnWsrcNvIWeHFH9qq8dgX\nDuGxZ+gLl2caIRZqTf4d4C5QA+wQcLSy1WObttrTscyZ/6WV6a0p9lOoxCmyIPmX\nUSCBuyp4pyrrssx8QGCjzQCMs4F24bhnQkdfD6Vgx5yrdR55S8Udn/o68eAErrAG\nCRgKXFPZkszNjBEBBZnkDpmOBZfVxUVta0tJ9sXBgYC7ra7zJtpaXibcOzhcQ/3l\nXogEh0hPmGYONMpGbxp4xwN4c2/NYR8zJfL1kQzT3YsTVfNOBBaaroul7yOX5upq\ngH87yEtxaiM01Y1M6s22NTbMw534mjf1SKksSytZlHMHgYfQS5A0IpCBvs2ES6U=\n=xasD\n-----END PGP SIGNATURE-----\n",
+        "payload": "tree 196fc439115c06627af0749fa2b9b93ba2323200\nparent bd4f1dfff47a77fb0d4b47d3f89404bf84f1603f\nparent 7b865ffe4aaec489b9e20c99d3b82f5754cc9df9\nauthor Arie Milner <amilner42@gmail.com> 1529106496 -0700\ncommitter GitHub <noreply@github.com> 1529106496 -0700\n\nMerge pull request #234 from amilner42/161-base-msg\n\n161 base msg"
+      }
+    },
+    "url": "https://api.github.com/repos/amilner42/code-tidbit/commits/7cdd62707f785824b216a1630ca08761bfbbfcd8",
+    "html_url": "https://github.com/amilner42/code-tidbit/commit/7cdd62707f785824b216a1630ca08761bfbbfcd8",
+    "comments_url": "https://api.github.com/repos/amilner42/code-tidbit/commits/7cdd62707f785824b216a1630ca08761bfbbfcd8/comments",
+    "author": {
+      "login": "amilner42",
+      "id": 9031171,
+      "node_id": "MDQ6VXNlcjkwMzExNzE=",
+      "avatar_url": "https://avatars1.githubusercontent.com/u/9031171?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/amilner42",
+      "html_url": "https://github.com/amilner42",
+      "followers_url": "https://api.github.com/users/amilner42/followers",
+      "following_url": "https://api.github.com/users/amilner42/following{/other_user}",
+      "gists_url": "https://api.github.com/users/amilner42/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/amilner42/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/amilner42/subscriptions",
+      "organizations_url": "https://api.github.com/users/amilner42/orgs",
+      "repos_url": "https://api.github.com/users/amilner42/repos",
+      "events_url": "https://api.github.com/users/amilner42/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/amilner42/received_events",
+      "type": "User",
+      "site_admin": false
+    },
+    "committer": {
+      "login": "web-flow",
+      "id": 19864447,
+      "node_id": "MDQ6VXNlcjE5ODY0NDQ3",
+      "avatar_url": "https://avatars3.githubusercontent.com/u/19864447?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/web-flow",
+      "html_url": "https://github.com/web-flow",
+      "followers_url": "https://api.github.com/users/web-flow/followers",
+      "following_url": "https://api.github.com/users/web-flow/following{/other_user}",
+      "gists_url": "https://api.github.com/users/web-flow/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/web-flow/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/web-flow/subscriptions",
+      "organizations_url": "https://api.github.com/users/web-flow/orgs",
+      "repos_url": "https://api.github.com/users/web-flow/repos",
+      "events_url": "https://api.github.com/users/web-flow/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/web-flow/received_events",
+      "type": "User",
+      "site_admin": false
+    },
+    "parents": [
+      {
+        "sha": "bd4f1dfff47a77fb0d4b47d3f89404bf84f1603f",
+        "url": "https://api.github.com/repos/amilner42/code-tidbit/commits/bd4f1dfff47a77fb0d4b47d3f89404bf84f1603f",
+        "html_url": "https://github.com/amilner42/code-tidbit/commit/bd4f1dfff47a77fb0d4b47d3f89404bf84f1603f"
+      },
+      {
+        "sha": "7b865ffe4aaec489b9e20c99d3b82f5754cc9df9",
+        "url": "https://api.github.com/repos/amilner42/code-tidbit/commits/7b865ffe4aaec489b9e20c99d3b82f5754cc9df9",
+        "html_url": "https://github.com/amilner42/code-tidbit/commit/7b865ffe4aaec489b9e20c99d3b82f5754cc9df9"
+      }
+    ]
+  },
+  {
+    "sha": "7b865ffe4aaec489b9e20c99d3b82f5754cc9df9",
+    "node_id": "MDY6Q29tbWl0NzY4ODgxNDQ6N2I4NjVmZmU0YWFlYzQ4OWI5ZTIwYzk5ZDNiODJmNTc1NGNjOWRmOQ==",
+    "commit": {
+      "author": {
+        "name": "Arie Milner",
+        "email": "amilner42@gmail.com",
+        "date": "2018-06-15T23:46:55Z"
+      },
+      "committer": {
+        "name": "Arie Milner",
+        "email": "amilner42@gmail.com",
+        "date": "2018-06-15T23:46:55Z"
+      },
+      "message": "Fix issues from code review",
+      "tree": {
+        "sha": "196fc439115c06627af0749fa2b9b93ba2323200",
+        "url": "https://api.github.com/repos/amilner42/code-tidbit/git/trees/196fc439115c06627af0749fa2b9b93ba2323200"
+      },
+      "url": "https://api.github.com/repos/amilner42/code-tidbit/git/commits/7b865ffe4aaec489b9e20c99d3b82f5754cc9df9",
+      "comment_count": 0,
+      "verification": {
+        "verified": false,
+        "reason": "unsigned",
+        "signature": null,
+        "payload": null
+      }
+    },
+    "url": "https://api.github.com/repos/amilner42/code-tidbit/commits/7b865ffe4aaec489b9e20c99d3b82f5754cc9df9",
+    "html_url": "https://github.com/amilner42/code-tidbit/commit/7b865ffe4aaec489b9e20c99d3b82f5754cc9df9",
+    "comments_url": "https://api.github.com/repos/amilner42/code-tidbit/commits/7b865ffe4aaec489b9e20c99d3b82f5754cc9df9/comments",
+    "author": {
+      "login": "amilner42",
+      "id": 9031171,
+      "node_id": "MDQ6VXNlcjkwMzExNzE=",
+      "avatar_url": "https://avatars1.githubusercontent.com/u/9031171?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/amilner42",
+      "html_url": "https://github.com/amilner42",
+      "followers_url": "https://api.github.com/users/amilner42/followers",
+      "following_url": "https://api.github.com/users/amilner42/following{/other_user}",
+      "gists_url": "https://api.github.com/users/amilner42/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/amilner42/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/amilner42/subscriptions",
+      "organizations_url": "https://api.github.com/users/amilner42/orgs",
+      "repos_url": "https://api.github.com/users/amilner42/repos",
+      "events_url": "https://api.github.com/users/amilner42/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/amilner42/received_events",
+      "type": "User",
+      "site_admin": false
+    },
+    "committer": {
+      "login": "amilner42",
+      "id": 9031171,
+      "node_id": "MDQ6VXNlcjkwMzExNzE=",
+      "avatar_url": "https://avatars1.githubusercontent.com/u/9031171?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/amilner42",
+      "html_url": "https://github.com/amilner42",
+      "followers_url": "https://api.github.com/users/amilner42/followers",
+      "following_url": "https://api.github.com/users/amilner42/following{/other_user}",
+      "gists_url": "https://api.github.com/users/amilner42/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/amilner42/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/amilner42/subscriptions",
+      "organizations_url": "https://api.github.com/users/amilner42/orgs",
+      "repos_url": "https://api.github.com/users/amilner42/repos",
+      "events_url": "https://api.github.com/users/amilner42/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/amilner42/received_events",
+      "type": "User",
+      "site_admin": false
+    },
+    "parents": [
+      {
+        "sha": "1d586a3d78bd7e67e29cc8e488f64f774579224e",
+        "url": "https://api.github.com/repos/amilner42/code-tidbit/commits/1d586a3d78bd7e67e29cc8e488f64f774579224e",
+        "html_url": "https://github.com/amilner42/code-tidbit/commit/1d586a3d78bd7e67e29cc8e488f64f774579224e"
+      }
+    ]
+  },
+  {
+    "sha": "1d586a3d78bd7e67e29cc8e488f64f774579224e",
+    "node_id": "MDY6Q29tbWl0NzY4ODgxNDQ6MWQ1ODZhM2Q3OGJkN2U2N2UyOWNjOGU0ODhmNjRmNzc0NTc5MjI0ZQ==",
+    "commit": {
+      "author": {
+        "name": "Arie Milner",
+        "email": "amilner42@gmail.com",
+        "date": "2018-06-15T18:35:10Z"
+      },
+      "committer": {
+        "name": "Arie Milner",
+        "email": "amilner42@gmail.com",
+        "date": "2018-06-15T22:55:50Z"
+      },
+      "message": "Rename msgTagger -> subMsg for clarity/consistency",
+      "tree": {
+        "sha": "586531aae40cecf64ac1b2d7d682b9ac563e643d",
+        "url": "https://api.github.com/repos/amilner42/code-tidbit/git/trees/586531aae40cecf64ac1b2d7d682b9ac563e643d"
+      },
+      "url": "https://api.github.com/repos/amilner42/code-tidbit/git/commits/1d586a3d78bd7e67e29cc8e488f64f774579224e",
+      "comment_count": 0,
+      "verification": {
+        "verified": false,
+        "reason": "unsigned",
+        "signature": null,
+        "payload": null
+      }
+    },
+    "url": "https://api.github.com/repos/amilner42/code-tidbit/commits/1d586a3d78bd7e67e29cc8e488f64f774579224e",
+    "html_url": "https://github.com/amilner42/code-tidbit/commit/1d586a3d78bd7e67e29cc8e488f64f774579224e",
+    "comments_url": "https://api.github.com/repos/amilner42/code-tidbit/commits/1d586a3d78bd7e67e29cc8e488f64f774579224e/comments",
+    "author": {
+      "login": "amilner42",
+      "id": 9031171,
+      "node_id": "MDQ6VXNlcjkwMzExNzE=",
+      "avatar_url": "https://avatars1.githubusercontent.com/u/9031171?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/amilner42",
+      "html_url": "https://github.com/amilner42",
+      "followers_url": "https://api.github.com/users/amilner42/followers",
+      "following_url": "https://api.github.com/users/amilner42/following{/other_user}",
+      "gists_url": "https://api.github.com/users/amilner42/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/amilner42/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/amilner42/subscriptions",
+      "organizations_url": "https://api.github.com/users/amilner42/orgs",
+      "repos_url": "https://api.github.com/users/amilner42/repos",
+      "events_url": "https://api.github.com/users/amilner42/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/amilner42/received_events",
+      "type": "User",
+      "site_admin": false
+    },
+    "committer": {
+      "login": "amilner42",
+      "id": 9031171,
+      "node_id": "MDQ6VXNlcjkwMzExNzE=",
+      "avatar_url": "https://avatars1.githubusercontent.com/u/9031171?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/amilner42",
+      "html_url": "https://github.com/amilner42",
+      "followers_url": "https://api.github.com/users/amilner42/followers",
+      "following_url": "https://api.github.com/users/amilner42/following{/other_user}",
+      "gists_url": "https://api.github.com/users/amilner42/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/amilner42/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/amilner42/subscriptions",
+      "organizations_url": "https://api.github.com/users/amilner42/orgs",
+      "repos_url": "https://api.github.com/users/amilner42/repos",
+      "events_url": "https://api.github.com/users/amilner42/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/amilner42/received_events",
+      "type": "User",
+      "site_admin": false
+    },
+    "parents": [
+      {
+        "sha": "d7292f16345ffb3a6aa4a846a182a4aa057684bc",
+        "url": "https://api.github.com/repos/amilner42/code-tidbit/commits/d7292f16345ffb3a6aa4a846a182a4aa057684bc",
+        "html_url": "https://github.com/amilner42/code-tidbit/commit/d7292f16345ffb3a6aa4a846a182a4aa057684bc"
+      }
+    ]
+  },
+  {
+    "sha": "d7292f16345ffb3a6aa4a846a182a4aa057684bc",
+    "node_id": "MDY6Q29tbWl0NzY4ODgxNDQ6ZDcyOTJmMTYzNDVmZmIzYTZhYTRhODQ2YTE4MmE0YWEwNTc2ODRiYw==",
+    "commit": {
+      "author": {
+        "name": "Arie Milner",
+        "email": "amilner42@gmail.com",
+        "date": "2018-06-15T18:02:31Z"
+      },
+      "committer": {
+        "name": "Arie Milner",
+        "email": "amilner42@gmail.com",
+        "date": "2018-06-15T22:55:50Z"
+      },
+      "message": "Remove unneeded GoTo msg in CreateSnipbit\n- all NoOp/GoTo removed",
+      "tree": {
+        "sha": "57a8a25dce837b17152ee3b05c2126bc59f2252e",
+        "url": "https://api.github.com/repos/amilner42/code-tidbit/git/trees/57a8a25dce837b17152ee3b05c2126bc59f2252e"
+      },
+      "url": "https://api.github.com/repos/amilner42/code-tidbit/git/commits/d7292f16345ffb3a6aa4a846a182a4aa057684bc",
+      "comment_count": 0,
+      "verification": {
+        "verified": false,
+        "reason": "unsigned",
+        "signature": null,
+        "payload": null
+      }
+    },
+    "url": "https://api.github.com/repos/amilner42/code-tidbit/commits/d7292f16345ffb3a6aa4a846a182a4aa057684bc",
+    "html_url": "https://github.com/amilner42/code-tidbit/commit/d7292f16345ffb3a6aa4a846a182a4aa057684bc",
+    "comments_url": "https://api.github.com/repos/amilner42/code-tidbit/commits/d7292f16345ffb3a6aa4a846a182a4aa057684bc/comments",
+    "author": {
+      "login": "amilner42",
+      "id": 9031171,
+      "node_id": "MDQ6VXNlcjkwMzExNzE=",
+      "avatar_url": "https://avatars1.githubusercontent.com/u/9031171?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/amilner42",
+      "html_url": "https://github.com/amilner42",
+      "followers_url": "https://api.github.com/users/amilner42/followers",
+      "following_url": "https://api.github.com/users/amilner42/following{/other_user}",
+      "gists_url": "https://api.github.com/users/amilner42/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/amilner42/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/amilner42/subscriptions",
+      "organizations_url": "https://api.github.com/users/amilner42/orgs",
+      "repos_url": "https://api.github.com/users/amilner42/repos",
+      "events_url": "https://api.github.com/users/amilner42/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/amilner42/received_events",
+      "type": "User",
+      "site_admin": false
+    },
+    "committer": {
+      "login": "amilner42",
+      "id": 9031171,
+      "node_id": "MDQ6VXNlcjkwMzExNzE=",
+      "avatar_url": "https://avatars1.githubusercontent.com/u/9031171?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/amilner42",
+      "html_url": "https://github.com/amilner42",
+      "followers_url": "https://api.github.com/users/amilner42/followers",
+      "following_url": "https://api.github.com/users/amilner42/following{/other_user}",
+      "gists_url": "https://api.github.com/users/amilner42/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/amilner42/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/amilner42/subscriptions",
+      "organizations_url": "https://api.github.com/users/amilner42/orgs",
+      "repos_url": "https://api.github.com/users/amilner42/repos",
+      "events_url": "https://api.github.com/users/amilner42/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/amilner42/received_events",
+      "type": "User",
+      "site_admin": false
+    },
+    "parents": [
+      {
+        "sha": "b71da915a1f698d97a0c096f3a2a781a09470bbe",
+        "url": "https://api.github.com/repos/amilner42/code-tidbit/commits/b71da915a1f698d97a0c096f3a2a781a09470bbe",
+        "html_url": "https://github.com/amilner42/code-tidbit/commit/b71da915a1f698d97a0c096f3a2a781a09470bbe"
+      }
+    ]
+  },
+  {
+    "sha": "b71da915a1f698d97a0c096f3a2a781a09470bbe",
+    "node_id": "MDY6Q29tbWl0NzY4ODgxNDQ6YjcxZGE5MTVhMWY2OThkOTdhMGMwOTZmM2EyYTc4MWEwOTQ3MGJiZQ==",
+    "commit": {
+      "author": {
+        "name": "Arie Milner",
+        "email": "amilner42@gmail.com",
+        "date": "2018-06-14T22:49:20Z"
+      },
+      "committer": {
+        "name": "Arie Milner",
+        "email": "amilner42@gmail.com",
+        "date": "2018-06-15T22:55:50Z"
+      },
+      "message": "Sub pages now return top level Cmd BaseMessage.Msg\n- Hopefully this allows for more DRY code, more re-usable top level messages\n  which can be triggered by the upates/view",
+      "tree": {
+        "sha": "51f7a7fa8fdcfa2d29a2dc8e1da749c693432f40",
+        "url": "https://api.github.com/repos/amilner42/code-tidbit/git/trees/51f7a7fa8fdcfa2d29a2dc8e1da749c693432f40"
+      },
+      "url": "https://api.github.com/repos/amilner42/code-tidbit/git/commits/b71da915a1f698d97a0c096f3a2a781a09470bbe",
+      "comment_count": 0,
+      "verification": {
+        "verified": false,
+        "reason": "unsigned",
+        "signature": null,
+        "payload": null
+      }
+    },
+    "url": "https://api.github.com/repos/amilner42/code-tidbit/commits/b71da915a1f698d97a0c096f3a2a781a09470bbe",
+    "html_url": "https://github.com/amilner42/code-tidbit/commit/b71da915a1f698d97a0c096f3a2a781a09470bbe",
+    "comments_url": "https://api.github.com/repos/amilner42/code-tidbit/commits/b71da915a1f698d97a0c096f3a2a781a09470bbe/comments",
+    "author": {
+      "login": "amilner42",
+      "id": 9031171,
+      "node_id": "MDQ6VXNlcjkwMzExNzE=",
+      "avatar_url": "https://avatars1.githubusercontent.com/u/9031171?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/amilner42",
+      "html_url": "https://github.com/amilner42",
+      "followers_url": "https://api.github.com/users/amilner42/followers",
+      "following_url": "https://api.github.com/users/amilner42/following{/other_user}",
+      "gists_url": "https://api.github.com/users/amilner42/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/amilner42/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/amilner42/subscriptions",
+      "organizations_url": "https://api.github.com/users/amilner42/orgs",
+      "repos_url": "https://api.github.com/users/amilner42/repos",
+      "events_url": "https://api.github.com/users/amilner42/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/amilner42/received_events",
+      "type": "User",
+      "site_admin": false
+    },
+    "committer": {
+      "login": "amilner42",
+      "id": 9031171,
+      "node_id": "MDQ6VXNlcjkwMzExNzE=",
+      "avatar_url": "https://avatars1.githubusercontent.com/u/9031171?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/amilner42",
+      "html_url": "https://github.com/amilner42",
+      "followers_url": "https://api.github.com/users/amilner42/followers",
+      "following_url": "https://api.github.com/users/amilner42/following{/other_user}",
+      "gists_url": "https://api.github.com/users/amilner42/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/amilner42/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/amilner42/subscriptions",
+      "organizations_url": "https://api.github.com/users/amilner42/orgs",
+      "repos_url": "https://api.github.com/users/amilner42/repos",
+      "events_url": "https://api.github.com/users/amilner42/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/amilner42/received_events",
+      "type": "User",
+      "site_admin": false
+    },
+    "parents": [
+      {
+        "sha": "95afecd5ca4360ae07b3519a20a72df848e22e3a",
+        "url": "https://api.github.com/repos/amilner42/code-tidbit/commits/95afecd5ca4360ae07b3519a20a72df848e22e3a",
+        "html_url": "https://github.com/amilner42/code-tidbit/commit/95afecd5ca4360ae07b3519a20a72df848e22e3a"
+      }
+    ]
+  },
+  {
+    "sha": "95afecd5ca4360ae07b3519a20a72df848e22e3a",
+    "node_id": "MDY6Q29tbWl0NzY4ODgxNDQ6OTVhZmVjZDVjYTQzNjBhZTA3YjM1MTlhMjBhNzJkZjg0OGUyMmUzYQ==",
+    "commit": {
+      "author": {
+        "name": "Arie Milner",
+        "email": "amilner42@gmail.com",
+        "date": "2018-06-14T19:43:30Z"
+      },
+      "committer": {
+        "name": "Arie Milner",
+        "email": "amilner42@gmail.com",
+        "date": "2018-06-15T22:55:50Z"
+      },
+      "message": "CreateBigbit no longer uses Html.map",
+      "tree": {
+        "sha": "f01457fe38eb7ee0c40e31b25150aa21d2aab0e6",
+        "url": "https://api.github.com/repos/amilner42/code-tidbit/git/trees/f01457fe38eb7ee0c40e31b25150aa21d2aab0e6"
+      },
+      "url": "https://api.github.com/repos/amilner42/code-tidbit/git/commits/95afecd5ca4360ae07b3519a20a72df848e22e3a",
+      "comment_count": 0,
+      "verification": {
+        "verified": false,
+        "reason": "unsigned",
+        "signature": null,
+        "payload": null
+      }
+    },
+    "url": "https://api.github.com/repos/amilner42/code-tidbit/commits/95afecd5ca4360ae07b3519a20a72df848e22e3a",
+    "html_url": "https://github.com/amilner42/code-tidbit/commit/95afecd5ca4360ae07b3519a20a72df848e22e3a",
+    "comments_url": "https://api.github.com/repos/amilner42/code-tidbit/commits/95afecd5ca4360ae07b3519a20a72df848e22e3a/comments",
+    "author": {
+      "login": "amilner42",
+      "id": 9031171,
+      "node_id": "MDQ6VXNlcjkwMzExNzE=",
+      "avatar_url": "https://avatars1.githubusercontent.com/u/9031171?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/amilner42",
+      "html_url": "https://github.com/amilner42",
+      "followers_url": "https://api.github.com/users/amilner42/followers",
+      "following_url": "https://api.github.com/users/amilner42/following{/other_user}",
+      "gists_url": "https://api.github.com/users/amilner42/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/amilner42/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/amilner42/subscriptions",
+      "organizations_url": "https://api.github.com/users/amilner42/orgs",
+      "repos_url": "https://api.github.com/users/amilner42/repos",
+      "events_url": "https://api.github.com/users/amilner42/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/amilner42/received_events",
+      "type": "User",
+      "site_admin": false
+    },
+    "committer": {
+      "login": "amilner42",
+      "id": 9031171,
+      "node_id": "MDQ6VXNlcjkwMzExNzE=",
+      "avatar_url": "https://avatars1.githubusercontent.com/u/9031171?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/amilner42",
+      "html_url": "https://github.com/amilner42",
+      "followers_url": "https://api.github.com/users/amilner42/followers",
+      "following_url": "https://api.github.com/users/amilner42/following{/other_user}",
+      "gists_url": "https://api.github.com/users/amilner42/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/amilner42/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/amilner42/subscriptions",
+      "organizations_url": "https://api.github.com/users/amilner42/orgs",
+      "repos_url": "https://api.github.com/users/amilner42/repos",
+      "events_url": "https://api.github.com/users/amilner42/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/amilner42/received_events",
+      "type": "User",
+      "site_admin": false
+    },
+    "parents": [
+      {
+        "sha": "12ec912eb1c650d3d6cc4c95e1c5fbc77727c0a8",
+        "url": "https://api.github.com/repos/amilner42/code-tidbit/commits/12ec912eb1c650d3d6cc4c95e1c5fbc77727c0a8",
+        "html_url": "https://github.com/amilner42/code-tidbit/commit/12ec912eb1c650d3d6cc4c95e1c5fbc77727c0a8"
+      }
+    ]
+  },
+  {
+    "sha": "12ec912eb1c650d3d6cc4c95e1c5fbc77727c0a8",
+    "node_id": "MDY6Q29tbWl0NzY4ODgxNDQ6MTJlYzkxMmViMWM2NTBkM2Q2Y2M0Yzk1ZTFjNWZiYzc3NzI3YzBhOA==",
+    "commit": {
+      "author": {
+        "name": "Arie Milner",
+        "email": "amilner42@gmail.com",
+        "date": "2018-06-14T19:24:47Z"
+      },
+      "committer": {
+        "name": "Arie Milner",
+        "email": "amilner42@gmail.com",
+        "date": "2018-06-15T22:55:48Z"
+      },
+      "message": "Create snipbit no longer uses Html.map",
+      "tree": {
+        "sha": "9900d8fbf2178be7198ece4b3ae7b42075314f7e",
+        "url": "https://api.github.com/repos/amilner42/code-tidbit/git/trees/9900d8fbf2178be7198ece4b3ae7b42075314f7e"
+      },
+      "url": "https://api.github.com/repos/amilner42/code-tidbit/git/commits/12ec912eb1c650d3d6cc4c95e1c5fbc77727c0a8",
+      "comment_count": 0,
+      "verification": {
+        "verified": false,
+        "reason": "unsigned",
+        "signature": null,
+        "payload": null
+      }
+    },
+    "url": "https://api.github.com/repos/amilner42/code-tidbit/commits/12ec912eb1c650d3d6cc4c95e1c5fbc77727c0a8",
+    "html_url": "https://github.com/amilner42/code-tidbit/commit/12ec912eb1c650d3d6cc4c95e1c5fbc77727c0a8",
+    "comments_url": "https://api.github.com/repos/amilner42/code-tidbit/commits/12ec912eb1c650d3d6cc4c95e1c5fbc77727c0a8/comments",
+    "author": {
+      "login": "amilner42",
+      "id": 9031171,
+      "node_id": "MDQ6VXNlcjkwMzExNzE=",
+      "avatar_url": "https://avatars1.githubusercontent.com/u/9031171?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/amilner42",
+      "html_url": "https://github.com/amilner42",
+      "followers_url": "https://api.github.com/users/amilner42/followers",
+      "following_url": "https://api.github.com/users/amilner42/following{/other_user}",
+      "gists_url": "https://api.github.com/users/amilner42/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/amilner42/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/amilner42/subscriptions",
+      "organizations_url": "https://api.github.com/users/amilner42/orgs",
+      "repos_url": "https://api.github.com/users/amilner42/repos",
+      "events_url": "https://api.github.com/users/amilner42/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/amilner42/received_events",
+      "type": "User",
+      "site_admin": false
+    },
+    "committer": {
+      "login": "amilner42",
+      "id": 9031171,
+      "node_id": "MDQ6VXNlcjkwMzExNzE=",
+      "avatar_url": "https://avatars1.githubusercontent.com/u/9031171?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/amilner42",
+      "html_url": "https://github.com/amilner42",
+      "followers_url": "https://api.github.com/users/amilner42/followers",
+      "following_url": "https://api.github.com/users/amilner42/following{/other_user}",
+      "gists_url": "https://api.github.com/users/amilner42/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/amilner42/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/amilner42/subscriptions",
+      "organizations_url": "https://api.github.com/users/amilner42/orgs",
+      "repos_url": "https://api.github.com/users/amilner42/repos",
+      "events_url": "https://api.github.com/users/amilner42/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/amilner42/received_events",
+      "type": "User",
+      "site_admin": false
+    },
+    "parents": [
+      {
+        "sha": "471d66d0c5dff742cdbc065c27bd43ab3c8014ce",
+        "url": "https://api.github.com/repos/amilner42/code-tidbit/commits/471d66d0c5dff742cdbc065c27bd43ab3c8014ce",
+        "html_url": "https://github.com/amilner42/code-tidbit/commit/471d66d0c5dff742cdbc065c27bd43ab3c8014ce"
+      }
+    ]
+  },
+  {
+    "sha": "471d66d0c5dff742cdbc065c27bd43ab3c8014ce",
+    "node_id": "MDY6Q29tbWl0NzY4ODgxNDQ6NDcxZDY2ZDBjNWRmZjc0MmNkYmMwNjVjMjdiZDQzYWIzYzgwMTRjZQ==",
+    "commit": {
+      "author": {
+        "name": "Arie Milner",
+        "email": "amilner42@gmail.com",
+        "date": "2018-06-14T19:10:13Z"
+      },
+      "committer": {
+        "name": "Arie Milner",
+        "email": "amilner42@gmail.com",
+        "date": "2018-06-15T22:47:40Z"
+      },
+      "message": "Create no longer uses Html.map",
+      "tree": {
+        "sha": "c74c134fca58397058e9747df99047367df94f03",
+        "url": "https://api.github.com/repos/amilner42/code-tidbit/git/trees/c74c134fca58397058e9747df99047367df94f03"
+      },
+      "url": "https://api.github.com/repos/amilner42/code-tidbit/git/commits/471d66d0c5dff742cdbc065c27bd43ab3c8014ce",
+      "comment_count": 0,
+      "verification": {
+        "verified": false,
+        "reason": "unsigned",
+        "signature": null,
+        "payload": null
+      }
+    },
+    "url": "https://api.github.com/repos/amilner42/code-tidbit/commits/471d66d0c5dff742cdbc065c27bd43ab3c8014ce",
+    "html_url": "https://github.com/amilner42/code-tidbit/commit/471d66d0c5dff742cdbc065c27bd43ab3c8014ce",
+    "comments_url": "https://api.github.com/repos/amilner42/code-tidbit/commits/471d66d0c5dff742cdbc065c27bd43ab3c8014ce/comments",
+    "author": {
+      "login": "amilner42",
+      "id": 9031171,
+      "node_id": "MDQ6VXNlcjkwMzExNzE=",
+      "avatar_url": "https://avatars1.githubusercontent.com/u/9031171?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/amilner42",
+      "html_url": "https://github.com/amilner42",
+      "followers_url": "https://api.github.com/users/amilner42/followers",
+      "following_url": "https://api.github.com/users/amilner42/following{/other_user}",
+      "gists_url": "https://api.github.com/users/amilner42/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/amilner42/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/amilner42/subscriptions",
+      "organizations_url": "https://api.github.com/users/amilner42/orgs",
+      "repos_url": "https://api.github.com/users/amilner42/repos",
+      "events_url": "https://api.github.com/users/amilner42/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/amilner42/received_events",
+      "type": "User",
+      "site_admin": false
+    },
+    "committer": {
+      "login": "amilner42",
+      "id": 9031171,
+      "node_id": "MDQ6VXNlcjkwMzExNzE=",
+      "avatar_url": "https://avatars1.githubusercontent.com/u/9031171?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/amilner42",
+      "html_url": "https://github.com/amilner42",
+      "followers_url": "https://api.github.com/users/amilner42/followers",
+      "following_url": "https://api.github.com/users/amilner42/following{/other_user}",
+      "gists_url": "https://api.github.com/users/amilner42/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/amilner42/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/amilner42/subscriptions",
+      "organizations_url": "https://api.github.com/users/amilner42/orgs",
+      "repos_url": "https://api.github.com/users/amilner42/repos",
+      "events_url": "https://api.github.com/users/amilner42/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/amilner42/received_events",
+      "type": "User",
+      "site_admin": false
+    },
+    "parents": [
+      {
+        "sha": "aa39127a367a3fcad2c455fe5da9f7101a035bc7",
+        "url": "https://api.github.com/repos/amilner42/code-tidbit/commits/aa39127a367a3fcad2c455fe5da9f7101a035bc7",
+        "html_url": "https://github.com/amilner42/code-tidbit/commit/aa39127a367a3fcad2c455fe5da9f7101a035bc7"
+      }
+    ]
+  },
+  {
+    "sha": "aa39127a367a3fcad2c455fe5da9f7101a035bc7",
+    "node_id": "MDY6Q29tbWl0NzY4ODgxNDQ6YWEzOTEyN2EzNjdhM2ZjYWQyYzQ1NWZlNWRhOWY3MTAxYTAzNWJjNw==",
+    "commit": {
+      "author": {
+        "name": "Arie Milner",
+        "email": "amilner42@gmail.com",
+        "date": "2018-06-14T19:03:01Z"
+      },
+      "committer": {
+        "name": "Arie Milner",
+        "email": "amilner42@gmail.com",
+        "date": "2018-06-15T22:46:17Z"
+      },
+      "message": "Browse no longer uses Html.map\n- Should our nested updates return a top level Cmd BaseMessage.Msg? We do otherwise have dup code",
+      "tree": {
+        "sha": "b06d126469094dc5f3d977801b8b728ef11f914a",
+        "url": "https://api.github.com/repos/amilner42/code-tidbit/git/trees/b06d126469094dc5f3d977801b8b728ef11f914a"
+      },
+      "url": "https://api.github.com/repos/amilner42/code-tidbit/git/commits/aa39127a367a3fcad2c455fe5da9f7101a035bc7",
+      "comment_count": 0,
+      "verification": {
+        "verified": false,
+        "reason": "unsigned",
+        "signature": null,
+        "payload": null
+      }
+    },
+    "url": "https://api.github.com/repos/amilner42/code-tidbit/commits/aa39127a367a3fcad2c455fe5da9f7101a035bc7",
+    "html_url": "https://github.com/amilner42/code-tidbit/commit/aa39127a367a3fcad2c455fe5da9f7101a035bc7",
+    "comments_url": "https://api.github.com/repos/amilner42/code-tidbit/commits/aa39127a367a3fcad2c455fe5da9f7101a035bc7/comments",
+    "author": {
+      "login": "amilner42",
+      "id": 9031171,
+      "node_id": "MDQ6VXNlcjkwMzExNzE=",
+      "avatar_url": "https://avatars1.githubusercontent.com/u/9031171?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/amilner42",
+      "html_url": "https://github.com/amilner42",
+      "followers_url": "https://api.github.com/users/amilner42/followers",
+      "following_url": "https://api.github.com/users/amilner42/following{/other_user}",
+      "gists_url": "https://api.github.com/users/amilner42/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/amilner42/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/amilner42/subscriptions",
+      "organizations_url": "https://api.github.com/users/amilner42/orgs",
+      "repos_url": "https://api.github.com/users/amilner42/repos",
+      "events_url": "https://api.github.com/users/amilner42/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/amilner42/received_events",
+      "type": "User",
+      "site_admin": false
+    },
+    "committer": {
+      "login": "amilner42",
+      "id": 9031171,
+      "node_id": "MDQ6VXNlcjkwMzExNzE=",
+      "avatar_url": "https://avatars1.githubusercontent.com/u/9031171?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/amilner42",
+      "html_url": "https://github.com/amilner42",
+      "followers_url": "https://api.github.com/users/amilner42/followers",
+      "following_url": "https://api.github.com/users/amilner42/following{/other_user}",
+      "gists_url": "https://api.github.com/users/amilner42/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/amilner42/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/amilner42/subscriptions",
+      "organizations_url": "https://api.github.com/users/amilner42/orgs",
+      "repos_url": "https://api.github.com/users/amilner42/repos",
+      "events_url": "https://api.github.com/users/amilner42/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/amilner42/received_events",
+      "type": "User",
+      "site_admin": false
+    },
+    "parents": [
+      {
+        "sha": "127fc34237e08368a830f22b365e920d3987732a",
+        "url": "https://api.github.com/repos/amilner42/code-tidbit/commits/127fc34237e08368a830f22b365e920d3987732a",
+        "html_url": "https://github.com/amilner42/code-tidbit/commit/127fc34237e08368a830f22b365e920d3987732a"
+      }
+    ]
+  },
+  {
+    "sha": "127fc34237e08368a830f22b365e920d3987732a",
+    "node_id": "MDY6Q29tbWl0NzY4ODgxNDQ6MTI3ZmMzNDIzN2UwODM2OGE4MzBmMjJiMzY1ZTkyMGQzOTg3NzMyYQ==",
+    "commit": {
+      "author": {
+        "name": "Arie Milner",
+        "email": "amilner42@gmail.com",
+        "date": "2018-06-14T01:36:40Z"
+      },
+      "committer": {
+        "name": "Arie Milner",
+        "email": "amilner42@gmail.com",
+        "date": "2018-06-15T22:46:17Z"
+      },
+      "message": "DevelopStory no longer uses Html.map",
+      "tree": {
+        "sha": "63cd8401c245941033fffe499a850441de891187",
+        "url": "https://api.github.com/repos/amilner42/code-tidbit/git/trees/63cd8401c245941033fffe499a850441de891187"
+      },
+      "url": "https://api.github.com/repos/amilner42/code-tidbit/git/commits/127fc34237e08368a830f22b365e920d3987732a",
+      "comment_count": 0,
+      "verification": {
+        "verified": false,
+        "reason": "unsigned",
+        "signature": null,
+        "payload": null
+      }
+    },
+    "url": "https://api.github.com/repos/amilner42/code-tidbit/commits/127fc34237e08368a830f22b365e920d3987732a",
+    "html_url": "https://github.com/amilner42/code-tidbit/commit/127fc34237e08368a830f22b365e920d3987732a",
+    "comments_url": "https://api.github.com/repos/amilner42/code-tidbit/commits/127fc34237e08368a830f22b365e920d3987732a/comments",
+    "author": {
+      "login": "amilner42",
+      "id": 9031171,
+      "node_id": "MDQ6VXNlcjkwMzExNzE=",
+      "avatar_url": "https://avatars1.githubusercontent.com/u/9031171?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/amilner42",
+      "html_url": "https://github.com/amilner42",
+      "followers_url": "https://api.github.com/users/amilner42/followers",
+      "following_url": "https://api.github.com/users/amilner42/following{/other_user}",
+      "gists_url": "https://api.github.com/users/amilner42/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/amilner42/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/amilner42/subscriptions",
+      "organizations_url": "https://api.github.com/users/amilner42/orgs",
+      "repos_url": "https://api.github.com/users/amilner42/repos",
+      "events_url": "https://api.github.com/users/amilner42/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/amilner42/received_events",
+      "type": "User",
+      "site_admin": false
+    },
+    "committer": {
+      "login": "amilner42",
+      "id": 9031171,
+      "node_id": "MDQ6VXNlcjkwMzExNzE=",
+      "avatar_url": "https://avatars1.githubusercontent.com/u/9031171?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/amilner42",
+      "html_url": "https://github.com/amilner42",
+      "followers_url": "https://api.github.com/users/amilner42/followers",
+      "following_url": "https://api.github.com/users/amilner42/following{/other_user}",
+      "gists_url": "https://api.github.com/users/amilner42/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/amilner42/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/amilner42/subscriptions",
+      "organizations_url": "https://api.github.com/users/amilner42/orgs",
+      "repos_url": "https://api.github.com/users/amilner42/repos",
+      "events_url": "https://api.github.com/users/amilner42/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/amilner42/received_events",
+      "type": "User",
+      "site_admin": false
+    },
+    "parents": [
+      {
+        "sha": "0d6e55d94b642f84527416f0337049d96b74c803",
+        "url": "https://api.github.com/repos/amilner42/code-tidbit/commits/0d6e55d94b642f84527416f0337049d96b74c803",
+        "html_url": "https://github.com/amilner42/code-tidbit/commit/0d6e55d94b642f84527416f0337049d96b74c803"
+      }
+    ]
+  },
+  {
+    "sha": "0d6e55d94b642f84527416f0337049d96b74c803",
+    "node_id": "MDY6Q29tbWl0NzY4ODgxNDQ6MGQ2ZTU1ZDk0YjY0MmY4NDUyNzQxNmYwMzM3MDQ5ZDk2Yjc0YzgwMw==",
+    "commit": {
+      "author": {
+        "name": "Arie Milner",
+        "email": "amilner42@gmail.com",
+        "date": "2018-06-14T01:24:17Z"
+      },
+      "committer": {
+        "name": "Arie Milner",
+        "email": "amilner42@gmail.com",
+        "date": "2018-06-15T22:46:17Z"
+      },
+      "message": "tagMsg -> subMsg for clarity",
+      "tree": {
+        "sha": "86f0d27900b3392787839c806689f9ca38de3f58",
+        "url": "https://api.github.com/repos/amilner42/code-tidbit/git/trees/86f0d27900b3392787839c806689f9ca38de3f58"
+      },
+      "url": "https://api.github.com/repos/amilner42/code-tidbit/git/commits/0d6e55d94b642f84527416f0337049d96b74c803",
+      "comment_count": 0,
+      "verification": {
+        "verified": false,
+        "reason": "unsigned",
+        "signature": null,
+        "payload": null
+      }
+    },
+    "url": "https://api.github.com/repos/amilner42/code-tidbit/commits/0d6e55d94b642f84527416f0337049d96b74c803",
+    "html_url": "https://github.com/amilner42/code-tidbit/commit/0d6e55d94b642f84527416f0337049d96b74c803",
+    "comments_url": "https://api.github.com/repos/amilner42/code-tidbit/commits/0d6e55d94b642f84527416f0337049d96b74c803/comments",
+    "author": {
+      "login": "amilner42",
+      "id": 9031171,
+      "node_id": "MDQ6VXNlcjkwMzExNzE=",
+      "avatar_url": "https://avatars1.githubusercontent.com/u/9031171?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/amilner42",
+      "html_url": "https://github.com/amilner42",
+      "followers_url": "https://api.github.com/users/amilner42/followers",
+      "following_url": "https://api.github.com/users/amilner42/following{/other_user}",
+      "gists_url": "https://api.github.com/users/amilner42/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/amilner42/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/amilner42/subscriptions",
+      "organizations_url": "https://api.github.com/users/amilner42/orgs",
+      "repos_url": "https://api.github.com/users/amilner42/repos",
+      "events_url": "https://api.github.com/users/amilner42/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/amilner42/received_events",
+      "type": "User",
+      "site_admin": false
+    },
+    "committer": {
+      "login": "amilner42",
+      "id": 9031171,
+      "node_id": "MDQ6VXNlcjkwMzExNzE=",
+      "avatar_url": "https://avatars1.githubusercontent.com/u/9031171?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/amilner42",
+      "html_url": "https://github.com/amilner42",
+      "followers_url": "https://api.github.com/users/amilner42/followers",
+      "following_url": "https://api.github.com/users/amilner42/following{/other_user}",
+      "gists_url": "https://api.github.com/users/amilner42/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/amilner42/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/amilner42/subscriptions",
+      "organizations_url": "https://api.github.com/users/amilner42/orgs",
+      "repos_url": "https://api.github.com/users/amilner42/repos",
+      "events_url": "https://api.github.com/users/amilner42/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/amilner42/received_events",
+      "type": "User",
+      "site_admin": false
+    },
+    "parents": [
+      {
+        "sha": "4f19cb86c755a4189eae86a832c11486fa8914b6",
+        "url": "https://api.github.com/repos/amilner42/code-tidbit/commits/4f19cb86c755a4189eae86a832c11486fa8914b6",
+        "html_url": "https://github.com/amilner42/code-tidbit/commit/4f19cb86c755a4189eae86a832c11486fa8914b6"
+      }
+    ]
+  },
+  {
+    "sha": "4f19cb86c755a4189eae86a832c11486fa8914b6",
+    "node_id": "MDY6Q29tbWl0NzY4ODgxNDQ6NGYxOWNiODZjNzU1YTQxODllYWU4NmE4MzJjMTE0ODZmYTg5MTRiNg==",
+    "commit": {
+      "author": {
+        "name": "Arie Milner",
+        "email": "amilner42@gmail.com",
+        "date": "2018-06-14T01:15:38Z"
+      },
+      "committer": {
+        "name": "Arie Milner",
+        "email": "amilner42@gmail.com",
+        "date": "2018-06-15T22:46:17Z"
+      },
+      "message": "NewStory no longer uses Html.map",
+      "tree": {
+        "sha": "39531b2269c08a51d4ae6ef9f4d579ed8a1a2352",
+        "url": "https://api.github.com/repos/amilner42/code-tidbit/git/trees/39531b2269c08a51d4ae6ef9f4d579ed8a1a2352"
+      },
+      "url": "https://api.github.com/repos/amilner42/code-tidbit/git/commits/4f19cb86c755a4189eae86a832c11486fa8914b6",
+      "comment_count": 0,
+      "verification": {
+        "verified": false,
+        "reason": "unsigned",
+        "signature": null,
+        "payload": null
+      }
+    },
+    "url": "https://api.github.com/repos/amilner42/code-tidbit/commits/4f19cb86c755a4189eae86a832c11486fa8914b6",
+    "html_url": "https://github.com/amilner42/code-tidbit/commit/4f19cb86c755a4189eae86a832c11486fa8914b6",
+    "comments_url": "https://api.github.com/repos/amilner42/code-tidbit/commits/4f19cb86c755a4189eae86a832c11486fa8914b6/comments",
+    "author": {
+      "login": "amilner42",
+      "id": 9031171,
+      "node_id": "MDQ6VXNlcjkwMzExNzE=",
+      "avatar_url": "https://avatars1.githubusercontent.com/u/9031171?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/amilner42",
+      "html_url": "https://github.com/amilner42",
+      "followers_url": "https://api.github.com/users/amilner42/followers",
+      "following_url": "https://api.github.com/users/amilner42/following{/other_user}",
+      "gists_url": "https://api.github.com/users/amilner42/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/amilner42/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/amilner42/subscriptions",
+      "organizations_url": "https://api.github.com/users/amilner42/orgs",
+      "repos_url": "https://api.github.com/users/amilner42/repos",
+      "events_url": "https://api.github.com/users/amilner42/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/amilner42/received_events",
+      "type": "User",
+      "site_admin": false
+    },
+    "committer": {
+      "login": "amilner42",
+      "id": 9031171,
+      "node_id": "MDQ6VXNlcjkwMzExNzE=",
+      "avatar_url": "https://avatars1.githubusercontent.com/u/9031171?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/amilner42",
+      "html_url": "https://github.com/amilner42",
+      "followers_url": "https://api.github.com/users/amilner42/followers",
+      "following_url": "https://api.github.com/users/amilner42/following{/other_user}",
+      "gists_url": "https://api.github.com/users/amilner42/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/amilner42/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/amilner42/subscriptions",
+      "organizations_url": "https://api.github.com/users/amilner42/orgs",
+      "repos_url": "https://api.github.com/users/amilner42/repos",
+      "events_url": "https://api.github.com/users/amilner42/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/amilner42/received_events",
+      "type": "User",
+      "site_admin": false
+    },
+    "parents": [
+      {
+        "sha": "6629552cc786de23f47149320abc8a8f44509b9f",
+        "url": "https://api.github.com/repos/amilner42/code-tidbit/commits/6629552cc786de23f47149320abc8a8f44509b9f",
+        "html_url": "https://github.com/amilner42/code-tidbit/commit/6629552cc786de23f47149320abc8a8f44509b9f"
+      }
+    ]
+  },
+  {
+    "sha": "6629552cc786de23f47149320abc8a8f44509b9f",
+    "node_id": "MDY6Q29tbWl0NzY4ODgxNDQ6NjYyOTU1MmNjNzg2ZGUyM2Y0NzE0OTMyMGFiYzhhOGY0NDUwOWI5Zg==",
+    "commit": {
+      "author": {
+        "name": "Arie Milner",
+        "email": "amilner42@gmail.com",
+        "date": "2018-06-14T00:58:30Z"
+      },
+      "committer": {
+        "name": "Arie Milner",
+        "email": "amilner42@gmail.com",
+        "date": "2018-06-15T22:46:17Z"
+      },
+      "message": "Notifications no longer uses Html.map",
+      "tree": {
+        "sha": "96f31c900cbdd9db10f1c7b2ca527a4022f84ca0",
+        "url": "https://api.github.com/repos/amilner42/code-tidbit/git/trees/96f31c900cbdd9db10f1c7b2ca527a4022f84ca0"
+      },
+      "url": "https://api.github.com/repos/amilner42/code-tidbit/git/commits/6629552cc786de23f47149320abc8a8f44509b9f",
+      "comment_count": 0,
+      "verification": {
+        "verified": false,
+        "reason": "unsigned",
+        "signature": null,
+        "payload": null
+      }
+    },
+    "url": "https://api.github.com/repos/amilner42/code-tidbit/commits/6629552cc786de23f47149320abc8a8f44509b9f",
+    "html_url": "https://github.com/amilner42/code-tidbit/commit/6629552cc786de23f47149320abc8a8f44509b9f",
+    "comments_url": "https://api.github.com/repos/amilner42/code-tidbit/commits/6629552cc786de23f47149320abc8a8f44509b9f/comments",
+    "author": {
+      "login": "amilner42",
+      "id": 9031171,
+      "node_id": "MDQ6VXNlcjkwMzExNzE=",
+      "avatar_url": "https://avatars1.githubusercontent.com/u/9031171?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/amilner42",
+      "html_url": "https://github.com/amilner42",
+      "followers_url": "https://api.github.com/users/amilner42/followers",
+      "following_url": "https://api.github.com/users/amilner42/following{/other_user}",
+      "gists_url": "https://api.github.com/users/amilner42/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/amilner42/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/amilner42/subscriptions",
+      "organizations_url": "https://api.github.com/users/amilner42/orgs",
+      "repos_url": "https://api.github.com/users/amilner42/repos",
+      "events_url": "https://api.github.com/users/amilner42/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/amilner42/received_events",
+      "type": "User",
+      "site_admin": false
+    },
+    "committer": {
+      "login": "amilner42",
+      "id": 9031171,
+      "node_id": "MDQ6VXNlcjkwMzExNzE=",
+      "avatar_url": "https://avatars1.githubusercontent.com/u/9031171?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/amilner42",
+      "html_url": "https://github.com/amilner42",
+      "followers_url": "https://api.github.com/users/amilner42/followers",
+      "following_url": "https://api.github.com/users/amilner42/following{/other_user}",
+      "gists_url": "https://api.github.com/users/amilner42/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/amilner42/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/amilner42/subscriptions",
+      "organizations_url": "https://api.github.com/users/amilner42/orgs",
+      "repos_url": "https://api.github.com/users/amilner42/repos",
+      "events_url": "https://api.github.com/users/amilner42/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/amilner42/received_events",
+      "type": "User",
+      "site_admin": false
+    },
+    "parents": [
+      {
+        "sha": "f2d1f6464e371edff422f47dc6a0adf2808c9808",
+        "url": "https://api.github.com/repos/amilner42/code-tidbit/commits/f2d1f6464e371edff422f47dc6a0adf2808c9808",
+        "html_url": "https://github.com/amilner42/code-tidbit/commit/f2d1f6464e371edff422f47dc6a0adf2808c9808"
+      }
+    ]
+  },
+  {
+    "sha": "f2d1f6464e371edff422f47dc6a0adf2808c9808",
+    "node_id": "MDY6Q29tbWl0NzY4ODgxNDQ6ZjJkMWY2NDY0ZTM3MWVkZmY0MjJmNDdkYzZhMGFkZjI4MDhjOTgwOA==",
+    "commit": {
+      "author": {
+        "name": "Arie Milner",
+        "email": "amilner42@gmail.com",
+        "date": "2018-06-13T21:24:07Z"
+      },
+      "committer": {
+        "name": "Arie Milner",
+        "email": "amilner42@gmail.com",
+        "date": "2018-06-15T22:46:15Z"
+      },
+      "message": "ViewProfile no longer uses Html.map\n- Weird logout functionality no longer needed, now logout is just a base message\n- Add BasePageUtil similar to SubPageUtil",
+      "tree": {
+        "sha": "ac386ebd402f6e91ff154097dec8ec32a6ae713e",
+        "url": "https://api.github.com/repos/amilner42/code-tidbit/git/trees/ac386ebd402f6e91ff154097dec8ec32a6ae713e"
+      },
+      "url": "https://api.github.com/repos/amilner42/code-tidbit/git/commits/f2d1f6464e371edff422f47dc6a0adf2808c9808",
+      "comment_count": 0,
+      "verification": {
+        "verified": false,
+        "reason": "unsigned",
+        "signature": null,
+        "payload": null
+      }
+    },
+    "url": "https://api.github.com/repos/amilner42/code-tidbit/commits/f2d1f6464e371edff422f47dc6a0adf2808c9808",
+    "html_url": "https://github.com/amilner42/code-tidbit/commit/f2d1f6464e371edff422f47dc6a0adf2808c9808",
+    "comments_url": "https://api.github.com/repos/amilner42/code-tidbit/commits/f2d1f6464e371edff422f47dc6a0adf2808c9808/comments",
+    "author": {
+      "login": "amilner42",
+      "id": 9031171,
+      "node_id": "MDQ6VXNlcjkwMzExNzE=",
+      "avatar_url": "https://avatars1.githubusercontent.com/u/9031171?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/amilner42",
+      "html_url": "https://github.com/amilner42",
+      "followers_url": "https://api.github.com/users/amilner42/followers",
+      "following_url": "https://api.github.com/users/amilner42/following{/other_user}",
+      "gists_url": "https://api.github.com/users/amilner42/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/amilner42/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/amilner42/subscriptions",
+      "organizations_url": "https://api.github.com/users/amilner42/orgs",
+      "repos_url": "https://api.github.com/users/amilner42/repos",
+      "events_url": "https://api.github.com/users/amilner42/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/amilner42/received_events",
+      "type": "User",
+      "site_admin": false
+    },
+    "committer": {
+      "login": "amilner42",
+      "id": 9031171,
+      "node_id": "MDQ6VXNlcjkwMzExNzE=",
+      "avatar_url": "https://avatars1.githubusercontent.com/u/9031171?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/amilner42",
+      "html_url": "https://github.com/amilner42",
+      "followers_url": "https://api.github.com/users/amilner42/followers",
+      "following_url": "https://api.github.com/users/amilner42/following{/other_user}",
+      "gists_url": "https://api.github.com/users/amilner42/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/amilner42/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/amilner42/subscriptions",
+      "organizations_url": "https://api.github.com/users/amilner42/orgs",
+      "repos_url": "https://api.github.com/users/amilner42/repos",
+      "events_url": "https://api.github.com/users/amilner42/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/amilner42/received_events",
+      "type": "User",
+      "site_admin": false
+    },
+    "parents": [
+      {
+        "sha": "3cdaef2730d8c202725f87c9ae05e71d8360a821",
+        "url": "https://api.github.com/repos/amilner42/code-tidbit/commits/3cdaef2730d8c202725f87c9ae05e71d8360a821",
+        "html_url": "https://github.com/amilner42/code-tidbit/commit/3cdaef2730d8c202725f87c9ae05e71d8360a821"
+      }
+    ]
+  },
+  {
+    "sha": "3cdaef2730d8c202725f87c9ae05e71d8360a821",
+    "node_id": "MDY6Q29tbWl0NzY4ODgxNDQ6M2NkYWVmMjczMGQ4YzIwMjcyNWY4N2M5YWUwNWU3MWQ4MzYwYTgyMQ==",
+    "commit": {
+      "author": {
+        "name": "Arie Milner",
+        "email": "amilner42@gmail.com",
+        "date": "2018-06-13T18:33:22Z"
+      },
+      "committer": {
+        "name": "Arie Milner",
+        "email": "amilner42@gmail.com",
+        "date": "2018-06-15T22:42:24Z"
+      },
+      "message": "ViewStory no longer uses Html.map",
+      "tree": {
+        "sha": "407792f536ec0b27fa923a3871c2ff3346e0b1fa",
+        "url": "https://api.github.com/repos/amilner42/code-tidbit/git/trees/407792f536ec0b27fa923a3871c2ff3346e0b1fa"
+      },
+      "url": "https://api.github.com/repos/amilner42/code-tidbit/git/commits/3cdaef2730d8c202725f87c9ae05e71d8360a821",
+      "comment_count": 0,
+      "verification": {
+        "verified": false,
+        "reason": "unsigned",
+        "signature": null,
+        "payload": null
+      }
+    },
+    "url": "https://api.github.com/repos/amilner42/code-tidbit/commits/3cdaef2730d8c202725f87c9ae05e71d8360a821",
+    "html_url": "https://github.com/amilner42/code-tidbit/commit/3cdaef2730d8c202725f87c9ae05e71d8360a821",
+    "comments_url": "https://api.github.com/repos/amilner42/code-tidbit/commits/3cdaef2730d8c202725f87c9ae05e71d8360a821/comments",
+    "author": {
+      "login": "amilner42",
+      "id": 9031171,
+      "node_id": "MDQ6VXNlcjkwMzExNzE=",
+      "avatar_url": "https://avatars1.githubusercontent.com/u/9031171?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/amilner42",
+      "html_url": "https://github.com/amilner42",
+      "followers_url": "https://api.github.com/users/amilner42/followers",
+      "following_url": "https://api.github.com/users/amilner42/following{/other_user}",
+      "gists_url": "https://api.github.com/users/amilner42/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/amilner42/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/amilner42/subscriptions",
+      "organizations_url": "https://api.github.com/users/amilner42/orgs",
+      "repos_url": "https://api.github.com/users/amilner42/repos",
+      "events_url": "https://api.github.com/users/amilner42/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/amilner42/received_events",
+      "type": "User",
+      "site_admin": false
+    },
+    "committer": {
+      "login": "amilner42",
+      "id": 9031171,
+      "node_id": "MDQ6VXNlcjkwMzExNzE=",
+      "avatar_url": "https://avatars1.githubusercontent.com/u/9031171?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/amilner42",
+      "html_url": "https://github.com/amilner42",
+      "followers_url": "https://api.github.com/users/amilner42/followers",
+      "following_url": "https://api.github.com/users/amilner42/following{/other_user}",
+      "gists_url": "https://api.github.com/users/amilner42/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/amilner42/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/amilner42/subscriptions",
+      "organizations_url": "https://api.github.com/users/amilner42/orgs",
+      "repos_url": "https://api.github.com/users/amilner42/repos",
+      "events_url": "https://api.github.com/users/amilner42/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/amilner42/received_events",
+      "type": "User",
+      "site_admin": false
+    },
+    "parents": [
+      {
+        "sha": "f48a57841b6c51a8d0536074f0fa41f76605eb7b",
+        "url": "https://api.github.com/repos/amilner42/code-tidbit/commits/f48a57841b6c51a8d0536074f0fa41f76605eb7b",
+        "html_url": "https://github.com/amilner42/code-tidbit/commit/f48a57841b6c51a8d0536074f0fa41f76605eb7b"
+      }
+    ]
+  },
+  {
+    "sha": "f48a57841b6c51a8d0536074f0fa41f76605eb7b",
+    "node_id": "MDY6Q29tbWl0NzY4ODgxNDQ6ZjQ4YTU3ODQxYjZjNTFhOGQwNTM2MDc0ZjBmYTQxZjc2NjA1ZWI3Yg==",
+    "commit": {
+      "author": {
+        "name": "Arie Milner",
+        "email": "amilner42@gmail.com",
+        "date": "2018-06-13T18:24:41Z"
+      },
+      "committer": {
+        "name": "Arie Milner",
+        "email": "amilner42@gmail.com",
+        "date": "2018-06-15T22:42:24Z"
+      },
+      "message": "Add need-auth-sign-up-message to ExplanatoryBlurbs module",
+      "tree": {
+        "sha": "4e9925921507ce17d8aa8bc8fe72ae3b49c11511",
+        "url": "https://api.github.com/repos/amilner42/code-tidbit/git/trees/4e9925921507ce17d8aa8bc8fe72ae3b49c11511"
+      },
+      "url": "https://api.github.com/repos/amilner42/code-tidbit/git/commits/f48a57841b6c51a8d0536074f0fa41f76605eb7b",
+      "comment_count": 0,
+      "verification": {
+        "verified": false,
+        "reason": "unsigned",
+        "signature": null,
+        "payload": null
+      }
+    },
+    "url": "https://api.github.com/repos/amilner42/code-tidbit/commits/f48a57841b6c51a8d0536074f0fa41f76605eb7b",
+    "html_url": "https://github.com/amilner42/code-tidbit/commit/f48a57841b6c51a8d0536074f0fa41f76605eb7b",
+    "comments_url": "https://api.github.com/repos/amilner42/code-tidbit/commits/f48a57841b6c51a8d0536074f0fa41f76605eb7b/comments",
+    "author": {
+      "login": "amilner42",
+      "id": 9031171,
+      "node_id": "MDQ6VXNlcjkwMzExNzE=",
+      "avatar_url": "https://avatars1.githubusercontent.com/u/9031171?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/amilner42",
+      "html_url": "https://github.com/amilner42",
+      "followers_url": "https://api.github.com/users/amilner42/followers",
+      "following_url": "https://api.github.com/users/amilner42/following{/other_user}",
+      "gists_url": "https://api.github.com/users/amilner42/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/amilner42/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/amilner42/subscriptions",
+      "organizations_url": "https://api.github.com/users/amilner42/orgs",
+      "repos_url": "https://api.github.com/users/amilner42/repos",
+      "events_url": "https://api.github.com/users/amilner42/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/amilner42/received_events",
+      "type": "User",
+      "site_admin": false
+    },
+    "committer": {
+      "login": "amilner42",
+      "id": 9031171,
+      "node_id": "MDQ6VXNlcjkwMzExNzE=",
+      "avatar_url": "https://avatars1.githubusercontent.com/u/9031171?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/amilner42",
+      "html_url": "https://github.com/amilner42",
+      "followers_url": "https://api.github.com/users/amilner42/followers",
+      "following_url": "https://api.github.com/users/amilner42/following{/other_user}",
+      "gists_url": "https://api.github.com/users/amilner42/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/amilner42/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/amilner42/subscriptions",
+      "organizations_url": "https://api.github.com/users/amilner42/orgs",
+      "repos_url": "https://api.github.com/users/amilner42/repos",
+      "events_url": "https://api.github.com/users/amilner42/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/amilner42/received_events",
+      "type": "User",
+      "site_admin": false
+    },
+    "parents": [
+      {
+        "sha": "10eaee9a274d1f2fb47ad1e22ff6f889c4acac28",
+        "url": "https://api.github.com/repos/amilner42/code-tidbit/commits/10eaee9a274d1f2fb47ad1e22ff6f889c4acac28",
+        "html_url": "https://github.com/amilner42/code-tidbit/commit/10eaee9a274d1f2fb47ad1e22ff6f889c4acac28"
+      }
+    ]
+  },
+  {
+    "sha": "10eaee9a274d1f2fb47ad1e22ff6f889c4acac28",
+    "node_id": "MDY6Q29tbWl0NzY4ODgxNDQ6MTBlYWVlOWEyNzRkMWYyZmI0N2FkMWUyMmZmNmY4ODljNGFjYWMyOA==",
+    "commit": {
+      "author": {
+        "name": "Arie Milner",
+        "email": "amilner42@gmail.com",
+        "date": "2018-06-13T18:18:52Z"
+      },
+      "committer": {
+        "name": "Arie Milner",
+        "email": "amilner42@gmail.com",
+        "date": "2018-06-15T22:42:24Z"
+      },
+      "message": "Remove common message in ViewSnipbit/ViewBigbit\n- Added TODO for removing it in ViewStory when Html.map is removed",
+      "tree": {
+        "sha": "309a1c4915ec491d2e132756ab75f7d57d81a404",
+        "url": "https://api.github.com/repos/amilner42/code-tidbit/git/trees/309a1c4915ec491d2e132756ab75f7d57d81a404"
+      },
+      "url": "https://api.github.com/repos/amilner42/code-tidbit/git/commits/10eaee9a274d1f2fb47ad1e22ff6f889c4acac28",
+      "comment_count": 0,
+      "verification": {
+        "verified": false,
+        "reason": "unsigned",
+        "signature": null,
+        "payload": null
+      }
+    },
+    "url": "https://api.github.com/repos/amilner42/code-tidbit/commits/10eaee9a274d1f2fb47ad1e22ff6f889c4acac28",
+    "html_url": "https://github.com/amilner42/code-tidbit/commit/10eaee9a274d1f2fb47ad1e22ff6f889c4acac28",
+    "comments_url": "https://api.github.com/repos/amilner42/code-tidbit/commits/10eaee9a274d1f2fb47ad1e22ff6f889c4acac28/comments",
+    "author": {
+      "login": "amilner42",
+      "id": 9031171,
+      "node_id": "MDQ6VXNlcjkwMzExNzE=",
+      "avatar_url": "https://avatars1.githubusercontent.com/u/9031171?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/amilner42",
+      "html_url": "https://github.com/amilner42",
+      "followers_url": "https://api.github.com/users/amilner42/followers",
+      "following_url": "https://api.github.com/users/amilner42/following{/other_user}",
+      "gists_url": "https://api.github.com/users/amilner42/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/amilner42/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/amilner42/subscriptions",
+      "organizations_url": "https://api.github.com/users/amilner42/orgs",
+      "repos_url": "https://api.github.com/users/amilner42/repos",
+      "events_url": "https://api.github.com/users/amilner42/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/amilner42/received_events",
+      "type": "User",
+      "site_admin": false
+    },
+    "committer": {
+      "login": "amilner42",
+      "id": 9031171,
+      "node_id": "MDQ6VXNlcjkwMzExNzE=",
+      "avatar_url": "https://avatars1.githubusercontent.com/u/9031171?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/amilner42",
+      "html_url": "https://github.com/amilner42",
+      "followers_url": "https://api.github.com/users/amilner42/followers",
+      "following_url": "https://api.github.com/users/amilner42/following{/other_user}",
+      "gists_url": "https://api.github.com/users/amilner42/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/amilner42/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/amilner42/subscriptions",
+      "organizations_url": "https://api.github.com/users/amilner42/orgs",
+      "repos_url": "https://api.github.com/users/amilner42/repos",
+      "events_url": "https://api.github.com/users/amilner42/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/amilner42/received_events",
+      "type": "User",
+      "site_admin": false
+    },
+    "parents": [
+      {
+        "sha": "09cc4cd2d81ffa3105cb7cde02aab15cd6566ac6",
+        "url": "https://api.github.com/repos/amilner42/code-tidbit/commits/09cc4cd2d81ffa3105cb7cde02aab15cd6566ac6",
+        "html_url": "https://github.com/amilner42/code-tidbit/commit/09cc4cd2d81ffa3105cb7cde02aab15cd6566ac6"
+      }
+    ]
+  },
+  {
+    "sha": "09cc4cd2d81ffa3105cb7cde02aab15cd6566ac6",
+    "node_id": "MDY6Q29tbWl0NzY4ODgxNDQ6MDljYzRjZDJkODFmZmEzMTA1Y2I3Y2RlMDJhYWIxNWNkNjU2NmFjNg==",
+    "commit": {
+      "author": {
+        "name": "Arie Milner",
+        "email": "amilner42@gmail.com",
+        "date": "2018-06-13T18:09:49Z"
+      },
+      "committer": {
+        "name": "Arie Milner",
+        "email": "amilner42@gmail.com",
+        "date": "2018-06-15T22:42:24Z"
+      },
+      "message": "ViewBigbit no longer uses Html.map\n- Removed common NoOp and GoTo",
+      "tree": {
+        "sha": "163c40aa05032f1c7b7dd74a2b4026cb1e45d7a1",
+        "url": "https://api.github.com/repos/amilner42/code-tidbit/git/trees/163c40aa05032f1c7b7dd74a2b4026cb1e45d7a1"
+      },
+      "url": "https://api.github.com/repos/amilner42/code-tidbit/git/commits/09cc4cd2d81ffa3105cb7cde02aab15cd6566ac6",
+      "comment_count": 0,
+      "verification": {
+        "verified": false,
+        "reason": "unsigned",
+        "signature": null,
+        "payload": null
+      }
+    },
+    "url": "https://api.github.com/repos/amilner42/code-tidbit/commits/09cc4cd2d81ffa3105cb7cde02aab15cd6566ac6",
+    "html_url": "https://github.com/amilner42/code-tidbit/commit/09cc4cd2d81ffa3105cb7cde02aab15cd6566ac6",
+    "comments_url": "https://api.github.com/repos/amilner42/code-tidbit/commits/09cc4cd2d81ffa3105cb7cde02aab15cd6566ac6/comments",
+    "author": {
+      "login": "amilner42",
+      "id": 9031171,
+      "node_id": "MDQ6VXNlcjkwMzExNzE=",
+      "avatar_url": "https://avatars1.githubusercontent.com/u/9031171?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/amilner42",
+      "html_url": "https://github.com/amilner42",
+      "followers_url": "https://api.github.com/users/amilner42/followers",
+      "following_url": "https://api.github.com/users/amilner42/following{/other_user}",
+      "gists_url": "https://api.github.com/users/amilner42/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/amilner42/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/amilner42/subscriptions",
+      "organizations_url": "https://api.github.com/users/amilner42/orgs",
+      "repos_url": "https://api.github.com/users/amilner42/repos",
+      "events_url": "https://api.github.com/users/amilner42/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/amilner42/received_events",
+      "type": "User",
+      "site_admin": false
+    },
+    "committer": {
+      "login": "amilner42",
+      "id": 9031171,
+      "node_id": "MDQ6VXNlcjkwMzExNzE=",
+      "avatar_url": "https://avatars1.githubusercontent.com/u/9031171?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/amilner42",
+      "html_url": "https://github.com/amilner42",
+      "followers_url": "https://api.github.com/users/amilner42/followers",
+      "following_url": "https://api.github.com/users/amilner42/following{/other_user}",
+      "gists_url": "https://api.github.com/users/amilner42/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/amilner42/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/amilner42/subscriptions",
+      "organizations_url": "https://api.github.com/users/amilner42/orgs",
+      "repos_url": "https://api.github.com/users/amilner42/repos",
+      "events_url": "https://api.github.com/users/amilner42/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/amilner42/received_events",
+      "type": "User",
+      "site_admin": false
+    },
+    "parents": [
+      {
+        "sha": "5c5c81a5531b893f9d26281295f90ec622cde32e",
+        "url": "https://api.github.com/repos/amilner42/code-tidbit/commits/5c5c81a5531b893f9d26281295f90ec622cde32e",
+        "html_url": "https://github.com/amilner42/code-tidbit/commit/5c5c81a5531b893f9d26281295f90ec622cde32e"
+      }
+    ]
+  },
+  {
+    "sha": "5c5c81a5531b893f9d26281295f90ec622cde32e",
+    "node_id": "MDY6Q29tbWl0NzY4ODgxNDQ6NWM1YzgxYTU1MzFiODkzZjlkMjYyODEyOTVmOTBlYzYyMmNkZTMyZQ==",
+    "commit": {
+      "author": {
+        "name": "Arie Milner",
+        "email": "amilner42@gmail.com",
+        "date": "2018-06-13T17:24:27Z"
+      },
+      "committer": {
+        "name": "Arie Milner",
+        "email": "amilner42@gmail.com",
+        "date": "2018-06-15T22:42:24Z"
+      },
+      "message": "ViewSnipbit page no longer uses Html.map\n- Removed common NoOp and GoTo",
+      "tree": {
+        "sha": "abf490cdb5fd02f4e0baf6354fa4642b89963935",
+        "url": "https://api.github.com/repos/amilner42/code-tidbit/git/trees/abf490cdb5fd02f4e0baf6354fa4642b89963935"
+      },
+      "url": "https://api.github.com/repos/amilner42/code-tidbit/git/commits/5c5c81a5531b893f9d26281295f90ec622cde32e",
+      "comment_count": 0,
+      "verification": {
+        "verified": false,
+        "reason": "unsigned",
+        "signature": null,
+        "payload": null
+      }
+    },
+    "url": "https://api.github.com/repos/amilner42/code-tidbit/commits/5c5c81a5531b893f9d26281295f90ec622cde32e",
+    "html_url": "https://github.com/amilner42/code-tidbit/commit/5c5c81a5531b893f9d26281295f90ec622cde32e",
+    "comments_url": "https://api.github.com/repos/amilner42/code-tidbit/commits/5c5c81a5531b893f9d26281295f90ec622cde32e/comments",
+    "author": {
+      "login": "amilner42",
+      "id": 9031171,
+      "node_id": "MDQ6VXNlcjkwMzExNzE=",
+      "avatar_url": "https://avatars1.githubusercontent.com/u/9031171?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/amilner42",
+      "html_url": "https://github.com/amilner42",
+      "followers_url": "https://api.github.com/users/amilner42/followers",
+      "following_url": "https://api.github.com/users/amilner42/following{/other_user}",
+      "gists_url": "https://api.github.com/users/amilner42/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/amilner42/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/amilner42/subscriptions",
+      "organizations_url": "https://api.github.com/users/amilner42/orgs",
+      "repos_url": "https://api.github.com/users/amilner42/repos",
+      "events_url": "https://api.github.com/users/amilner42/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/amilner42/received_events",
+      "type": "User",
+      "site_admin": false
+    },
+    "committer": {
+      "login": "amilner42",
+      "id": 9031171,
+      "node_id": "MDQ6VXNlcjkwMzExNzE=",
+      "avatar_url": "https://avatars1.githubusercontent.com/u/9031171?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/amilner42",
+      "html_url": "https://github.com/amilner42",
+      "followers_url": "https://api.github.com/users/amilner42/followers",
+      "following_url": "https://api.github.com/users/amilner42/following{/other_user}",
+      "gists_url": "https://api.github.com/users/amilner42/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/amilner42/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/amilner42/subscriptions",
+      "organizations_url": "https://api.github.com/users/amilner42/orgs",
+      "repos_url": "https://api.github.com/users/amilner42/repos",
+      "events_url": "https://api.github.com/users/amilner42/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/amilner42/received_events",
+      "type": "User",
+      "site_admin": false
+    },
+    "parents": [
+      {
+        "sha": "b6a7566abfba8b01de68e7aa35c1736b11155e03",
+        "url": "https://api.github.com/repos/amilner42/code-tidbit/commits/b6a7566abfba8b01de68e7aa35c1736b11155e03",
+        "html_url": "https://github.com/amilner42/code-tidbit/commit/b6a7566abfba8b01de68e7aa35c1736b11155e03"
+      }
+    ]
+  },
+  {
+    "sha": "b6a7566abfba8b01de68e7aa35c1736b11155e03",
+    "node_id": "MDY6Q29tbWl0NzY4ODgxNDQ6YjZhNzU2NmFiZmJhOGIwMWRlNjhlN2FhMzVjMTczNmIxMTE1NWUwMw==",
+    "commit": {
+      "author": {
+        "name": "Arie Milner",
+        "email": "amilner42@gmail.com",
+        "date": "2018-06-12T22:21:28Z"
+      },
+      "committer": {
+        "name": "Arie Milner",
+        "email": "amilner42@gmail.com",
+        "date": "2018-06-15T22:42:24Z"
+      },
+      "message": "Welcome page no longer uses Html.map\n- Additionally the base GoTo updated to allow clearing shared.apiModalError",
+      "tree": {
+        "sha": "1d2a35256912c2f43d08c0e3da09b01d0bd399d3",
+        "url": "https://api.github.com/repos/amilner42/code-tidbit/git/trees/1d2a35256912c2f43d08c0e3da09b01d0bd399d3"
+      },
+      "url": "https://api.github.com/repos/amilner42/code-tidbit/git/commits/b6a7566abfba8b01de68e7aa35c1736b11155e03",
+      "comment_count": 0,
+      "verification": {
+        "verified": false,
+        "reason": "unsigned",
+        "signature": null,
+        "payload": null
+      }
+    },
+    "url": "https://api.github.com/repos/amilner42/code-tidbit/commits/b6a7566abfba8b01de68e7aa35c1736b11155e03",
+    "html_url": "https://github.com/amilner42/code-tidbit/commit/b6a7566abfba8b01de68e7aa35c1736b11155e03",
+    "comments_url": "https://api.github.com/repos/amilner42/code-tidbit/commits/b6a7566abfba8b01de68e7aa35c1736b11155e03/comments",
+    "author": {
+      "login": "amilner42",
+      "id": 9031171,
+      "node_id": "MDQ6VXNlcjkwMzExNzE=",
+      "avatar_url": "https://avatars1.githubusercontent.com/u/9031171?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/amilner42",
+      "html_url": "https://github.com/amilner42",
+      "followers_url": "https://api.github.com/users/amilner42/followers",
+      "following_url": "https://api.github.com/users/amilner42/following{/other_user}",
+      "gists_url": "https://api.github.com/users/amilner42/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/amilner42/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/amilner42/subscriptions",
+      "organizations_url": "https://api.github.com/users/amilner42/orgs",
+      "repos_url": "https://api.github.com/users/amilner42/repos",
+      "events_url": "https://api.github.com/users/amilner42/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/amilner42/received_events",
+      "type": "User",
+      "site_admin": false
+    },
+    "committer": {
+      "login": "amilner42",
+      "id": 9031171,
+      "node_id": "MDQ6VXNlcjkwMzExNzE=",
+      "avatar_url": "https://avatars1.githubusercontent.com/u/9031171?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/amilner42",
+      "html_url": "https://github.com/amilner42",
+      "followers_url": "https://api.github.com/users/amilner42/followers",
+      "following_url": "https://api.github.com/users/amilner42/following{/other_user}",
+      "gists_url": "https://api.github.com/users/amilner42/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/amilner42/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/amilner42/subscriptions",
+      "organizations_url": "https://api.github.com/users/amilner42/orgs",
+      "repos_url": "https://api.github.com/users/amilner42/repos",
+      "events_url": "https://api.github.com/users/amilner42/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/amilner42/received_events",
+      "type": "User",
+      "site_admin": false
+    },
+    "parents": [
+      {
+        "sha": "bd4f1dfff47a77fb0d4b47d3f89404bf84f1603f",
+        "url": "https://api.github.com/repos/amilner42/code-tidbit/commits/bd4f1dfff47a77fb0d4b47d3f89404bf84f1603f",
+        "html_url": "https://github.com/amilner42/code-tidbit/commit/bd4f1dfff47a77fb0d4b47d3f89404bf84f1603f"
+      }
+    ]
+  },
+  {
+    "sha": "bd4f1dfff47a77fb0d4b47d3f89404bf84f1603f",
+    "node_id": "MDY6Q29tbWl0NzY4ODgxNDQ6YmQ0ZjFkZmZmNDdhNzdmYjBkNGI0N2QzZjg5NDA0YmY4NGYxNjAzZg==",
+    "commit": {
+      "author": {
+        "name": "Arie Milner",
+        "email": "amilner42@gmail.com",
+        "date": "2018-04-30T00:36:09Z"
+      },
+      "committer": {
+        "name": "GitHub",
+        "email": "noreply@github.com",
+        "date": "2018-04-30T00:36:09Z"
+      },
+      "message": "Merge pull request #232 from amilner42/201-publish-preview\n\n201 publish preview",
+      "tree": {
+        "sha": "1332e08ed7552a3f74699de622173ca6403691bb",
+        "url": "https://api.github.com/repos/amilner42/code-tidbit/git/trees/1332e08ed7552a3f74699de622173ca6403691bb"
+      },
+      "url": "https://api.github.com/repos/amilner42/code-tidbit/git/commits/bd4f1dfff47a77fb0d4b47d3f89404bf84f1603f",
+      "comment_count": 0,
+      "verification": {
+        "verified": true,
+        "reason": "valid",
+        "signature": "-----BEGIN PGP SIGNATURE-----\n\nwsBcBAABCAAQBQJa5mT5CRBK7hj4Ov3rIwAAdHIIAHTAwFdebsVTI2TSOhDiIxyH\ncLm+W7SfhzIPlKiT97N9PiAVtcykt7uU0IWNFuZrXDA40ahemAAefRtw4EKhzJzR\nWIzc6/IzzckaELDZXBuJXHwas/Fm6Nax+S7fONnXXRlnoFEELUx/N4rOb0m7fOkv\nqyIkFxmhXH8ncspFZFsxE0xiaKcrBq22abWbQlWYomUTxljwfqN2tM07PKGppr30\nKK6KjwrJ95CjtVUSTL1GI+/AusC7WbpnRsd6BjfJb5EUckg4pifVbvQ3YXhIQCco\nxfkB2KKy09bdcXHjBgNqdyitr85EC6e+IsxesZ7DUjB4GwT598IUB/zs75K4T0k=\n=MyHL\n-----END PGP SIGNATURE-----\n",
+        "payload": "tree 1332e08ed7552a3f74699de622173ca6403691bb\nparent b5e13fe65379cb84ef01438f7e26b1af105447c2\nparent a290af277de16af05fb646b484276208c6869b84\nauthor Arie Milner <amilner42@gmail.com> 1525048569 -0700\ncommitter GitHub <noreply@github.com> 1525048569 -0700\n\nMerge pull request #232 from amilner42/201-publish-preview\n\n201 publish preview"
+      }
+    },
+    "url": "https://api.github.com/repos/amilner42/code-tidbit/commits/bd4f1dfff47a77fb0d4b47d3f89404bf84f1603f",
+    "html_url": "https://github.com/amilner42/code-tidbit/commit/bd4f1dfff47a77fb0d4b47d3f89404bf84f1603f",
+    "comments_url": "https://api.github.com/repos/amilner42/code-tidbit/commits/bd4f1dfff47a77fb0d4b47d3f89404bf84f1603f/comments",
+    "author": {
+      "login": "amilner42",
+      "id": 9031171,
+      "node_id": "MDQ6VXNlcjkwMzExNzE=",
+      "avatar_url": "https://avatars1.githubusercontent.com/u/9031171?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/amilner42",
+      "html_url": "https://github.com/amilner42",
+      "followers_url": "https://api.github.com/users/amilner42/followers",
+      "following_url": "https://api.github.com/users/amilner42/following{/other_user}",
+      "gists_url": "https://api.github.com/users/amilner42/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/amilner42/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/amilner42/subscriptions",
+      "organizations_url": "https://api.github.com/users/amilner42/orgs",
+      "repos_url": "https://api.github.com/users/amilner42/repos",
+      "events_url": "https://api.github.com/users/amilner42/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/amilner42/received_events",
+      "type": "User",
+      "site_admin": false
+    },
+    "committer": {
+      "login": "web-flow",
+      "id": 19864447,
+      "node_id": "MDQ6VXNlcjE5ODY0NDQ3",
+      "avatar_url": "https://avatars3.githubusercontent.com/u/19864447?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/web-flow",
+      "html_url": "https://github.com/web-flow",
+      "followers_url": "https://api.github.com/users/web-flow/followers",
+      "following_url": "https://api.github.com/users/web-flow/following{/other_user}",
+      "gists_url": "https://api.github.com/users/web-flow/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/web-flow/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/web-flow/subscriptions",
+      "organizations_url": "https://api.github.com/users/web-flow/orgs",
+      "repos_url": "https://api.github.com/users/web-flow/repos",
+      "events_url": "https://api.github.com/users/web-flow/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/web-flow/received_events",
+      "type": "User",
+      "site_admin": false
+    },
+    "parents": [
+      {
+        "sha": "b5e13fe65379cb84ef01438f7e26b1af105447c2",
+        "url": "https://api.github.com/repos/amilner42/code-tidbit/commits/b5e13fe65379cb84ef01438f7e26b1af105447c2",
+        "html_url": "https://github.com/amilner42/code-tidbit/commit/b5e13fe65379cb84ef01438f7e26b1af105447c2"
+      },
+      {
+        "sha": "a290af277de16af05fb646b484276208c6869b84",
+        "url": "https://api.github.com/repos/amilner42/code-tidbit/commits/a290af277de16af05fb646b484276208c6869b84",
+        "html_url": "https://github.com/amilner42/code-tidbit/commit/a290af277de16af05fb646b484276208c6869b84"
+      }
+    ]
+  },
+  {
+    "sha": "a290af277de16af05fb646b484276208c6869b84",
+    "node_id": "MDY6Q29tbWl0NzY4ODgxNDQ6YTI5MGFmMjc3ZGUxNmFmMDVmYjY0NmI0ODQyNzYyMDhjNjg2OWI4NA==",
+    "commit": {
+      "author": {
+        "name": "Arie Milner",
+        "email": "amilner42@gmail.com",
+        "date": "2018-04-30T00:31:36Z"
+      },
+      "committer": {
+        "name": "Arie Milner",
+        "email": "amilner42@gmail.com",
+        "date": "2018-04-30T00:31:36Z"
+      },
+      "message": "Fix minor bug with selected file being wiped when going to frame 1 in bigbits",
+      "tree": {
+        "sha": "1332e08ed7552a3f74699de622173ca6403691bb",
+        "url": "https://api.github.com/repos/amilner42/code-tidbit/git/trees/1332e08ed7552a3f74699de622173ca6403691bb"
+      },
+      "url": "https://api.github.com/repos/amilner42/code-tidbit/git/commits/a290af277de16af05fb646b484276208c6869b84",
+      "comment_count": 0,
+      "verification": {
+        "verified": false,
+        "reason": "unsigned",
+        "signature": null,
+        "payload": null
+      }
+    },
+    "url": "https://api.github.com/repos/amilner42/code-tidbit/commits/a290af277de16af05fb646b484276208c6869b84",
+    "html_url": "https://github.com/amilner42/code-tidbit/commit/a290af277de16af05fb646b484276208c6869b84",
+    "comments_url": "https://api.github.com/repos/amilner42/code-tidbit/commits/a290af277de16af05fb646b484276208c6869b84/comments",
+    "author": {
+      "login": "amilner42",
+      "id": 9031171,
+      "node_id": "MDQ6VXNlcjkwMzExNzE=",
+      "avatar_url": "https://avatars1.githubusercontent.com/u/9031171?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/amilner42",
+      "html_url": "https://github.com/amilner42",
+      "followers_url": "https://api.github.com/users/amilner42/followers",
+      "following_url": "https://api.github.com/users/amilner42/following{/other_user}",
+      "gists_url": "https://api.github.com/users/amilner42/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/amilner42/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/amilner42/subscriptions",
+      "organizations_url": "https://api.github.com/users/amilner42/orgs",
+      "repos_url": "https://api.github.com/users/amilner42/repos",
+      "events_url": "https://api.github.com/users/amilner42/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/amilner42/received_events",
+      "type": "User",
+      "site_admin": false
+    },
+    "committer": {
+      "login": "amilner42",
+      "id": 9031171,
+      "node_id": "MDQ6VXNlcjkwMzExNzE=",
+      "avatar_url": "https://avatars1.githubusercontent.com/u/9031171?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/amilner42",
+      "html_url": "https://github.com/amilner42",
+      "followers_url": "https://api.github.com/users/amilner42/followers",
+      "following_url": "https://api.github.com/users/amilner42/following{/other_user}",
+      "gists_url": "https://api.github.com/users/amilner42/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/amilner42/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/amilner42/subscriptions",
+      "organizations_url": "https://api.github.com/users/amilner42/orgs",
+      "repos_url": "https://api.github.com/users/amilner42/repos",
+      "events_url": "https://api.github.com/users/amilner42/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/amilner42/received_events",
+      "type": "User",
+      "site_admin": false
+    },
+    "parents": [
+      {
+        "sha": "75c49d1178be828121b9d914dd110885af591818",
+        "url": "https://api.github.com/repos/amilner42/code-tidbit/commits/75c49d1178be828121b9d914dd110885af591818",
+        "html_url": "https://github.com/amilner42/code-tidbit/commit/75c49d1178be828121b9d914dd110885af591818"
+      }
+    ]
+  },
+  {
+    "sha": "75c49d1178be828121b9d914dd110885af591818",
+    "node_id": "MDY6Q29tbWl0NzY4ODgxNDQ6NzVjNDlkMTE3OGJlODI4MTIxYjlkOTE0ZGQxMTA4ODVhZjU5MTgxOA==",
+    "commit": {
+      "author": {
+        "name": "Arie Milner",
+        "email": "amilner42@gmail.com",
+        "date": "2018-04-30T00:25:35Z"
+      },
+      "committer": {
+        "name": "Arie Milner",
+        "email": "amilner42@gmail.com",
+        "date": "2018-04-30T00:25:35Z"
+      },
+      "message": "Added arrow key hotkeys when in preview markdown mode\n- Disabled adding frames when prevewing markdown too",
+      "tree": {
+        "sha": "ecfbcad760c04b6bd7ed69b9fc1255cdc91f5961",
+        "url": "https://api.github.com/repos/amilner42/code-tidbit/git/trees/ecfbcad760c04b6bd7ed69b9fc1255cdc91f5961"
+      },
+      "url": "https://api.github.com/repos/amilner42/code-tidbit/git/commits/75c49d1178be828121b9d914dd110885af591818",
+      "comment_count": 0,
+      "verification": {
+        "verified": false,
+        "reason": "unsigned",
+        "signature": null,
+        "payload": null
+      }
+    },
+    "url": "https://api.github.com/repos/amilner42/code-tidbit/commits/75c49d1178be828121b9d914dd110885af591818",
+    "html_url": "https://github.com/amilner42/code-tidbit/commit/75c49d1178be828121b9d914dd110885af591818",
+    "comments_url": "https://api.github.com/repos/amilner42/code-tidbit/commits/75c49d1178be828121b9d914dd110885af591818/comments",
+    "author": {
+      "login": "amilner42",
+      "id": 9031171,
+      "node_id": "MDQ6VXNlcjkwMzExNzE=",
+      "avatar_url": "https://avatars1.githubusercontent.com/u/9031171?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/amilner42",
+      "html_url": "https://github.com/amilner42",
+      "followers_url": "https://api.github.com/users/amilner42/followers",
+      "following_url": "https://api.github.com/users/amilner42/following{/other_user}",
+      "gists_url": "https://api.github.com/users/amilner42/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/amilner42/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/amilner42/subscriptions",
+      "organizations_url": "https://api.github.com/users/amilner42/orgs",
+      "repos_url": "https://api.github.com/users/amilner42/repos",
+      "events_url": "https://api.github.com/users/amilner42/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/amilner42/received_events",
+      "type": "User",
+      "site_admin": false
+    },
+    "committer": {
+      "login": "amilner42",
+      "id": 9031171,
+      "node_id": "MDQ6VXNlcjkwMzExNzE=",
+      "avatar_url": "https://avatars1.githubusercontent.com/u/9031171?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/amilner42",
+      "html_url": "https://github.com/amilner42",
+      "followers_url": "https://api.github.com/users/amilner42/followers",
+      "following_url": "https://api.github.com/users/amilner42/following{/other_user}",
+      "gists_url": "https://api.github.com/users/amilner42/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/amilner42/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/amilner42/subscriptions",
+      "organizations_url": "https://api.github.com/users/amilner42/orgs",
+      "repos_url": "https://api.github.com/users/amilner42/repos",
+      "events_url": "https://api.github.com/users/amilner42/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/amilner42/received_events",
+      "type": "User",
+      "site_admin": false
+    },
+    "parents": [
+      {
+        "sha": "b5e13fe65379cb84ef01438f7e26b1af105447c2",
+        "url": "https://api.github.com/repos/amilner42/code-tidbit/commits/b5e13fe65379cb84ef01438f7e26b1af105447c2",
+        "html_url": "https://github.com/amilner42/code-tidbit/commit/b5e13fe65379cb84ef01438f7e26b1af105447c2"
+      }
+    ]
+  },
+  {
+    "sha": "b5e13fe65379cb84ef01438f7e26b1af105447c2",
+    "node_id": "MDY6Q29tbWl0NzY4ODgxNDQ6YjVlMTNmZTY1Mzc5Y2I4NGVmMDE0MzhmN2UyNmIxYWYxMDU0NDdjMg==",
+    "commit": {
+      "author": {
+        "name": "Arie Milner",
+        "email": "amilner42@gmail.com",
+        "date": "2018-04-29T02:04:30Z"
+      },
+      "committer": {
+        "name": "GitHub",
+        "email": "noreply@github.com",
+        "date": "2018-04-29T02:04:30Z"
+      },
+      "message": "Merge pull request #231 from amilner42/230-markdown-explained\n\n230 markdown explained",
+      "tree": {
+        "sha": "bcc266ed90d18371e354744dab8c43c5408e1072",
+        "url": "https://api.github.com/repos/amilner42/code-tidbit/git/trees/bcc266ed90d18371e354744dab8c43c5408e1072"
+      },
+      "url": "https://api.github.com/repos/amilner42/code-tidbit/git/commits/b5e13fe65379cb84ef01438f7e26b1af105447c2",
+      "comment_count": 0,
+      "verification": {
+        "verified": true,
+        "reason": "valid",
+        "signature": "-----BEGIN PGP SIGNATURE-----\n\nwsBcBAABCAAQBQJa5SguCRBK7hj4Ov3rIwAAdHIIACtKGKgrA80SVTX5kE8ey5Ez\nrP0DXj/p3If+yfi4zRtkXs8PBhthk2tDSoTd2iqhlGwdeSu+GjZGvMxfyui7xIdF\nPgyOE7foB7NhsERfZNFjWsygm9v3ON8D2KtV/Vp8OqgbMVMq9/ZRS5A1YF2gO+1c\n4BhS4KDAskCjp8BA69ueZhCSddd0QR2VhMwQ5w/uLHKKzdvnAQMXsMG7NuqzYBq3\n7IhJnDkI6ujJBVawTPJ5XEev0vJ7Kp4k24hKJH5UXZJwIpDjlMMYp3CHbbDZH5BD\nKyhp9BAr1OhOjBZFujm/V4QQEgEVUtzagXX6OlknZDOEJhxbYtbXJ/jSXs5ZMDU=\n=HAF4\n-----END PGP SIGNATURE-----\n",
+        "payload": "tree bcc266ed90d18371e354744dab8c43c5408e1072\nparent 4d784bf05ce243e5fcada5dd140bdf45e9cda6e7\nparent d479cd8794143311540293c9feedba791a0eaebe\nauthor Arie Milner <amilner42@gmail.com> 1524967470 -0700\ncommitter GitHub <noreply@github.com> 1524967470 -0700\n\nMerge pull request #231 from amilner42/230-markdown-explained\n\n230 markdown explained"
+      }
+    },
+    "url": "https://api.github.com/repos/amilner42/code-tidbit/commits/b5e13fe65379cb84ef01438f7e26b1af105447c2",
+    "html_url": "https://github.com/amilner42/code-tidbit/commit/b5e13fe65379cb84ef01438f7e26b1af105447c2",
+    "comments_url": "https://api.github.com/repos/amilner42/code-tidbit/commits/b5e13fe65379cb84ef01438f7e26b1af105447c2/comments",
+    "author": {
+      "login": "amilner42",
+      "id": 9031171,
+      "node_id": "MDQ6VXNlcjkwMzExNzE=",
+      "avatar_url": "https://avatars1.githubusercontent.com/u/9031171?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/amilner42",
+      "html_url": "https://github.com/amilner42",
+      "followers_url": "https://api.github.com/users/amilner42/followers",
+      "following_url": "https://api.github.com/users/amilner42/following{/other_user}",
+      "gists_url": "https://api.github.com/users/amilner42/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/amilner42/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/amilner42/subscriptions",
+      "organizations_url": "https://api.github.com/users/amilner42/orgs",
+      "repos_url": "https://api.github.com/users/amilner42/repos",
+      "events_url": "https://api.github.com/users/amilner42/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/amilner42/received_events",
+      "type": "User",
+      "site_admin": false
+    },
+    "committer": {
+      "login": "web-flow",
+      "id": 19864447,
+      "node_id": "MDQ6VXNlcjE5ODY0NDQ3",
+      "avatar_url": "https://avatars3.githubusercontent.com/u/19864447?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/web-flow",
+      "html_url": "https://github.com/web-flow",
+      "followers_url": "https://api.github.com/users/web-flow/followers",
+      "following_url": "https://api.github.com/users/web-flow/following{/other_user}",
+      "gists_url": "https://api.github.com/users/web-flow/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/web-flow/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/web-flow/subscriptions",
+      "organizations_url": "https://api.github.com/users/web-flow/orgs",
+      "repos_url": "https://api.github.com/users/web-flow/repos",
+      "events_url": "https://api.github.com/users/web-flow/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/web-flow/received_events",
+      "type": "User",
+      "site_admin": false
+    },
+    "parents": [
+      {
+        "sha": "4d784bf05ce243e5fcada5dd140bdf45e9cda6e7",
+        "url": "https://api.github.com/repos/amilner42/code-tidbit/commits/4d784bf05ce243e5fcada5dd140bdf45e9cda6e7",
+        "html_url": "https://github.com/amilner42/code-tidbit/commit/4d784bf05ce243e5fcada5dd140bdf45e9cda6e7"
+      },
+      {
+        "sha": "d479cd8794143311540293c9feedba791a0eaebe",
+        "url": "https://api.github.com/repos/amilner42/code-tidbit/commits/d479cd8794143311540293c9feedba791a0eaebe",
+        "html_url": "https://github.com/amilner42/code-tidbit/commit/d479cd8794143311540293c9feedba791a0eaebe"
+      }
+    ]
+  },
+  {
+    "sha": "d479cd8794143311540293c9feedba791a0eaebe",
+    "node_id": "MDY6Q29tbWl0NzY4ODgxNDQ6ZDQ3OWNkODc5NDE0MzMxMTU0MDI5M2M5ZmVlZGJhNzkxYTBlYWViZQ==",
+    "commit": {
+      "author": {
+        "name": "Arie Milner",
+        "email": "amilner42@gmail.com",
+        "date": "2018-04-29T02:01:03Z"
+      },
+      "committer": {
+        "name": "Arie Milner",
+        "email": "amilner42@gmail.com",
+        "date": "2018-04-29T02:01:03Z"
+      },
+      "message": "Move snipbit/bigbit explanatiosn into ExplanatoryBlurbs",
+      "tree": {
+        "sha": "bcc266ed90d18371e354744dab8c43c5408e1072",
+        "url": "https://api.github.com/repos/amilner42/code-tidbit/git/trees/bcc266ed90d18371e354744dab8c43c5408e1072"
+      },
+      "url": "https://api.github.com/repos/amilner42/code-tidbit/git/commits/d479cd8794143311540293c9feedba791a0eaebe",
+      "comment_count": 0,
+      "verification": {
+        "verified": false,
+        "reason": "unsigned",
+        "signature": null,
+        "payload": null
+      }
+    },
+    "url": "https://api.github.com/repos/amilner42/code-tidbit/commits/d479cd8794143311540293c9feedba791a0eaebe",
+    "html_url": "https://github.com/amilner42/code-tidbit/commit/d479cd8794143311540293c9feedba791a0eaebe",
+    "comments_url": "https://api.github.com/repos/amilner42/code-tidbit/commits/d479cd8794143311540293c9feedba791a0eaebe/comments",
+    "author": {
+      "login": "amilner42",
+      "id": 9031171,
+      "node_id": "MDQ6VXNlcjkwMzExNzE=",
+      "avatar_url": "https://avatars1.githubusercontent.com/u/9031171?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/amilner42",
+      "html_url": "https://github.com/amilner42",
+      "followers_url": "https://api.github.com/users/amilner42/followers",
+      "following_url": "https://api.github.com/users/amilner42/following{/other_user}",
+      "gists_url": "https://api.github.com/users/amilner42/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/amilner42/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/amilner42/subscriptions",
+      "organizations_url": "https://api.github.com/users/amilner42/orgs",
+      "repos_url": "https://api.github.com/users/amilner42/repos",
+      "events_url": "https://api.github.com/users/amilner42/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/amilner42/received_events",
+      "type": "User",
+      "site_admin": false
+    },
+    "committer": {
+      "login": "amilner42",
+      "id": 9031171,
+      "node_id": "MDQ6VXNlcjkwMzExNzE=",
+      "avatar_url": "https://avatars1.githubusercontent.com/u/9031171?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/amilner42",
+      "html_url": "https://github.com/amilner42",
+      "followers_url": "https://api.github.com/users/amilner42/followers",
+      "following_url": "https://api.github.com/users/amilner42/following{/other_user}",
+      "gists_url": "https://api.github.com/users/amilner42/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/amilner42/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/amilner42/subscriptions",
+      "organizations_url": "https://api.github.com/users/amilner42/orgs",
+      "repos_url": "https://api.github.com/users/amilner42/repos",
+      "events_url": "https://api.github.com/users/amilner42/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/amilner42/received_events",
+      "type": "User",
+      "site_admin": false
+    },
+    "parents": [
+      {
+        "sha": "ec5e45345308898cfd9ac9448662f29bda392c5e",
+        "url": "https://api.github.com/repos/amilner42/code-tidbit/commits/ec5e45345308898cfd9ac9448662f29bda392c5e",
+        "html_url": "https://github.com/amilner42/code-tidbit/commit/ec5e45345308898cfd9ac9448662f29bda392c5e"
+      }
+    ]
+  },
+  {
+    "sha": "ec5e45345308898cfd9ac9448662f29bda392c5e",
+    "node_id": "MDY6Q29tbWl0NzY4ODgxNDQ6ZWM1ZTQ1MzQ1MzA4ODk4Y2ZkOWFjOTQ0ODY2MmYyOWJkYTM5MmM1ZQ==",
+    "commit": {
+      "author": {
+        "name": "Arie Milner",
+        "email": "amilner42@gmail.com",
+        "date": "2018-04-29T01:53:23Z"
+      },
+      "committer": {
+        "name": "Arie Milner",
+        "email": "amilner42@gmail.com",
+        "date": "2018-04-29T01:53:23Z"
+      },
+      "message": "Closes #230\n- Created a module to keep track of all explanatory text facing the user",
+      "tree": {
+        "sha": "7a911e5ef174b701762672f49d3730ff7932e1ae",
+        "url": "https://api.github.com/repos/amilner42/code-tidbit/git/trees/7a911e5ef174b701762672f49d3730ff7932e1ae"
+      },
+      "url": "https://api.github.com/repos/amilner42/code-tidbit/git/commits/ec5e45345308898cfd9ac9448662f29bda392c5e",
+      "comment_count": 0,
+      "verification": {
+        "verified": false,
+        "reason": "unsigned",
+        "signature": null,
+        "payload": null
+      }
+    },
+    "url": "https://api.github.com/repos/amilner42/code-tidbit/commits/ec5e45345308898cfd9ac9448662f29bda392c5e",
+    "html_url": "https://github.com/amilner42/code-tidbit/commit/ec5e45345308898cfd9ac9448662f29bda392c5e",
+    "comments_url": "https://api.github.com/repos/amilner42/code-tidbit/commits/ec5e45345308898cfd9ac9448662f29bda392c5e/comments",
+    "author": {
+      "login": "amilner42",
+      "id": 9031171,
+      "node_id": "MDQ6VXNlcjkwMzExNzE=",
+      "avatar_url": "https://avatars1.githubusercontent.com/u/9031171?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/amilner42",
+      "html_url": "https://github.com/amilner42",
+      "followers_url": "https://api.github.com/users/amilner42/followers",
+      "following_url": "https://api.github.com/users/amilner42/following{/other_user}",
+      "gists_url": "https://api.github.com/users/amilner42/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/amilner42/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/amilner42/subscriptions",
+      "organizations_url": "https://api.github.com/users/amilner42/orgs",
+      "repos_url": "https://api.github.com/users/amilner42/repos",
+      "events_url": "https://api.github.com/users/amilner42/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/amilner42/received_events",
+      "type": "User",
+      "site_admin": false
+    },
+    "committer": {
+      "login": "amilner42",
+      "id": 9031171,
+      "node_id": "MDQ6VXNlcjkwMzExNzE=",
+      "avatar_url": "https://avatars1.githubusercontent.com/u/9031171?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/amilner42",
+      "html_url": "https://github.com/amilner42",
+      "followers_url": "https://api.github.com/users/amilner42/followers",
+      "following_url": "https://api.github.com/users/amilner42/following{/other_user}",
+      "gists_url": "https://api.github.com/users/amilner42/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/amilner42/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/amilner42/subscriptions",
+      "organizations_url": "https://api.github.com/users/amilner42/orgs",
+      "repos_url": "https://api.github.com/users/amilner42/repos",
+      "events_url": "https://api.github.com/users/amilner42/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/amilner42/received_events",
+      "type": "User",
+      "site_admin": false
+    },
+    "parents": [
+      {
+        "sha": "4d784bf05ce243e5fcada5dd140bdf45e9cda6e7",
+        "url": "https://api.github.com/repos/amilner42/code-tidbit/commits/4d784bf05ce243e5fcada5dd140bdf45e9cda6e7",
+        "html_url": "https://github.com/amilner42/code-tidbit/commit/4d784bf05ce243e5fcada5dd140bdf45e9cda6e7"
+      }
+    ]
+  },
+  {
+    "sha": "4d784bf05ce243e5fcada5dd140bdf45e9cda6e7",
+    "node_id": "MDY6Q29tbWl0NzY4ODgxNDQ6NGQ3ODRiZjA1Y2UyNDNlNWZjYWRhNWRkMTQwYmRmNDVlOWNkYTZlNw==",
+    "commit": {
+      "author": {
+        "name": "Arie Milner",
+        "email": "amilner42@gmail.com",
+        "date": "2018-04-27T20:29:23Z"
+      },
+      "committer": {
+        "name": "GitHub",
+        "email": "noreply@github.com",
+        "date": "2018-04-27T20:29:23Z"
+      },
+      "message": "Merge pull request #229 from amilner42/26-add-frame-hotkey\n\n26 add frame hotkey",
+      "tree": {
+        "sha": "7a5f3c2a5ed4e901884157a568402105f582338c",
+        "url": "https://api.github.com/repos/amilner42/code-tidbit/git/trees/7a5f3c2a5ed4e901884157a568402105f582338c"
+      },
+      "url": "https://api.github.com/repos/amilner42/code-tidbit/git/commits/4d784bf05ce243e5fcada5dd140bdf45e9cda6e7",
+      "comment_count": 0,
+      "verification": {
+        "verified": true,
+        "reason": "valid",
+        "signature": "-----BEGIN PGP SIGNATURE-----\n\nwsBcBAABCAAQBQJa44gjCRBK7hj4Ov3rIwAAdHIIAC2DE4RaOL7VEKiUW9IHMSbs\nY2L7o4SJwvusS1WT7IiBXSsSWQqrlqRYTH+ELDA70+6dpD3hDwyb213Hko7+AdjC\nARwODzJ3SOYoIV7shPD3es7cZ9xMJtvNZJ6pjcDSuXcNTwwQULXZWAJQ2wQbnLt3\n0zsEZlvjSJLmwStdxZcFmJThCBBTYu5Fx/we41yLZtwOCzqNg8wYoBCZO3Ypw57F\njrTv27JTjAdjbzOg7sZtoUkNBxrFP2G92OCS72k2O/seOo/r6gduuret8NVsTzWW\nISBVTQ1xickmWPdsJ8bMQPerGVounZ7uwgBKGvnPkrNhhz6cwPVgOotr66U+9/Y=\n=BzzN\n-----END PGP SIGNATURE-----\n",
+        "payload": "tree 7a5f3c2a5ed4e901884157a568402105f582338c\nparent 7f2b69b4a6a543a2e1c4a39122d9e26568ab5ac2\nparent 4ba82a2d6b10731c32c3c8573451594951cb70ce\nauthor Arie Milner <amilner42@gmail.com> 1524860963 -0700\ncommitter GitHub <noreply@github.com> 1524860963 -0700\n\nMerge pull request #229 from amilner42/26-add-frame-hotkey\n\n26 add frame hotkey"
+      }
+    },
+    "url": "https://api.github.com/repos/amilner42/code-tidbit/commits/4d784bf05ce243e5fcada5dd140bdf45e9cda6e7",
+    "html_url": "https://github.com/amilner42/code-tidbit/commit/4d784bf05ce243e5fcada5dd140bdf45e9cda6e7",
+    "comments_url": "https://api.github.com/repos/amilner42/code-tidbit/commits/4d784bf05ce243e5fcada5dd140bdf45e9cda6e7/comments",
+    "author": {
+      "login": "amilner42",
+      "id": 9031171,
+      "node_id": "MDQ6VXNlcjkwMzExNzE=",
+      "avatar_url": "https://avatars1.githubusercontent.com/u/9031171?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/amilner42",
+      "html_url": "https://github.com/amilner42",
+      "followers_url": "https://api.github.com/users/amilner42/followers",
+      "following_url": "https://api.github.com/users/amilner42/following{/other_user}",
+      "gists_url": "https://api.github.com/users/amilner42/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/amilner42/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/amilner42/subscriptions",
+      "organizations_url": "https://api.github.com/users/amilner42/orgs",
+      "repos_url": "https://api.github.com/users/amilner42/repos",
+      "events_url": "https://api.github.com/users/amilner42/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/amilner42/received_events",
+      "type": "User",
+      "site_admin": false
+    },
+    "committer": {
+      "login": "web-flow",
+      "id": 19864447,
+      "node_id": "MDQ6VXNlcjE5ODY0NDQ3",
+      "avatar_url": "https://avatars3.githubusercontent.com/u/19864447?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/web-flow",
+      "html_url": "https://github.com/web-flow",
+      "followers_url": "https://api.github.com/users/web-flow/followers",
+      "following_url": "https://api.github.com/users/web-flow/following{/other_user}",
+      "gists_url": "https://api.github.com/users/web-flow/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/web-flow/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/web-flow/subscriptions",
+      "organizations_url": "https://api.github.com/users/web-flow/orgs",
+      "repos_url": "https://api.github.com/users/web-flow/repos",
+      "events_url": "https://api.github.com/users/web-flow/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/web-flow/received_events",
+      "type": "User",
+      "site_admin": false
+    },
+    "parents": [
+      {
+        "sha": "7f2b69b4a6a543a2e1c4a39122d9e26568ab5ac2",
+        "url": "https://api.github.com/repos/amilner42/code-tidbit/commits/7f2b69b4a6a543a2e1c4a39122d9e26568ab5ac2",
+        "html_url": "https://github.com/amilner42/code-tidbit/commit/7f2b69b4a6a543a2e1c4a39122d9e26568ab5ac2"
+      },
+      {
+        "sha": "4ba82a2d6b10731c32c3c8573451594951cb70ce",
+        "url": "https://api.github.com/repos/amilner42/code-tidbit/commits/4ba82a2d6b10731c32c3c8573451594951cb70ce",
+        "html_url": "https://github.com/amilner42/code-tidbit/commit/4ba82a2d6b10731c32c3c8573451594951cb70ce"
+      }
+    ]
+  },
+  {
+    "sha": "4ba82a2d6b10731c32c3c8573451594951cb70ce",
+    "node_id": "MDY6Q29tbWl0NzY4ODgxNDQ6NGJhODJhMmQ2YjEwNzMxYzMyYzNjODU3MzQ1MTU5NDk1MWNiNzBjZQ==",
+    "commit": {
+      "author": {
+        "name": "Arie Milner",
+        "email": "amilner42@gmail.com",
+        "date": "2018-04-27T20:12:57Z"
+      },
+      "committer": {
+        "name": "Arie Milner",
+        "email": "amilner42@gmail.com",
+        "date": "2018-04-27T20:12:57Z"
+      },
+      "message": "Switch to chrome-friendly hotkeys\n- The bug with arrow keys seems to only be on firefox, doesn't seem to correspond to anything\n  in the code, might just be some firefox textarea bug",
+      "tree": {
+        "sha": "7a5f3c2a5ed4e901884157a568402105f582338c",
+        "url": "https://api.github.com/repos/amilner42/code-tidbit/git/trees/7a5f3c2a5ed4e901884157a568402105f582338c"
+      },
+      "url": "https://api.github.com/repos/amilner42/code-tidbit/git/commits/4ba82a2d6b10731c32c3c8573451594951cb70ce",
+      "comment_count": 0,
+      "verification": {
+        "verified": false,
+        "reason": "unsigned",
+        "signature": null,
+        "payload": null
+      }
+    },
+    "url": "https://api.github.com/repos/amilner42/code-tidbit/commits/4ba82a2d6b10731c32c3c8573451594951cb70ce",
+    "html_url": "https://github.com/amilner42/code-tidbit/commit/4ba82a2d6b10731c32c3c8573451594951cb70ce",
+    "comments_url": "https://api.github.com/repos/amilner42/code-tidbit/commits/4ba82a2d6b10731c32c3c8573451594951cb70ce/comments",
+    "author": {
+      "login": "amilner42",
+      "id": 9031171,
+      "node_id": "MDQ6VXNlcjkwMzExNzE=",
+      "avatar_url": "https://avatars1.githubusercontent.com/u/9031171?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/amilner42",
+      "html_url": "https://github.com/amilner42",
+      "followers_url": "https://api.github.com/users/amilner42/followers",
+      "following_url": "https://api.github.com/users/amilner42/following{/other_user}",
+      "gists_url": "https://api.github.com/users/amilner42/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/amilner42/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/amilner42/subscriptions",
+      "organizations_url": "https://api.github.com/users/amilner42/orgs",
+      "repos_url": "https://api.github.com/users/amilner42/repos",
+      "events_url": "https://api.github.com/users/amilner42/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/amilner42/received_events",
+      "type": "User",
+      "site_admin": false
+    },
+    "committer": {
+      "login": "amilner42",
+      "id": 9031171,
+      "node_id": "MDQ6VXNlcjkwMzExNzE=",
+      "avatar_url": "https://avatars1.githubusercontent.com/u/9031171?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/amilner42",
+      "html_url": "https://github.com/amilner42",
+      "followers_url": "https://api.github.com/users/amilner42/followers",
+      "following_url": "https://api.github.com/users/amilner42/following{/other_user}",
+      "gists_url": "https://api.github.com/users/amilner42/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/amilner42/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/amilner42/subscriptions",
+      "organizations_url": "https://api.github.com/users/amilner42/orgs",
+      "repos_url": "https://api.github.com/users/amilner42/repos",
+      "events_url": "https://api.github.com/users/amilner42/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/amilner42/received_events",
+      "type": "User",
+      "site_admin": false
+    },
+    "parents": [
+      {
+        "sha": "ebcc1a2a90222d412a5996740608259369400d8c",
+        "url": "https://api.github.com/repos/amilner42/code-tidbit/commits/ebcc1a2a90222d412a5996740608259369400d8c",
+        "html_url": "https://github.com/amilner42/code-tidbit/commit/ebcc1a2a90222d412a5996740608259369400d8c"
+      }
+    ]
+  },
+  {
+    "sha": "ebcc1a2a90222d412a5996740608259369400d8c",
+    "node_id": "MDY6Q29tbWl0NzY4ODgxNDQ6ZWJjYzFhMmE5MDIyMmQ0MTJhNTk5Njc0MDYwODI1OTM2OTQwMGQ4Yw==",
+    "commit": {
+      "author": {
+        "name": "Arie Milner",
+        "email": "amilner42@gmail.com",
+        "date": "2018-04-27T02:53:30Z"
+      },
+      "committer": {
+        "name": "Arie Milner",
+        "email": "amilner42@gmail.com",
+        "date": "2018-04-27T02:53:30Z"
+      },
+      "message": "Updated to use KK V3.0.0, fixes hotkey buggyness issues\n- Seem to have issues though where up/down arrow keys sometimes get disabled\n  when using the comment boxes on CreateBigbit/CreateSnipbit. This was ALREADY\n  there though before updating to KK V3.0.0, not sure when this started",
+      "tree": {
+        "sha": "d7cd607cc54f5aaebec1e6577ef93bdd9b8fbe91",
+        "url": "https://api.github.com/repos/amilner42/code-tidbit/git/trees/d7cd607cc54f5aaebec1e6577ef93bdd9b8fbe91"
+      },
+      "url": "https://api.github.com/repos/amilner42/code-tidbit/git/commits/ebcc1a2a90222d412a5996740608259369400d8c",
+      "comment_count": 0,
+      "verification": {
+        "verified": false,
+        "reason": "unsigned",
+        "signature": null,
+        "payload": null
+      }
+    },
+    "url": "https://api.github.com/repos/amilner42/code-tidbit/commits/ebcc1a2a90222d412a5996740608259369400d8c",
+    "html_url": "https://github.com/amilner42/code-tidbit/commit/ebcc1a2a90222d412a5996740608259369400d8c",
+    "comments_url": "https://api.github.com/repos/amilner42/code-tidbit/commits/ebcc1a2a90222d412a5996740608259369400d8c/comments",
+    "author": {
+      "login": "amilner42",
+      "id": 9031171,
+      "node_id": "MDQ6VXNlcjkwMzExNzE=",
+      "avatar_url": "https://avatars1.githubusercontent.com/u/9031171?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/amilner42",
+      "html_url": "https://github.com/amilner42",
+      "followers_url": "https://api.github.com/users/amilner42/followers",
+      "following_url": "https://api.github.com/users/amilner42/following{/other_user}",
+      "gists_url": "https://api.github.com/users/amilner42/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/amilner42/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/amilner42/subscriptions",
+      "organizations_url": "https://api.github.com/users/amilner42/orgs",
+      "repos_url": "https://api.github.com/users/amilner42/repos",
+      "events_url": "https://api.github.com/users/amilner42/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/amilner42/received_events",
+      "type": "User",
+      "site_admin": false
+    },
+    "committer": {
+      "login": "amilner42",
+      "id": 9031171,
+      "node_id": "MDQ6VXNlcjkwMzExNzE=",
+      "avatar_url": "https://avatars1.githubusercontent.com/u/9031171?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/amilner42",
+      "html_url": "https://github.com/amilner42",
+      "followers_url": "https://api.github.com/users/amilner42/followers",
+      "following_url": "https://api.github.com/users/amilner42/following{/other_user}",
+      "gists_url": "https://api.github.com/users/amilner42/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/amilner42/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/amilner42/subscriptions",
+      "organizations_url": "https://api.github.com/users/amilner42/orgs",
+      "repos_url": "https://api.github.com/users/amilner42/repos",
+      "events_url": "https://api.github.com/users/amilner42/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/amilner42/received_events",
+      "type": "User",
+      "site_admin": false
+    },
+    "parents": [
+      {
+        "sha": "908a939443a1e4d9f03fa9ef017a84ddc0290c33",
+        "url": "https://api.github.com/repos/amilner42/code-tidbit/commits/908a939443a1e4d9f03fa9ef017a84ddc0290c33",
+        "html_url": "https://github.com/amilner42/code-tidbit/commit/908a939443a1e4d9f03fa9ef017a84ddc0290c33"
+      }
+    ]
+  },
+  {
+    "sha": "908a939443a1e4d9f03fa9ef017a84ddc0290c33",
+    "node_id": "MDY6Q29tbWl0NzY4ODgxNDQ6OTA4YTkzOTQ0M2ExZTRkOWYwM2ZhOWVmMDE3YTg0ZGRjMDI5MGMzMw==",
+    "commit": {
+      "author": {
+        "name": "Arie Milner",
+        "email": "amilner42@gmail.com",
+        "date": "2018-04-26T23:23:38Z"
+      },
+      "committer": {
+        "name": "Arie Milner",
+        "email": "amilner42@gmail.com",
+        "date": "2018-04-26T23:23:38Z"
+      },
+      "message": "Closes #26\n- The one issue is the usual problem with my KeyboardExtra package and double-clicking keys, same\n  problem with shift-tab. Going to fix this in KeyboardExtra so I no longer need to patch it in\n  CodeTidbit",
+      "tree": {
+        "sha": "761553f1ac3c2ae90ffebbb2b0eda41309a4e416",
+        "url": "https://api.github.com/repos/amilner42/code-tidbit/git/trees/761553f1ac3c2ae90ffebbb2b0eda41309a4e416"
+      },
+      "url": "https://api.github.com/repos/amilner42/code-tidbit/git/commits/908a939443a1e4d9f03fa9ef017a84ddc0290c33",
+      "comment_count": 0,
+      "verification": {
+        "verified": false,
+        "reason": "unsigned",
+        "signature": null,
+        "payload": null
+      }
+    },
+    "url": "https://api.github.com/repos/amilner42/code-tidbit/commits/908a939443a1e4d9f03fa9ef017a84ddc0290c33",
+    "html_url": "https://github.com/amilner42/code-tidbit/commit/908a939443a1e4d9f03fa9ef017a84ddc0290c33",
+    "comments_url": "https://api.github.com/repos/amilner42/code-tidbit/commits/908a939443a1e4d9f03fa9ef017a84ddc0290c33/comments",
+    "author": {
+      "login": "amilner42",
+      "id": 9031171,
+      "node_id": "MDQ6VXNlcjkwMzExNzE=",
+      "avatar_url": "https://avatars1.githubusercontent.com/u/9031171?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/amilner42",
+      "html_url": "https://github.com/amilner42",
+      "followers_url": "https://api.github.com/users/amilner42/followers",
+      "following_url": "https://api.github.com/users/amilner42/following{/other_user}",
+      "gists_url": "https://api.github.com/users/amilner42/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/amilner42/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/amilner42/subscriptions",
+      "organizations_url": "https://api.github.com/users/amilner42/orgs",
+      "repos_url": "https://api.github.com/users/amilner42/repos",
+      "events_url": "https://api.github.com/users/amilner42/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/amilner42/received_events",
+      "type": "User",
+      "site_admin": false
+    },
+    "committer": {
+      "login": "amilner42",
+      "id": 9031171,
+      "node_id": "MDQ6VXNlcjkwMzExNzE=",
+      "avatar_url": "https://avatars1.githubusercontent.com/u/9031171?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/amilner42",
+      "html_url": "https://github.com/amilner42",
+      "followers_url": "https://api.github.com/users/amilner42/followers",
+      "following_url": "https://api.github.com/users/amilner42/following{/other_user}",
+      "gists_url": "https://api.github.com/users/amilner42/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/amilner42/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/amilner42/subscriptions",
+      "organizations_url": "https://api.github.com/users/amilner42/orgs",
+      "repos_url": "https://api.github.com/users/amilner42/repos",
+      "events_url": "https://api.github.com/users/amilner42/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/amilner42/received_events",
+      "type": "User",
+      "site_admin": false
+    },
+    "parents": [
+      {
+        "sha": "7f2b69b4a6a543a2e1c4a39122d9e26568ab5ac2",
+        "url": "https://api.github.com/repos/amilner42/code-tidbit/commits/7f2b69b4a6a543a2e1c4a39122d9e26568ab5ac2",
+        "html_url": "https://github.com/amilner42/code-tidbit/commit/7f2b69b4a6a543a2e1c4a39122d9e26568ab5ac2"
+      }
+    ]
+  }
+]
