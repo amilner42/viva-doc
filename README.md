@@ -1,9 +1,50 @@
-# VivaDoc
+# Viva Doc
+##### Long live the doc
 
-_long live the docs_
+### Introduction
 
-##### Intro
+TODO
 
-This app aims to integrate with github and allow people to get more life out of their docs.
+### Local Dependencies
 
-##### TODO DOC
+- Mongo ~ 3.x
+  - Currently 3.x, when the drivers get updated for 4.x I'll upgrade
+- Node ~ 11.x
+  - You can most likely use older versions of node if you need to
+- NPM ~ 6.x
+  - You can most likely use older versions of npm if you need to
+
+### Set Up
+
+```bash
+cd frontend;
+npm install;
+cd ../backend;
+npm install;
+```
+
+### Developing
+
+Terminal Tab 1
+
+```bash
+cd frontend;
+npm start;
+```
+
+Terminal Tab 2
+
+```bash
+cd backend;
+npm run dev;
+```
+
+### Production
+
+```bash
+cd frontend;
+npm run prod;
+cd ../backend;
+# Make sure env variables are set
+npm run build;
+```
