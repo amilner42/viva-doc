@@ -12,6 +12,7 @@ var http = require('http'),
 // Env variables
 const isProduction = process.env.NODE_ENV === 'production';
 const mongoProdURI = process.env.MONGODB_URI;
+const mongoDevURI = 'mongodb://localhost/viva-doc-dev';
 const port = process.env.PORT;
 
 // Create global app object
@@ -35,7 +36,7 @@ if (!isProduction) {
 if(isProduction){
   mongoose.connect(mongoProdURI);
 } else {
-  mongoose.connect('mongodb://localhost/kickstarter');
+  mongoose.connect(mongoDevURI);
   mongoose.set('debug', true);
 }
 
