@@ -3,7 +3,14 @@
 
 ### Introduction
 
-TODO
+##### READMEs
+
+| file | description |
+| ---- | ----------- |
+| README | General information |
+| [DEV](/DEV.md)    | Helpful info for developing |
+| [PITCH](/PITCH.md)  | Information related to pitching this idea |
+| [APP](/APP.md) | Brainstorming on the app and it's precise features and goals. More detailed than PITCH.md |
 
 ### Local Dependencies
 
