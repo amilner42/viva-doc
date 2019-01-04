@@ -171,7 +171,7 @@ if (MODE === "production") {
                             {
                                 pattern: /__WEBPACK_CONSTANT_API_BASE_URL__/g,
                                 replacement: function (match, p1, offset, string) {
-                                   return "TODO PRODUCTION API BASE URL";
+                                   return "http://34.222.123.18:3001/api";
                                 }
                            }
                        ]
