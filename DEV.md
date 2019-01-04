@@ -1,4 +1,4 @@
-# Useful notes for developers
+# Dev
 
 ### Amazon AWS
 
@@ -15,6 +15,16 @@ To SSH:
 ssh -i "viva-doc.pem" ubuntu@ec2-34-222-123-18.us-west-2.compute.amazonaws.com
 ```
 
+###### S3 Bucket
+
+The static website is hosted on an s3 bucket. From the AWS console go to the s3 console,
+click the viva-doc bucket, and you can easily re-upload a newer frontend by dragging over
+the static website files (build the frontend in production) into the bucket.
+
+Currently the frontend is hosted [here](http://viva-doc.s3-website-us-west-2.amazonaws.com).
+
+- [Info about hosting on S3](https://docs.aws.amazon.com/AmazonS3/latest/dev/WebsiteHosting.html)
+
 ### Github
 
 ###### Auth Flow
@@ -29,8 +39,9 @@ stage, for instance not being able to see repository code, but we will be able t
 repositories of a user and allow them to sign up those repositories for the Github App if
 they have admin access over that repository.
 
-[Register a new Github App](https://github.com/settings/applications/new).
-[Github App Quickstart Guide](https://developer.github.com/apps/quickstart-guides/using-the-github-api-in-your-app/).
+- [Register a new Github App](https://github.com/settings/applications/new).
+- [Github App Quickstart Guide](https://developer.github.com/apps/quickstart-guides/using-the-github-api-in-your-app/).
+- [Github OAuth web flow](https://developer.github.com/apps/building-oauth-apps/authorizing-oauth-apps/#web-application-flow).
 
 ###### API
 
@@ -39,4 +50,4 @@ Github offers a GraphQL api and even an interactive Graphiql explorer
 commit diffs ("patch") through the graphQL API so we will have to use the RESTful API for Github
 apps which can be found [here](https://developer.github.com/v3/apps/available-endpoints/).
 
-[Github API Example Requests](/misc/github-api-examples/requests.md)
+- [Github API Example Requests](/misc/github-api-examples/requests.md)
