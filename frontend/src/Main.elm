@@ -3,7 +3,8 @@ module Main exposing (main)
 {-| The entry-point to the application. This module should remain minimal.
 -}
 
-import Api.Core as Core exposing (Cred)
+import Api.Api as Api
+import Api.Core as Core
 import Browser exposing (Document)
 import Browser.Navigation as Nav
 import Html exposing (..)
@@ -14,9 +15,8 @@ import Json.Decode as Decode
 import Page
 import Page.Blank as Blank
 import Page.Home as Home
-import Page.Login as Login
 import Page.NotFound as NotFound
-import Page.Register as Register
+import Page.OAuthRedirect as OAuthRedirect
 import Route exposing (Route)
 import Session exposing (Session)
 import Url exposing (Url)
@@ -36,17 +36,33 @@ type PageModel
     = Redirect Session
     | NotFound Session
     | Home Home.Model
-    | Login Login.Model
-    | Register Register.Model
+    | OAuthRedirect OAuthRedirect.Model
 
 
-init : Maybe Viewer -> Url -> Nav.Key -> ( Model, Cmd Msg )
-init maybeViewer url navKey =
-    changeRouteTo
-        (Route.fromUrl url)
-        { mobileNavbarOpen = False
-        , pageModel = Redirect (Session.fromViewer navKey maybeViewer)
-        }
+{-| TODO make the request to the API for the current user.
+-}
+init : Decode.Value -> Url -> Nav.Key -> ( Model, Cmd Msg )
+init flags url navKey =
+    let
+        maybeRoute =
+            Route.fromUrl url
+    in
+    case maybeRoute of
+        -- Completing the process to get access code
+        Just (Route.OAuthRedirect _) ->
+            changeRouteTo
+                (Route.fromUrl url)
+                { mobileNavbarOpen = False
+                , pageModel = Redirect <| Session.Guest navKey
+                }
+
+        -- Otherwise we've hit the website and should try to get the user
+        _ ->
+            ( { mobileNavbarOpen = False
+              , pageModel = Redirect <| Session.Guest navKey
+              }
+            , Api.getUser CompletedGetUser
+            )
 
 
 
@@ -63,7 +79,7 @@ view model =
                         { mobileNavbarOpen = model.mobileNavbarOpen
                         , toggleMobileNavbar = ToggledMobileNavbar
                         }
-                        (Session.viewer (toSession model))
+                        (Session.getViewer (toSession model))
                         pageView
                         toMsg
             in
@@ -81,11 +97,8 @@ view model =
         Home home ->
             viewPage GotHomeMsg (Home.view home)
 
-        Login login ->
-            viewPage GotLoginMsg (Login.view login)
-
-        Register register ->
-            viewPage GotRegisterMsg (Register.view register)
+        OAuthRedirect oauthRedirect ->
+            viewPage GotOAuthRedirectMsg (OAuthRedirect.view oauthRedirect)
 
 
 
@@ -97,11 +110,10 @@ type Msg
     | ChangedRoute (Maybe Route)
     | ChangedUrl Url
     | ClickedLink Browser.UrlRequest
-    | GotHomeMsg Home.Msg
-    | GotLoginMsg Login.Msg
-    | GotRegisterMsg Register.Msg
-    | GotSession Session
     | ToggledMobileNavbar
+    | CompletedGetUser (Result (Core.HttpError ()) Viewer.Viewer)
+    | GotHomeMsg Home.Msg
+    | GotOAuthRedirectMsg OAuthRedirect.Msg
 
 
 toSession : Model -> Session
@@ -116,11 +128,8 @@ toSession { pageModel } =
         Home home ->
             Home.toSession home
 
-        Login login ->
-            Login.toSession login
-
-        Register register ->
-            Register.toSession register
+        OAuthRedirect oauthRedirect ->
+            OAuthRedirect.toSession oauthRedirect
 
 
 changeRouteTo : Maybe Route -> Model -> ( Model, Cmd Msg )
@@ -134,47 +143,31 @@ changeRouteTo maybeRoute model =
     in
     case maybeRoute of
         Nothing ->
-            ( { mobileNavbarOpen = False, pageModel = NotFound session }
+            ( { model
+                | mobileNavbarOpen = False
+                , pageModel = NotFound session
+              }
             , Cmd.none
             )
 
         Just Route.Root ->
             ( closeMobileNavbar
-            , Route.replaceUrl (Session.navKey session) Route.Home
+            , Route.replaceUrl (Session.getNavKey session) Route.Home
             )
 
+        -- TODO
         Just Route.Logout ->
             ( closeMobileNavbar
-            , Core.logout
+            , Cmd.none
             )
 
         Just Route.Home ->
             Home.init session
                 |> updatePageModel Home GotHomeMsg model
 
-        Just Route.Login ->
-            -- Don't go to login if they are already signed in.
-            case Session.viewer <| toSession model of
-                Nothing ->
-                    Login.init session
-                        |> updatePageModel Login GotLoginMsg model
-
-                Just _ ->
-                    ( closeMobileNavbar
-                    , Route.replaceUrl (Session.navKey session) Route.Home
-                    )
-
-        Just Route.Register ->
-            -- Don't go to register if they are already signed in.
-            case Session.viewer <| toSession model of
-                Nothing ->
-                    Register.init session
-                        |> updatePageModel Register GotRegisterMsg model
-
-                Just _ ->
-                    ( closeMobileNavbar
-                    , Route.replaceUrl (Session.navKey session) Route.Home
-                    )
+        Just (Route.OAuthRedirect maybeCode) ->
+            OAuthRedirect.init session maybeCode
+                |> updatePageModel OAuthRedirect GotOAuthRedirectMsg model
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -200,7 +193,7 @@ update msg model =
 
                         Just _ ->
                             ( model
-                            , Nav.pushUrl (Session.navKey (toSession model)) (Url.toString url)
+                            , Nav.pushUrl (Session.getNavKey (toSession model)) (Url.toString url)
                             )
 
                 Browser.External href ->
@@ -219,22 +212,33 @@ update msg model =
             , Cmd.none
             )
 
-        ( GotLoginMsg pageMsg, Login login ) ->
-            Login.update pageMsg login
-                |> updatePageModel Login GotLoginMsg model
+        ( CompletedGetUser (Ok viewer), _ ) ->
+            let
+                session =
+                    toSession model
+            in
+            ( { model
+                | mobileNavbarOpen = False
+                , pageModel =
+                    Redirect <|
+                        Session.LoggedIn
+                            (Session.getNavKey session)
+                            viewer
+              }
+            , Route.replaceUrl (Session.getNavKey session) Route.Home
+            )
 
-        ( GotRegisterMsg pageMsg, Register register ) ->
-            Register.update pageMsg register
-                |> updatePageModel Register GotRegisterMsg model
+        -- TODO handle error
+        ( CompletedGetUser (Err err), _ ) ->
+            ( model, Cmd.none )
 
         ( GotHomeMsg pageMsg, Home home ) ->
             Home.update pageMsg home
                 |> updatePageModel Home GotHomeMsg model
 
-        ( GotSession session, Redirect _ ) ->
-            ( { model | pageModel = Redirect session }
-            , Route.replaceUrl (Session.navKey session) Route.Home
-            )
+        ( GotOAuthRedirectMsg pageMsg, OAuthRedirect oauthRedirect ) ->
+            OAuthRedirect.update pageMsg oauthRedirect
+                |> updatePageModel OAuthRedirect GotOAuthRedirectMsg model
 
         ( _, _ ) ->
             -- Disregard messages that arrived for the wrong page.
@@ -272,16 +276,13 @@ subscriptions model =
             Sub.none
 
         Redirect _ ->
-            Session.changes GotSession (Session.navKey (toSession model))
+            Sub.none
 
         Home home ->
-            Sub.map GotHomeMsg (Home.subscriptions home)
+            Sub.map GotHomeMsg <| Home.subscriptions home
 
-        Login login ->
-            Sub.map GotLoginMsg (Login.subscriptions login)
-
-        Register register ->
-            Sub.map GotRegisterMsg (Register.subscriptions register)
+        OAuthRedirect oauthRedirect ->
+            Sub.map GotOAuthRedirectMsg <| OAuthRedirect.subscriptions oauthRedirect
 
 
 
@@ -290,7 +291,7 @@ subscriptions model =
 
 main : Program Decode.Value Model Msg
 main =
-    Core.application Viewer.decoder
+    Browser.application
         { init = init
         , onUrlChange = ChangedUrl
         , onUrlRequest = ClickedLink

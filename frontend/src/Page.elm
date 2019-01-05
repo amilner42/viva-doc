@@ -3,15 +3,14 @@ module Page exposing (view)
 {-| This allows you to insert a page, providing the navbar outline common to all pages.
 -}
 
-import Api.Core exposing (Cred)
 import Asset
 import Browser exposing (Document)
+import Github
 import Html exposing (Html, a, button, div, i, img, li, nav, p, span, strong, text, ul)
 import Html.Attributes exposing (class, classList, href)
 import Html.Events exposing (onClick)
 import Route exposing (Route)
 import Session exposing (Session)
-import Username exposing (Username)
 import Viewer exposing (Viewer)
 
 
@@ -68,11 +67,10 @@ viewNavbar { mobileNavbarOpen, toggleMobileNavbar } maybeViewer =
                 (case maybeViewer of
                     Nothing ->
                         [ a
-                            [ class "navbar-item", Route.href Route.Register ]
-                            [ text "Sign up" ]
-                        , a
-                            [ class "navbar-item", Route.href Route.Login ]
-                            [ text "Log in" ]
+                            [ class "navbar-item"
+                            , href <| Github.oAuthSignInLink "__WEBPACK_CONSTANT_GITHUB_CLIENT_ID__"
+                            ]
+                            [ text "Sign in with Github" ]
                         ]
 
                     Just viewer ->

@@ -1,69 +1,32 @@
+const R = require('ramda');
 const mongoose = require('mongoose');
 const router = require('express').Router();
 const passport = require('passport');
+const Github = require('github-api')
 const User = mongoose.model('User');
-const auth = require('../auth');
 
-router.get('/user', auth.required, function(req, res, next){
-  User.findById(req.payload.id).then(function(user){
-    if(!user){ return res.sendStatus(401); }
 
-    return res.json({user: user.toAuthJSON()});
-  }).catch(next);
+router.get('/github/login/fromCode', passport.authenticate('github'),
+async function(req, res, next){
+    const user = req.user;
+    const ghApi = new Github({ username: user.username, token: user.accessToken });
+    const userGhApi = ghApi.getUser();
+
+    let repoResponse;
+
+    try {
+        repoResponse = await userGhApi.listRepos();
+    } catch (err) {
+        // TODO send err to client
+        console.log(err);
+    }
+    const repos = R.map((repo) => { return repo.name }, repoResponse.data);
+    res.json({ username: user.username, repos: repos });
 });
 
-router.put('/user', auth.required, function(req, res, next){
-  User.findById(req.payload.id).then(function(user){
-    if(!user){ return res.sendStatus(401); }
-
-    // only update fields that were actually passed...
-    if(typeof req.body.user.username !== 'undefined'){
-      user.username = req.body.user.username;
-    }
-    if(typeof req.body.user.email !== 'undefined'){
-      user.email = req.body.user.email;
-    }
-    if(typeof req.body.user.password !== 'undefined'){
-      user.setPassword(req.body.user.password);
-    }
-
-    return user.save().then(function(){
-      return res.json({user: user.toAuthJSON()});
-    });
-  }).catch(next);
-});
-
-router.post('/users/login', function(req, res, next){
-  if(!req.body.user.email){
-    return res.status(422).json({errors: {email: "can't be blank"}});
-  }
-
-  if(!req.body.user.password){
-    return res.status(422).json({errors: {password: "can't be blank"}});
-  }
-
-  passport.authenticate('local', {session: false}, function(err, user, info){
-    if(err){ return next(err); }
-
-    if(user){
-      user.token = user.generateJWT();
-      return res.json({user: user.toAuthJSON()});
-    } else {
-      return res.status(422).json(info);
-    }
-  })(req, res, next);
-});
-
-router.post('/users', function(req, res, next){
-  var user = new User();
-
-  user.username = req.body.user.username;
-  user.email = req.body.user.email;
-  user.setPassword(req.body.user.password);
-
-  user.save().then(function(){
-    return res.json({user: user.toAuthJSON()});
-  }).catch(next);
+router.get('/user', require('connect-ensure-login').ensureLoggedIn(),
+async function(req, res, next){
+    console.log("User is logged in?", req.user.username);
 });
 
 module.exports = router;

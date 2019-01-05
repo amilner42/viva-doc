@@ -3,17 +3,14 @@ var http = require('http'),
     methods = require('methods'),
     express = require('express'),
     bodyParser = require('body-parser'),
-    session = require('express-session'),
     cors = require('cors'),
     passport = require('passport'),
     errorhandler = require('errorhandler'),
     mongoose = require('mongoose');
 
-// Env variables
-const isProduction = process.env.NODE_ENV === 'production';
-const mongoProdURI = process.env.MONGODB_URI;
-const mongoDevURI = 'mongodb://localhost/viva-doc-dev';
-const port = process.env.PORT;
+const config = require('./config');
+
+const isProduction = config.isProduction;
 
 // Create global app object
 var app = express();
@@ -22,21 +19,20 @@ app.use(cors());
 
 // Normal express config defaults
 app.use(require('morgan')('dev'));
+app.use(require('cookie-parser')());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
-
+app.use(require('express-session')({ secret: config.sessionSecret, resave: true, saveUninitialized: true }));
 app.use(require('method-override')());
 
-app.use(session({ secret: 'conduit', cookie: { maxAge: 60000 }, resave: false, saveUninitialized: false  }));
+app.use(passport.initialize());
+app.use(passport.session());
 
+mongoose.connect(config.mongoDbUri);
+
+// Set debug settings for dev mode.
 if (!isProduction) {
   app.use(errorhandler());
-}
-
-if(isProduction){
-  mongoose.connect(mongoProdURI);
-} else {
-  mongoose.connect(mongoDevURI);
   mongoose.set('debug', true);
 }
 
@@ -80,6 +76,6 @@ app.use(function(err, req, res, next) {
 });
 
 // finally, let's start our server...
-var server = app.listen( port || 3001, function(){
+var server = app.listen(config.port, function(){
   console.log('Listening on port ' + server.address().port);
 });

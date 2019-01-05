@@ -3,11 +3,11 @@ module Page.Home exposing (Model, Msg, init, subscriptions, toSession, update, v
 {-| The homepage. You can get here via either the / or /#/ routes.
 -}
 
-import Api.Core exposing (Cred)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import Session exposing (Session)
+import Viewer
 
 
 -- MODEL
@@ -42,6 +42,12 @@ view model =
                         [ h1
                             [ class "title has-text-centered" ]
                             [ text "Home Page" ]
+                        , case model.session of
+                            Session.LoggedIn _ viewer ->
+                                text <| Viewer.getUsername viewer
+
+                            _ ->
+                                text <| "not logged in"
                         ]
                     ]
                 ]
@@ -54,14 +60,14 @@ view model =
 
 
 type Msg
-    = GotSession Session.Session
+    = Ignored
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        GotSession session ->
-            ( { model | session = session }, Cmd.none )
+        Ignored ->
+            ( model, Cmd.none )
 
 
 
@@ -70,7 +76,7 @@ update msg model =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Session.changes GotSession (Session.navKey model.session)
+    Sub.none
 
 
 
