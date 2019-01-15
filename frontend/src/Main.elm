@@ -39,22 +39,20 @@ type PageModel
     | OAuthRedirect OAuthRedirect.Model
 
 
-{-| TODO make the request to the API for the current user.
+{-| On init we have 2 cases:
+
+    1. Github redirects the user with an access code (not a token yet)
+    2. The user goes to the website (the common case)
+
 -}
 init : Decode.Value -> Url -> Nav.Key -> ( Model, Cmd Msg )
 init flags url navKey =
-    let
-        maybeRoute =
-            Route.fromUrl url
-    in
-    case maybeRoute of
-        -- Completing the process to get access code
-        Just (Route.OAuthRedirect _) ->
+    case Route.fromUrl url of
+        -- Sent here by github, completing the process to get access token.
+        (Just (Route.OAuthRedirect _)) as oauthRedirectRoute ->
             changeRouteTo
-                (Route.fromUrl url)
-                { mobileNavbarOpen = False
-                , pageModel = Redirect <| Session.Guest navKey
-                }
+                oauthRedirectRoute
+                { mobileNavbarOpen = False, pageModel = Redirect <| Session.Guest navKey }
 
         -- Otherwise we've hit the website and should try to get the user
         _ ->
@@ -107,7 +105,6 @@ view model =
 
 type Msg
     = Ignored
-    | ChangedRoute (Maybe Route)
     | ChangedUrl Url
     | ClickedLink Browser.UrlRequest
     | ToggledMobileNavbar
@@ -179,22 +176,9 @@ update msg model =
         ( ClickedLink urlRequest, _ ) ->
             case urlRequest of
                 Browser.Internal url ->
-                    case url.fragment of
-                        Nothing ->
-                            -- If we got a link that didn't include a fragment,
-                            -- it's from one of those (href "") attributes that
-                            -- we have to include to make the RealWorld CSS work.
-                            --
-                            -- In an application doing path routing instead of
-                            -- fragment-based routing, this entire
-                            -- `case url.fragment of` expression this comment
-                            -- is inside would be unnecessary.
-                            ( model, Cmd.none )
-
-                        Just _ ->
-                            ( model
-                            , Nav.pushUrl (Session.getNavKey (toSession model)) (Url.toString url)
-                            )
+                    ( model
+                    , Nav.pushUrl (Session.getNavKey (toSession model)) (Url.toString url)
+                    )
 
                 Browser.External href ->
                     ( model
@@ -203,9 +187,6 @@ update msg model =
 
         ( ChangedUrl url, _ ) ->
             changeRouteTo (Route.fromUrl url) model
-
-        ( ChangedRoute route, _ ) ->
-            changeRouteTo route model
 
         ( ToggledMobileNavbar, _ ) ->
             ( { model | mobileNavbarOpen = not model.mobileNavbarOpen }
@@ -228,9 +209,9 @@ update msg model =
             , Route.replaceUrl (Session.getNavKey session) Route.Home
             )
 
-        -- TODO handle error
+        -- TODO handle error better (eg. network error)
         ( CompletedGetUser (Err err), _ ) ->
-            ( model, Cmd.none )
+            changeRouteTo (Just Route.Home) model
 
         ( GotHomeMsg pageMsg, Home home ) ->
             Home.update pageMsg home

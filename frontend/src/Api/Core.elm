@@ -2,7 +2,7 @@ module Api.Core exposing (FormError(..), HttpError(..), Repos, Username, delete,
 
 {-| This module provides a few core API-related responsibilities:
 
-  - Providing the private User/Repos type which you can only get from an HttpRequest.
+  - Providing the private User/Repos opaque types which you can only get from an HttpRequest.
   - Providing HTTP-request helpers which use `Endpoint` and `HttpError`
   - Providing a modified `Http.Error` and `FormError` types
   - Providing helpers for dealing with form errors
@@ -47,6 +47,8 @@ getRepos (Repos repos) =
     repos
 
 
+{-| Keep this private so the only way to get `Username` and `Repos` is through the http request.
+-}
 decodeUsernameReposAnd : Decode.Decoder (Username -> Repos -> a) -> Decode.Decoder a
 decodeUsernameReposAnd decoder =
     let

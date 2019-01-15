@@ -15,7 +15,7 @@ const isProduction = config.isProduction;
 // Create global app object
 var app = express();
 
-app.use(cors());
+app.use(cors({ credentials: true, origin: config.webClientOrigin }));
 
 // Normal express config defaults
 app.use(require('morgan')('dev'));

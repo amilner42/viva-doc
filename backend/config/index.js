@@ -12,8 +12,9 @@ module.exports = {
   isProduction: isProduction,
   githubClientSecret: "f514f3d3cf098bd0a7f4a06409ceb183ddc5cd2c",
   githubClientId: "d887c8b5dea7b99a76af",
-  githubCallbackUrl: "http://viva-doc.s3-website-us-west-2.amazonaws.com/#/oauth_redirect",
+  githubCallbackUrl: "http://viva-doc.s3-website-us-west-2.amazonaws.com/oauth_redirect",
   mongoDbUri: isProduction ? env.MONGODB_URI : 'mongodb://localhost/viva-doc-dev',
   port: isProduction ? env.port : 3001,
-  sessionSecret: isProduction ? env.COOKIE_SECRET : 'dev-secret-123'
+  sessionSecret: isProduction ? env.COOKIE_SECRET : 'dev-secret-123',
+  webClientOrigin: isProduction ? env.WEB_CLIENT_ORIGIN : 'http://viva-doc.s3-website-us-west-2.amazonaws.com'
 };

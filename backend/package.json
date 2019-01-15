@@ -15,7 +15,6 @@
   "license": "ISC",
   "dependencies": {
     "body-parser": "1.15.0",
-    "connect-ensure-login": "^0.1.1",
     "cookie-parser": "^1.4.3",
     "cors": "2.7.1",
     "errorhandler": "1.4.3",

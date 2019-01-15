@@ -1,6 +1,6 @@
 module Page.Home exposing (Model, Msg, init, subscriptions, toSession, update, view)
 
-{-| The homepage. You can get here via either the / or /#/ routes.
+{-| The homepage.
 -}
 
 import Html exposing (..)
@@ -39,16 +39,22 @@ view model =
                     [ class "columns is-centered" ]
                     [ div
                         [ class "column is-half" ]
-                        [ h1
-                            [ class "title has-text-centered" ]
-                            [ text "Home Page" ]
-                        , case model.session of
-                            Session.LoggedIn _ viewer ->
-                                text <| Viewer.getUsername viewer
+                        (case model.session of
+                            Session.Guest _ ->
+                                [ h1
+                                    [ class "title has-text-centered" ]
+                                    [ text "Landing Page" ]
+                                ]
 
-                            _ ->
-                                text <| "not logged in"
-                        ]
+                            Session.LoggedIn _ viewer ->
+                                [ h1
+                                    [ class "title has-text-centered" ]
+                                    [ text <| Viewer.getUsername viewer ]
+                                ]
+                                    ++ List.map
+                                        (\repoName -> p [] [ text repoName ])
+                                        (Viewer.getRepos viewer)
+                        )
                     ]
                 ]
             ]

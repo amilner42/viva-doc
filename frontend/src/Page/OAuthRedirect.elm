@@ -11,6 +11,9 @@ import Viewer exposing (Viewer)
 type alias Model =
     { session : Session
     , hasGithubCode : Bool
+
+    -- TODO make make error bettter
+    , loginFromCodeError : Maybe (Core.HttpError ())
     }
 
 
@@ -22,12 +25,18 @@ init : Session -> Maybe String -> ( Model, Cmd Msg )
 init session maybeCode =
     case maybeCode of
         Nothing ->
-            ( { session = session, hasGithubCode = False }
+            ( { session = session
+              , hasGithubCode = False
+              , loginFromCodeError = Nothing
+              }
             , Cmd.none
             )
 
         Just code ->
-            ( { session = session, hasGithubCode = True }
+            ( { session = session
+              , hasGithubCode = True
+              , loginFromCodeError = Nothing
+              }
             , Api.githubLoginFromCode { code = code } CompletedGithubLogin
             )
 
@@ -37,7 +46,7 @@ init session maybeCode =
 
 
 view : Model -> { title : String, content : Html Msg }
-view { hasGithubCode } =
+view { hasGithubCode, loginFromCodeError } =
     { title = "redirect"
     , content =
         case hasGithubCode of
@@ -46,7 +55,13 @@ view { hasGithubCode } =
                 div [] [ text "ERROR GETTING GITHUB CODE" ]
 
             True ->
-                div [] [ text "Loading..." ]
+                case loginFromCodeError of
+                    Nothing ->
+                        div [] [ text "Loading..." ]
+
+                    Just _ ->
+                        -- TODO
+                        div [] [ text "Some error..." ]
     }
 
 
@@ -73,7 +88,7 @@ update msg model =
             )
 
         CompletedGithubLogin (Err err) ->
-            ( model, Cmd.none )
+            ( { model | loginFromCodeError = Just err }, Cmd.none )
 
 
 

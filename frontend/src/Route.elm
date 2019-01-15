@@ -55,9 +55,8 @@ replaceUrl key route =
 
 
 fromUrl : Url -> Maybe Route
-fromUrl url =
-    { url | path = Maybe.withDefault "" url.fragment, fragment = Nothing }
-        |> Parser.parse parser
+fromUrl =
+    Parser.parse parser
 
 
 
@@ -82,4 +81,4 @@ routeToString page =
                 _ ->
                     [ "error" ]
     in
-    "#/" ++ String.join "/" pieces
+    "/" ++ String.join "/" pieces
