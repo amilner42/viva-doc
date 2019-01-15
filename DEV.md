@@ -42,6 +42,7 @@ they have admin access over that repository.
 - [Register a new Github App](https://github.com/settings/applications/new).
 - [Github App Quickstart Guide](https://developer.github.com/apps/quickstart-guides/using-the-github-api-in-your-app/).
 - [Github OAuth web flow](https://developer.github.com/apps/building-oauth-apps/authorizing-oauth-apps/#web-application-flow).
+- [Authenticating Github Apps](https://developer.github.com/apps/building-github-apps/authenticating-with-github-apps)
 
 ###### API
 
