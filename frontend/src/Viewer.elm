@@ -1,44 +1,39 @@
-module Viewer exposing (Viewer, cred, decoder, store, username)
+module Viewer exposing (Viewer, decodeViewer, getRepos, getUsername)
 
-{-| The logged-in user currently viewing this page. It stores the username along with
-`Api.Core.Cred` so it's impossible to have a `Viewer.Viewer` if you aren't logged in.
+{-| The logged-in user currently viewing this page.
+
+It stores the username along with their repos.
+
+NOTE: Authentication is currently based on a cookie so it's possible that the cookie
+expires while they are logged in.
+
 -}
 
-import Api.Core as Core exposing (Cred)
-import Json.Decode as Decode exposing (Decoder)
-import Username exposing (Username)
+import Api.Core as Core
+import Json.Decode as Decode
 
 
 -- TYPES
 
 
 type Viewer
-    = Viewer Cred
+    = Viewer Core.Username Core.Repos
+
+
+decodeViewer : Decode.Decoder (Core.Username -> Core.Repos -> Viewer)
+decodeViewer =
+    Decode.succeed Viewer
 
 
 
 -- INFO
 
 
-cred : Viewer -> Cred
-cred (Viewer val) =
-    val
+getUsername : Viewer -> String
+getUsername (Viewer username _) =
+    Core.getUsername username
 
 
-username : Viewer -> Username
-username (Viewer val) =
-    Core.username val
-
-
-
--- SERIALIZATION
-
-
-decoder : Decoder (Cred -> Viewer)
-decoder =
-    Decode.succeed Viewer
-
-
-store : Viewer -> Cmd msg
-store (Viewer credVal) =
-    Core.storeCredWith credVal
+getRepos : Viewer -> List String
+getRepos (Viewer _ repos) =
+    Core.getRepos repos

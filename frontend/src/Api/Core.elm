@@ -1,10 +1,9 @@
-port module Api.Core exposing (Cred, FormError(..), HttpError(..), application, delete, expectJson, expectJsonWithCred, get, getFormErrors, logout, post, put, storeCredWith, username, viewerChanges)
+module Api.Core exposing (FormError(..), HttpError(..), Repos, Username, delete, expectJson, expectJsonWithUserAndRepos, get, getFormErrors, getRepos, getUsername, post, put)
 
 {-| This module provides a few core API-related responsibilities:
 
-  - Providing the opaque Cred type
+  - Providing the private User/Repos opaque types which you can only get from an HttpRequest.
   - Providing HTTP-request helpers which use `Endpoint` and `HttpError`
-  - Handling the main `Application` which uses Cred so must be in here to prevent circular deps
   - Providing a modified `Http.Error` and `FormError` types
   - Providing helpers for dealing with form errors
 
@@ -21,148 +20,54 @@ import Json.Decode as Decode exposing (Decoder, Value, decodeString, field, stri
 import Json.Decode.Pipeline as Pipeline exposing (required)
 import Json.Encode as Encode
 import Url exposing (Url)
-import Username exposing (Username)
 
 
--- CRED
+-- TYPES
 
 
-{-| The authentication credentials for the Viewer (that is, the currently logged-in user.),
-this includes:
-
-  - The cred's Username
-  - The cred's authentication token
-
-By design, there is no way to access the token directly as a String. It can be encoded for
-persistence, and it can be added to a header to a HttpBuilder for a request, but that's it. This
-token should never be rendered to the end user, and with this API, it can't be!
-
+{-| Keep this private so the only way to create this is on an HttpRequest.
 -}
-type Cred
-    = Cred Username String
+type Username
+    = Username String
 
 
-username : Cred -> Username
-username (Cred val _) =
-    val
-
-
-credHeader : Cred -> Http.Header
-credHeader (Cred _ str) =
-    Http.header "authorization" ("Token " ++ str)
-
-
-{-| Decodes credentials.
-
-NOTE: Do not expose this method
-
+{-| Keep this private so the only way to create this is on an HttpRequest.
 -}
-credDecoder : Decoder Cred
-credDecoder =
-    Decode.succeed Cred
-        |> required "username" Username.decoder
-        |> required "token" Decode.string
+type Repos
+    = Repos (List String)
 
 
-{-| Helper method to prevent repeatedely decoding credentials in all decoders.
+getUsername : Username -> String
+getUsername (Username username) =
+    username
 
-NOTE: Do not expose this method.
 
+getRepos : Repos -> List String
+getRepos (Repos repos) =
+    repos
+
+
+{-| Keep this private so the only way to get `Username` and `Repos` is through the http request.
 -}
-decodeCredAnd : Decoder (Cred -> a) -> Decoder a
-decodeCredAnd decoder =
-    Decode.map2 (\fromCred cred -> fromCred cred)
-        decoder
-        (Decode.field "user" credDecoder)
-
-
-
--- PERSISTENCE
-
-
-storageDecoder : Decoder (Cred -> viewer) -> Decoder viewer
-storageDecoder viewerDecoder =
-    decodeCredAnd viewerDecoder
-
-
-port onStoreChange : (Value -> msg) -> Sub msg
-
-
-viewerChanges : (Maybe viewer -> msg) -> Decoder (Cred -> viewer) -> Sub msg
-viewerChanges toMsg decoder =
-    onStoreChange (\value -> toMsg (decodeFromChange decoder value))
-
-
-decodeFromChange : Decoder (Cred -> viewer) -> Value -> Maybe viewer
-decodeFromChange viewerDecoder val =
-    -- It's stored in localStorage as a JSON String;
-    -- first decode the Value as a String, then
-    -- decode that String as JSON.
-    Decode.decodeValue (storageDecoder viewerDecoder) val
-        |> Result.toMaybe
-
-
-storeCredWith : Cred -> Cmd msg
-storeCredWith (Cred uname token) =
+decodeUsernameReposAnd : Decode.Decoder (Username -> Repos -> a) -> Decode.Decoder a
+decodeUsernameReposAnd decoder =
     let
-        json =
-            Encode.object
-                [ ( "user"
-                  , Encode.object
-                        [ ( "username", Username.encode uname )
-                        , ( "token", Encode.string token )
-                        ]
-                  )
-                ]
+        decodeUsername =
+            Decode.field "username" Decode.string
+                |> Decode.map Username
+
+        decodeRepos =
+            Decode.field "repos" (Decode.list Decode.string)
+                |> Decode.map Repos
     in
-    storeCache (Just json)
-
-
-logout : Cmd msg
-logout =
-    storeCache Nothing
-
-
-port storeCache : Maybe Value -> Cmd msg
+    Decode.map3 (\fromUsernameAndRepos username repos -> fromUsernameAndRepos username repos)
+        decoder
+        decodeUsername
+        decodeRepos
 
 
 
 -- APPLICATION
-
-
-application :
-    Decoder (Cred -> viewer)
-    ->
-        { init : Maybe viewer -> Url -> Nav.Key -> ( model, Cmd msg )
-        , onUrlChange : Url -> msg
-        , onUrlRequest : Browser.UrlRequest -> msg
-        , subscriptions : model -> Sub msg
-        , update : msg -> model -> ( model, Cmd msg )
-        , view : model -> Browser.Document msg
-        }
-    -> Program Value model msg
-application viewerDecoder config =
-    let
-        init flags url navKey =
-            let
-                maybeViewer =
-                    Decode.decodeValue Decode.string flags
-                        |> Result.andThen (Decode.decodeString (storageDecoder viewerDecoder))
-                        |> Result.toMaybe
-            in
-            config.init maybeViewer url navKey
-    in
-    Browser.application
-        { init = init
-        , onUrlChange = config.onUrlChange
-        , onUrlRequest = config.onUrlRequest
-        , subscriptions = config.subscriptions
-        , update = config.update
-        , view = config.view
-        }
-
-
-
 -- HTTP HELPERS
 
 
@@ -266,10 +171,11 @@ expectJson toMsg successDecoder errorDecoder =
                             Err <| BadSuccessBody <| Decode.errorToString err
 
 
-{-| Similar to `expectJson` but needed when expecting credentials in the response.
+{-| Similar to `expectJson` above but expects a username and repos in the response, otherwise
+you can't decode that information as it is opaque to this module.
 -}
-expectJsonWithCred : (Result (HttpError errorBody) successBody -> msg) -> Decode.Decoder (Cred -> successBody) -> Decode.Decoder errorBody -> Http.Expect msg
-expectJsonWithCred toMsg successDecoder errorDecoder =
+expectJsonWithUserAndRepos : (Result (HttpError errorBody) successBody -> msg) -> Decode.Decoder (Username -> Repos -> successBody) -> Decode.Decoder errorBody -> Http.Expect msg
+expectJsonWithUserAndRepos toMsg successDecoder errorDecoder =
     Http.expectStringResponse toMsg <|
         \response ->
             case response of
@@ -291,7 +197,7 @@ expectJsonWithCred toMsg successDecoder errorDecoder =
                             Err <| BadErrorBody <| Decode.errorToString err
 
                 Http.GoodStatus_ metadata body ->
-                    case Decode.decodeString (decodeCredAnd successDecoder) body of
+                    case Decode.decodeString (decodeUsernameReposAnd successDecoder) body of
                         Ok value ->
                             Ok value
 
@@ -303,64 +209,52 @@ expectJsonWithCred toMsg successDecoder errorDecoder =
 -- HTTP METHODS
 
 
-get : Endpoint -> Maybe Float -> Maybe String -> Maybe Cred -> Http.Expect a -> Cmd.Cmd a
-get url timeout tracker maybeCred expect =
+get : Endpoint -> Maybe Float -> Maybe String -> Http.Expect a -> Cmd.Cmd a
+get url timeout tracker expect =
     Endpoint.request
         { method = "GET"
         , url = url
         , expect = expect
-        , headers =
-            case maybeCred of
-                Just cred ->
-                    [ credHeader cred ]
-
-                Nothing ->
-                    []
+        , headers = []
         , body = Http.emptyBody
         , timeout = timeout
         , tracker = tracker
         }
 
 
-put : Endpoint -> Maybe Float -> Maybe String -> Cred -> Http.Body -> Http.Expect a -> Cmd.Cmd a
-put url timeout tracker cred body expect =
+put : Endpoint -> Maybe Float -> Maybe String -> Http.Body -> Http.Expect a -> Cmd.Cmd a
+put url timeout tracker body expect =
     Endpoint.request
         { method = "PUT"
         , url = url
         , expect = expect
-        , headers = [ credHeader cred ]
+        , headers = []
         , body = body
         , timeout = timeout
         , tracker = tracker
         }
 
 
-post : Endpoint -> Maybe Float -> Maybe String -> Maybe Cred -> Http.Body -> Http.Expect a -> Cmd.Cmd a
-post url timeout tracker maybeCred body expect =
+post : Endpoint -> Maybe Float -> Maybe String -> Http.Body -> Http.Expect a -> Cmd.Cmd a
+post url timeout tracker body expect =
     Endpoint.request
         { method = "POST"
         , url = url
         , expect = expect
-        , headers =
-            case maybeCred of
-                Just cred ->
-                    [ credHeader cred ]
-
-                Nothing ->
-                    []
+        , headers = []
         , body = body
         , timeout = timeout
         , tracker = tracker
         }
 
 
-delete : Endpoint -> Maybe Float -> Maybe String -> Cred -> Http.Body -> Http.Expect a -> Cmd.Cmd a
-delete url timeout tracker cred body expect =
+delete : Endpoint -> Maybe Float -> Maybe String -> Http.Body -> Http.Expect a -> Cmd.Cmd a
+delete url timeout tracker body expect =
     Endpoint.request
         { method = "DELETE"
         , url = url
         , expect = expect
-        , headers = [ credHeader cred ]
+        , headers = []
         , body = body
         , timeout = timeout
         , tracker = tracker

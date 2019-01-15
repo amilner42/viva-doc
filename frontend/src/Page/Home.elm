@@ -1,13 +1,13 @@
 module Page.Home exposing (Model, Msg, init, subscriptions, toSession, update, view)
 
-{-| The homepage. You can get here via either the / or /#/ routes.
+{-| The homepage.
 -}
 
-import Api.Core exposing (Cred)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import Session exposing (Session)
+import Viewer
 
 
 -- MODEL
@@ -39,10 +39,22 @@ view model =
                     [ class "columns is-centered" ]
                     [ div
                         [ class "column is-half" ]
-                        [ h1
-                            [ class "title has-text-centered" ]
-                            [ text "Home Page" ]
-                        ]
+                        (case model.session of
+                            Session.Guest _ ->
+                                [ h1
+                                    [ class "title has-text-centered" ]
+                                    [ text "Landing Page" ]
+                                ]
+
+                            Session.LoggedIn _ viewer ->
+                                [ h1
+                                    [ class "title has-text-centered" ]
+                                    [ text <| Viewer.getUsername viewer ]
+                                ]
+                                    ++ List.map
+                                        (\repoName -> p [] [ text repoName ])
+                                        (Viewer.getRepos viewer)
+                        )
                     ]
                 ]
             ]
@@ -54,14 +66,14 @@ view model =
 
 
 type Msg
-    = GotSession Session.Session
+    = Ignored
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        GotSession session ->
-            ( { model | session = session }, Cmd.none )
+        Ignored ->
+            ( model, Cmd.none )
 
 
 
@@ -70,7 +82,7 @@ update msg model =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Session.changes GotSession (Session.navKey model.session)
+    Sub.none
 
 
 

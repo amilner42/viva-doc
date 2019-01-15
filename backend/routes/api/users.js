@@ -1,69 +1,53 @@
+const R = require('ramda');
 const mongoose = require('mongoose');
 const router = require('express').Router();
 const passport = require('passport');
+const Github = require('github-api');
 const User = mongoose.model('User');
-const auth = require('../auth');
 
-router.get('/user', auth.required, function(req, res, next){
-  User.findById(req.payload.id).then(function(user){
-    if(!user){ return res.sendStatus(401); }
+/** Get's the basic user data for the client `Viewer.elm`. */
+const getBasicUserData = async function(username, token) {
+    const ghApi = new Github({ username: username, token: token });
+    const userGhApi = ghApi.getUser();
 
-    return res.json({user: user.toAuthJSON()});
-  }).catch(next);
+    const repoResponse = await userGhApi.listRepos();
+    const repos = R.map((repo) => { return repo.name }, repoResponse.data);
+
+    return { username: username, repos: repos };
+}
+
+
+router.get('/github/login/fromCode', passport.authenticate('github'),
+async function(req, res, next) {
+    const user = req.user;
+    const basicUserData = await getBasicUserData(user.username, user.accessToken);
+
+    res.json(basicUserData);
 });
 
-router.put('/user', auth.required, function(req, res, next){
-  User.findById(req.payload.id).then(function(user){
-    if(!user){ return res.sendStatus(401); }
+router.get('/user',
+async function(req, res, next){
+    const user = req.user;
 
-    // only update fields that were actually passed...
-    if(typeof req.body.user.username !== 'undefined'){
-      user.username = req.body.user.username;
-    }
-    if(typeof req.body.user.email !== 'undefined'){
-      user.email = req.body.user.email;
-    }
-    if(typeof req.body.user.password !== 'undefined'){
-      user.setPassword(req.body.user.password);
+    // TODO
+    if(!user) {
+        return res.json({});
     }
 
-    return user.save().then(function(){
-      return res.json({user: user.toAuthJSON()});
+    const basicUserData = await getBasicUserData(user.username, user.accessToken);
+    res.json(basicUserData);
+});
+
+router.get('/user/logout',
+async function(req, res, next) {
+    req.session.destroy(function(err) {
+        // TODO
+        if(err) {
+            return res.json({});
+        }
+
+        return res.json({});
     });
-  }).catch(next);
-});
-
-router.post('/users/login', function(req, res, next){
-  if(!req.body.user.email){
-    return res.status(422).json({errors: {email: "can't be blank"}});
-  }
-
-  if(!req.body.user.password){
-    return res.status(422).json({errors: {password: "can't be blank"}});
-  }
-
-  passport.authenticate('local', {session: false}, function(err, user, info){
-    if(err){ return next(err); }
-
-    if(user){
-      user.token = user.generateJWT();
-      return res.json({user: user.toAuthJSON()});
-    } else {
-      return res.status(422).json(info);
-    }
-  })(req, res, next);
-});
-
-router.post('/users', function(req, res, next){
-  var user = new User();
-
-  user.username = req.body.user.username;
-  user.email = req.body.user.email;
-  user.setPassword(req.body.user.password);
-
-  user.save().then(function(){
-    return res.json({user: user.toAuthJSON()});
-  }).catch(next);
 });
 
 module.exports = router;

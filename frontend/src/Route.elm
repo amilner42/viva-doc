@@ -7,8 +7,8 @@ import Browser.Navigation as Nav
 import Html exposing (..)
 import Html.Attributes as Attr
 import Url exposing (Url)
-import Url.Parser as Parser exposing ((</>), Parser, oneOf, s, string)
-import Username exposing (Username)
+import Url.Parser as Parser exposing ((</>), (<?>), Parser, oneOf, s, string)
+import Url.Parser.Query as Query
 
 
 -- ROUTING
@@ -22,18 +22,15 @@ NOTE: Root will just redirect to whatever other page is currently set as the rou
 type Route
     = Root
     | Home
-    | Login
-    | Logout
-    | Register
+      -- Maybe string is code from github redirect
+    | OAuthRedirect (Maybe String)
 
 
 parser : Parser (Route -> a) a
 parser =
     oneOf
         [ Parser.map Home Parser.top
-        , Parser.map Login (s "login")
-        , Parser.map Logout (s "logout")
-        , Parser.map Register (s "register")
+        , Parser.map OAuthRedirect (s "oauth_redirect" <?> Query.string "code")
         ]
 
 
@@ -56,9 +53,8 @@ replaceUrl key route =
 
 
 fromUrl : Url -> Maybe Route
-fromUrl url =
-    { url | path = Maybe.withDefault "" url.fragment, fragment = Nothing }
-        |> Parser.parse parser
+fromUrl =
+    Parser.parse parser
 
 
 
@@ -76,13 +72,8 @@ routeToString page =
                 Root ->
                     []
 
-                Login ->
-                    [ "login" ]
-
-                Logout ->
-                    [ "logout" ]
-
-                Register ->
-                    [ "register" ]
+                -- Certain routes shouldn't be accessed directly
+                _ ->
+                    [ "error" ]
     in
-    "#/" ++ String.join "/" pieces
+    "/" ++ String.join "/" pieces

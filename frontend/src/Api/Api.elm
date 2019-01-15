@@ -1,4 +1,4 @@
-module Api.Api exposing (LoginError, RegisterError, hasLoginError, hasRegisterError, login, noLoginError, noRegisterError, register)
+module Api.Api exposing (GithubLoginBody, getLogout, getUser, githubLoginFromCode)
 
 {-| This module strictly contains the routes to the API and their respective errors.
 
@@ -16,99 +16,41 @@ import Json.Encode as Encode
 import Viewer
 
 
--- LOGIN
+type alias GithubLoginBody =
+    { code : String }
 
 
-type alias LoginBody =
-    { email : String, password : String }
-
-
-type alias LoginError =
-    { emailOrPassword : List String }
-
-
-noLoginError : LoginError
-noLoginError =
-    LoginError []
-
-
-hasLoginError : LoginError -> Bool
-hasLoginError =
-    (/=) noLoginError
-
-
-{-| Log a user in.
+{-| TODO handle errors
 -}
-login : LoginBody -> (Result.Result (Core.HttpError LoginError) Viewer.Viewer -> msg) -> Cmd.Cmd msg
-login { email, password } handleResult =
-    let
-        user =
-            Encode.object
-                [ ( "email", Encode.string email )
-                , ( "password", Encode.string password )
-                ]
+githubLoginFromCode : GithubLoginBody -> (Result.Result (Core.HttpError ()) Viewer.Viewer -> msg) -> Cmd.Cmd msg
+githubLoginFromCode { code } handleResult =
+    Core.get
+        (Endpoint.githubLoginFromCode code)
+        (Just (seconds 20))
+        Nothing
+        (Core.expectJsonWithUserAndRepos handleResult Viewer.decodeViewer (Decode.succeed ()))
 
-        body =
-            Encode.object [ ( "user", user ) ]
-                |> Http.jsonBody
-    in
-    Core.post
-        Endpoint.login
+
+{-| TODO handle errors.
+-}
+getUser : (Result.Result (Core.HttpError ()) Viewer.Viewer -> msg) -> Cmd.Cmd msg
+getUser handleResult =
+    Core.get
+        Endpoint.user
         (Just (seconds 10))
         Nothing
-        Nothing
-        body
-        (Core.expectJsonWithCred handleResult Viewer.decoder decodeLoginError)
+        (Core.expectJsonWithUserAndRepos handleResult Viewer.decodeViewer (Decode.succeed ()))
 
 
-
--- REGISTER
-
-
-type alias RegisterBody =
-    { username : String, email : String, password : String }
-
-
-type alias RegisterError =
-    { username : List String
-    , email : List String
-    , password : List String
-    }
-
-
-noRegisterError : RegisterError
-noRegisterError =
-    RegisterError [] [] []
-
-
-hasRegisterError : RegisterError -> Bool
-hasRegisterError =
-    (/=) noRegisterError
-
-
-{-| Register a user.
+{-| TODO care about the results beyond success/error (aka unit types).
 -}
-register : RegisterBody -> (Result.Result (Core.HttpError RegisterError) Viewer.Viewer -> msg) -> Cmd.Cmd msg
-register { username, email, password } handleResult =
-    let
-        user =
-            Encode.object
-                [ ( "username", Encode.string username )
-                , ( "email", Encode.string email )
-                , ( "password", Encode.string password )
-                ]
-
-        body =
-            Encode.object [ ( "user", user ) ]
-                |> Http.jsonBody
-    in
-    Core.post
-        Endpoint.users
+getLogout : (Result.Result (Core.HttpError ()) () -> msg) -> Cmd.Cmd msg
+getLogout handleResult =
+    Core.get
+        Endpoint.logout
         (Just (seconds 10))
         Nothing
-        Nothing
-        body
-        (Core.expectJsonWithCred handleResult Viewer.decoder decodeRegisterError)
+        (Core.expectJson handleResult (Decode.succeed ()) (Decode.succeed ()))
 
 
 
@@ -135,19 +77,3 @@ decodeFieldError =
 decodeFieldErrors : Decode.Decoder (List String)
 decodeFieldErrors =
     Decode.list Decode.string
-
-
-decodeLoginError : Decode.Decoder LoginError
-decodeLoginError =
-    Decode.succeed LoginError
-        |> optional "email or password" decodeFieldError []
-        |> Decode.field "errors"
-
-
-decodeRegisterError : Decode.Decoder RegisterError
-decodeRegisterError =
-    Decode.succeed RegisterError
-        |> optional "username" decodeFieldError []
-        |> optional "email" decodeFieldError []
-        |> optional "password" decodeFieldError []
-        |> Decode.field "errors"
