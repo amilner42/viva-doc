@@ -43,7 +43,11 @@ url paths queryParams =
 -- HELPERS
 
 
-{-| Http.request, except it takes an Endpoint instead of a Url.
+{-| An Http.request, except it takes an Endpoint instead of a Url.
+
+NOTE: This is making requests to OUR API so it uses risky HTTP requests in order to send the
+credentials (cookies). Don't use this if making requests to other APIs.
+
 -}
 request :
     { body : Http.Body
@@ -56,7 +60,7 @@ request :
     }
     -> Cmd msg
 request config =
-    Http.request
+    Http.riskyRequest
         { body = config.body
         , expect = config.expect
         , headers = config.headers
