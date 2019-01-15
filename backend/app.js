@@ -2,11 +2,13 @@ var http = require('http'),
     path = require('path'),
     methods = require('methods'),
     express = require('express'),
+    expressSession = require('express-session'),
     bodyParser = require('body-parser'),
     cors = require('cors'),
     passport = require('passport'),
     errorhandler = require('errorhandler'),
     mongoose = require('mongoose');
+    MongoStore = require('connect-mongo')(expressSession);
 
 const config = require('./config');
 
@@ -22,7 +24,12 @@ app.use(require('morgan')('dev'));
 app.use(require('cookie-parser')());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
-app.use(require('express-session')({ secret: config.sessionSecret, resave: true, saveUninitialized: true }));
+app.use(expressSession({
+    secret: config.sessionSecret,
+    resave: true,
+    saveUninitialized: true,
+    store: new MongoStore({url: config.mongoDbUri})
+}));
 app.use(require('method-override')());
 
 app.use(passport.initialize());
