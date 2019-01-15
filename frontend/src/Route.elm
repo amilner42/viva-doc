@@ -22,7 +22,6 @@ NOTE: Root will just redirect to whatever other page is currently set as the rou
 type Route
     = Root
     | Home
-    | Logout
       -- Maybe string is code from github redirect
     | OAuthRedirect (Maybe String)
 
@@ -31,7 +30,6 @@ parser : Parser (Route -> a) a
 parser =
     oneOf
         [ Parser.map Home Parser.top
-        , Parser.map Logout (s "logout")
         , Parser.map OAuthRedirect (s "oauth_redirect" <?> Query.string "code")
         ]
 
@@ -73,9 +71,6 @@ routeToString page =
 
                 Root ->
                     []
-
-                Logout ->
-                    [ "logout" ]
 
                 -- Certain routes shouldn't be accessed directly
                 _ ->

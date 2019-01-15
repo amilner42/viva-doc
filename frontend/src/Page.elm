@@ -17,7 +17,7 @@ import Viewer exposing (Viewer)
 {-| Take a page's Html and frames it with a navbar.
 -}
 view :
-    { mobileNavbarOpen : Bool, toggleMobileNavbar : msg }
+    { mobileNavbarOpen : Bool, toggleMobileNavbar : msg, logout : msg }
     -> Maybe Viewer
     -> { title : String, content : Html pageMsg }
     -> (pageMsg -> msg)
@@ -35,8 +35,8 @@ view navConfig maybeViewer { title, content } toMsg =
 Will have log-in/sign-up or logout buttons according to whether there is a `Viewer`.
 
 -}
-viewNavbar : { mobileNavbarOpen : Bool, toggleMobileNavbar : msg } -> Maybe Viewer -> Html msg
-viewNavbar { mobileNavbarOpen, toggleMobileNavbar } maybeViewer =
+viewNavbar : { mobileNavbarOpen : Bool, toggleMobileNavbar : msg, logout : msg } -> Maybe Viewer -> Html msg
+viewNavbar { mobileNavbarOpen, toggleMobileNavbar, logout } maybeViewer =
     nav [ class "navbar is-light" ]
         [ div
             [ class "navbar-brand" ]
@@ -75,7 +75,9 @@ viewNavbar { mobileNavbarOpen, toggleMobileNavbar } maybeViewer =
 
                     Just viewer ->
                         [ a
-                            [ class "navbar-item", Route.href Route.Logout ]
+                            [ class "navbar-item"
+                            , onClick logout
+                            ]
                             [ text "Log out" ]
                         ]
                 )

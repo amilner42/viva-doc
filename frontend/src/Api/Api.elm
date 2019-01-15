@@ -1,4 +1,4 @@
-module Api.Api exposing (GithubLoginBody, getUser, githubLoginFromCode)
+module Api.Api exposing (GithubLoginBody, getLogout, getUser, githubLoginFromCode)
 
 {-| This module strictly contains the routes to the API and their respective errors.
 
@@ -37,9 +37,20 @@ getUser : (Result.Result (Core.HttpError ()) Viewer.Viewer -> msg) -> Cmd.Cmd ms
 getUser handleResult =
     Core.get
         Endpoint.user
-        (Just (seconds 20))
+        (Just (seconds 10))
         Nothing
         (Core.expectJsonWithUserAndRepos handleResult Viewer.decodeViewer (Decode.succeed ()))
+
+
+{-| TODO care about the results beyond success/error (aka unit types).
+-}
+getLogout : (Result.Result (Core.HttpError ()) () -> msg) -> Cmd.Cmd msg
+getLogout handleResult =
+    Core.get
+        Endpoint.logout
+        (Just (seconds 10))
+        Nothing
+        (Core.expectJson handleResult (Decode.succeed ()) (Decode.succeed ()))
 
 
 

@@ -76,6 +76,7 @@ view model =
                     Page.view
                         { mobileNavbarOpen = model.mobileNavbarOpen
                         , toggleMobileNavbar = ToggledMobileNavbar
+                        , logout = Logout
                         }
                         (Session.getViewer (toSession model))
                         pageView
@@ -109,6 +110,8 @@ type Msg
     | ClickedLink Browser.UrlRequest
     | ToggledMobileNavbar
     | CompletedGetUser (Result (Core.HttpError ()) Viewer.Viewer)
+    | Logout
+    | CompletedLogout (Result (Core.HttpError ()) ())
     | GotHomeMsg Home.Msg
     | GotOAuthRedirectMsg OAuthRedirect.Msg
 
@@ -152,12 +155,6 @@ changeRouteTo maybeRoute model =
             , Route.replaceUrl (Session.getNavKey session) Route.Home
             )
 
-        -- TODO
-        Just Route.Logout ->
-            ( closeMobileNavbar
-            , Cmd.none
-            )
-
         Just Route.Home ->
             Home.init session
                 |> updatePageModel Home GotHomeMsg model
@@ -169,6 +166,13 @@ changeRouteTo maybeRoute model =
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
+    let
+        currentSession =
+            toSession model
+
+        currentNavKey =
+            Session.getNavKey currentSession
+    in
     case ( msg, model.pageModel ) of
         ( Ignored, _ ) ->
             ( model, Cmd.none )
@@ -177,7 +181,7 @@ update msg model =
             case urlRequest of
                 Browser.Internal url ->
                     ( model
-                    , Nav.pushUrl (Session.getNavKey (toSession model)) (Url.toString url)
+                    , Nav.pushUrl currentNavKey (Url.toString url)
                     )
 
                 Browser.External href ->
@@ -194,24 +198,28 @@ update msg model =
             )
 
         ( CompletedGetUser (Ok viewer), _ ) ->
-            let
-                session =
-                    toSession model
-            in
             ( { model
                 | mobileNavbarOpen = False
-                , pageModel =
-                    Redirect <|
-                        Session.LoggedIn
-                            (Session.getNavKey session)
-                            viewer
+                , pageModel = Redirect <| Session.LoggedIn currentNavKey viewer
               }
-            , Route.replaceUrl (Session.getNavKey session) Route.Home
+            , Route.replaceUrl currentNavKey Route.Home
             )
 
         -- TODO handle error better (eg. network error)
         ( CompletedGetUser (Err err), _ ) ->
             changeRouteTo (Just Route.Home) model
+
+        ( Logout, _ ) ->
+            ( model, Api.getLogout CompletedLogout )
+
+        ( CompletedLogout (Ok _), _ ) ->
+            changeRouteTo
+                (Just Route.Home)
+                { model | pageModel = Redirect <| Session.Guest currentNavKey }
+
+        -- TODO
+        ( CompletedLogout (Err _), _ ) ->
+            ( model, Cmd.none )
 
         ( GotHomeMsg pageMsg, Home home ) ->
             Home.update pageMsg home

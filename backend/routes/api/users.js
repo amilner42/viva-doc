@@ -38,4 +38,16 @@ async function(req, res, next){
     res.json(basicUserData);
 });
 
+router.get('/user/logout',
+async function(req, res, next) {
+    req.session.destroy(function(err) {
+        // TODO
+        if(err) {
+            return res.json({});
+        }
+
+        return res.json({});
+    });
+});
+
 module.exports = router;
