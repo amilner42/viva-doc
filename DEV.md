@@ -44,6 +44,7 @@ they have admin access over that repository.
 - [Github OAuth web flow](https://developer.github.com/apps/building-oauth-apps/authorizing-oauth-apps/#web-application-flow).
 - [Authenticating Github Apps](https://developer.github.com/apps/building-github-apps/authenticating-with-github-apps)
 - [Configuring Github apps](https://developer.github.com/apps/quickstart-guides/setting-up-your-development-environment/)
+- [Probot github apps in Node](https://probot.github.io)
 
 ###### API
 
