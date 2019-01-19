@@ -1,0 +1,23 @@
+{
+  "name": "viva-doc-github-app",
+  "version": "0.0.1",
+  "description": "The VivaDoc GithubApp webhook handler",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/amilner42/viva-doc.git"
+  },
+  "author": "Arie Milner",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/amilner42/viva-doc/issues"
+  },
+  "homepage": "https://github.com/amilner42/viva-doc#readme",
+  "dependencies": {
+    "github-app": "^4.0.1",
+    "github-webhook-handler": "^0.7.1"
+  }
+}
