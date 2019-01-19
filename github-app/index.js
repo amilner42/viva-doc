@@ -10,7 +10,7 @@ const webhookHandler = createHandler({
 
 http.createServer(handleRequest).listen(env.GITHUB_APP_PORT || 3333);
 
-webHookHandler.on('issues', (event) => {
+webhookHandler.on('issues', (event) => {
   console.log(`Received issue event for "${event.payload.issue.title}"`)
 })
 
