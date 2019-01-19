@@ -1,4 +1,4 @@
-# Frontend
+# Web Client
 
 ### Introduction
 

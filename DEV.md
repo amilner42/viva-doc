@@ -18,10 +18,10 @@ ssh -i "viva-doc.pem" ubuntu@ec2-34-222-123-18.us-west-2.compute.amazonaws.com
 ###### S3 Bucket
 
 The static website is hosted on an s3 bucket. From the AWS console go to the s3 console,
-click the viva-doc bucket, and you can easily re-upload a newer frontend by dragging over
-the static website files (build the frontend in production) into the bucket.
+click the viva-doc bucket, and you can easily re-upload a newer web-client by dragging over
+the static website files (build the web-client in production) into the bucket.
 
-Currently the frontend is hosted [here](http://viva-doc.s3-website-us-west-2.amazonaws.com).
+Currently the web-client is hosted [here](http://viva-doc.s3-website-us-west-2.amazonaws.com).
 
 - [Info about hosting on S3](https://docs.aws.amazon.com/AmazonS3/latest/dev/WebsiteHosting.html)
 

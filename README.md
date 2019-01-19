@@ -24,7 +24,7 @@
 ### Set Up
 
 ```bash
-cd frontend;
+cd web-client;
 npm install;
 cd ../backend;
 npm install;
@@ -35,7 +35,7 @@ npm install;
 Terminal Tab 1
 
 ```bash
-cd frontend;
+cd web-client;
 npm start;
 ```
 
@@ -49,7 +49,7 @@ npm run dev;
 ### Production
 
 ```bash
-cd frontend;
+cd web-client;
 npm run prod;
 cd ../backend;
 # Make sure env variables are set
