@@ -10,17 +10,13 @@ const webhookHandler = createHandler({
 
 http.createServer(handleRequest).listen(env.GITHUB_APP_PORT || 3002);
 
-webhookHandler.on('issues', (event) => {
-  console.log(`Received issue event for "${event.payload.issue.title}"`)
-})
-
 function handleRequest (request, response) {
   // ignore all requests that aren’t POST requests
   if (request.method !== 'POST') return response.end('ok')
 
-  // here we pass the current request & response to the webHookHandler we created
+  // here we pass the current request & response to the webhookHandler we created
   // on top. If the request is valid, then the "issue" above handler is called
-  webHookHandler(request, response, () => response.end('ok'))
+  webhookHandler(request, response, () => response.end('ok'))
 }
 
 const fs = require('fs');
@@ -32,11 +28,11 @@ const app = createApp({
 });
 
 // TODO do I want this?
-handler.on('error', function (err) {
+webhookHandler.on('error', function (err) {
   console.error('Error:', err.message)
 });
 
-handler.on('issues', function (event) {
+webhookHandler.on('issues', function (event) {
   console.log("EVENT", event);
   if (event.payload.action === 'opened') {
     var installation = event.payload.installation.id;
