@@ -26,7 +26,7 @@
 ```bash
 cd web-client;
 npm install;
-cd ../backend;
+cd ../api;
 npm install;
 ```
 
@@ -42,7 +42,7 @@ npm start;
 Terminal Tab 2
 
 ```bash
-cd backend;
+cd api;
 npm run dev;
 ```
 
@@ -51,7 +51,7 @@ npm run dev;
 ```bash
 cd web-client;
 npm run prod;
-cd ../backend;
+cd ../api;
 # Make sure env variables are set
 npm run build;
 ```

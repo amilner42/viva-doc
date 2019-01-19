@@ -1,7 +1,7 @@
 {
-  "name": "viva-doc-backend",
+  "name": "viva-doc-api",
   "version": "0.0.1",
-  "description": "The backend serving the viva-doc API",
+  "description": "The server for the viva-doc API",
   "main": "app.js",
   "scripts": {
     "start": "node ./app.js",
