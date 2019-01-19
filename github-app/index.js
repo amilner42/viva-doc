@@ -5,7 +5,7 @@ const env = process.env;
 
 const webhookHandler = createHandler({
     path: "/",
-    secret: env.WEBHOOK_SECRET || "dev-secret"
+    secret: env.WEBHOOK_SECRET || "asdfghjkl"
 });
 
 http.createServer(handleRequest).listen(env.GITHUB_APP_PORT || 3002);
