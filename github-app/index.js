@@ -27,22 +27,23 @@ const app = createApp({
     cert: fs.readFileSync('vivadoc.2019-01-19.private-key.pem')
 });
 
-// TODO do I want this?
+// For logging errors in dev the easy way
+// TODO prod handle errors better.
 webhookHandler.on('error', function (err) {
   console.error('Error:', err.message)
 });
 
-webhookHandler.on('issues', function (event) {
+webhookHandler.on('push', function (event) {
   console.log("EVENT", event);
-  if (event.payload.action === 'opened') {
-    var installation = event.payload.installation.id;
-    app.asInstallation(installation).then(function (github) {
-      github.issues.createComment({
-        owner: event.payload.repository.owner.login,
-        repo: event.payload.repository.name,
-        number: event.payload.issue.number,
-        body: 'Welcome to the robot uprising.'
-      });
-    });
-  }
+  // if (event.payload.action === 'opened') {
+  //   var installation = event.payload.installation.id;
+  //   app.asInstallation(installation).then(function (github) {
+  //     github.issues.createComment({
+  //       owner: event.payload.repository.owner.login,
+  //       repo: event.payload.repository.name,
+  //       number: event.payload.issue.number,
+  //       body: 'Welcome to the robot uprising.'
+  //     });
+  //   });
+  // }
 });
