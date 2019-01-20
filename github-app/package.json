@@ -1,23 +1,49 @@
 {
   "name": "viva-doc-github-app",
   "version": "0.0.1",
-  "description": "The VivaDoc GithubApp webhook handler",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/amilner42/viva-doc.git"
-  },
-  "author": "Arie Milner",
+  "description": "The app for handling viva-doc webhooks from github",
+  "author": "Arie Milner <amilner42@gmail.com>",
   "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/amilner42/viva-doc/issues"
+  "repository": "https://github.com/amilner42/viva-doc",
+  "keywords": [],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "nodemon --exec \"npm start\"",
+    "start": "probot run ./lib/index.js",
+    "lint": "standard **/*.ts --fix",
+    "test": "jest && standard **/*.ts",
+    "test:watch": "jest --watch --notify --notifyMode=change --coverage"
   },
-  "homepage": "https://github.com/amilner42/viva-doc#readme",
   "dependencies": {
-    "github-app": "^4.0.1",
-    "github-webhook-handler": "^0.7.1"
+    "nock": "^10.0.0",
+    "@types/nock": "^9.3.0",
+    "probot": "^7.2.0"
+  },
+  "devDependencies": {
+    "@types/jest": "^23.1.5",
+    "@types/node": "^10.5.2",
+    "eslint-plugin-typescript": "^0.12.0",
+    "jest": "^23.4.0",
+    "nodemon": "^1.17.2",
+    "smee-client": "^1.0.2",
+    "standard": "^10.0.3",
+    "ts-jest": "^23.0.0",
+    "typescript": "^2.9.2",
+    "typescript-eslint-parser": "^18.0.0"
+  },
+  "engines": {
+    "node": ">= 8.3.0"
+  },
+  "standard": {
+    "parser": "typescript-eslint-parser",
+    "env": [
+      "jest"
+    ],
+    "plugins": [
+      "typescript"
+    ]
+  },
+  "jest": {
+    "testEnvironment": "node"
   }
 }
