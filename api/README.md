@@ -2,13 +2,7 @@
 
 ### Introduction
 
-Project forked from [here](https://github.com/gothinkster/node-express-realworld-example-app) and
-then stripped down. Refer to that repo if you want to see an example of how to build an API
-using this technology.
-
-This is a very minimal starting point so it's barely opinionated beyond the choice of the technology
-itself. It's just the skeleton of a very standard node/express/mongo/mongoose application which uses
-JWT for authentication.
+This app will handle serving up the viva-doc API.
 
 ### Env variables
 
