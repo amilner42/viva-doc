@@ -1,7 +1,6 @@
 // Base module containing probot app
 
 import { Application } from 'probot' // eslint-disable-line no-unused-vars
-import { WebhookPayloadPush } from '@octokit/webhooks'
 import R from "ramda"
 
 import { analyzeCommitDiffAndSubmitStatus } from "./analysis/index"
@@ -44,7 +43,7 @@ export = (app: Application) => {
   })
 
   app.on("push", async (context) => {
-    const pushPayload: WebhookPayloadPush = context.payload
+    const pushPayload = context.payload
     const commits = pushPayload.commits
     const baseCommit = pushPayload.before
     const { owner, repo } = context.repo()
