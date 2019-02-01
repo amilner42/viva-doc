@@ -45,12 +45,10 @@ export = (app: Application) => {
   app.on("push", async (context) => {
     const pushPayload = context.payload
     const commits = pushPayload.commits
-    const baseCommit = pushPayload.before
     const { owner, repo } = context.repo()
 
-    for (let i = 0; i < commits.length; i++) {
-      const previousCommitId = i === 0 ? baseCommit : commits[i - 1].id
-      const currentCommitId = commits[i].id
+    for (let commit of commits) {
+      const currentCommitId = commit.id
 
       // First: set status to pending for each commit
       context.github.repos.createStatus({
@@ -63,12 +61,18 @@ export = (app: Application) => {
 
       // Second: run analysis
       const retrieveDiff = async (): Promise<any> => {
-        return context.github.repos.compareCommits({
-          base: previousCommitId,
-          head: currentCommitId,
+        // Need the correct accept header to get the diff:
+        // Refer: https://developer.github.com/v3/media/#commits-commit-comparison-and-pull-requests
+        const diffAcceptHeader = { accept: "application/vnd.github.v3.diff"}
+        // Unfortunetly the typings are wrong, and they don't include `headers` even though octokit (which this wraps)
+        // has that field, and of course we need to pass the correct header to get the correct media type. This is
+        // why I have a `as any` at the end here, it is only because the typings are wrong.
+        return context.github.repos.getCommit({
+          headers: diffAcceptHeader,
           owner,
-          repo
-        }).then(R.path(["data"]))
+          repo,
+          sha: currentCommitId
+        } as any)
       }
 
       const retrieveFile = async (path: string): Promise<any> => {
