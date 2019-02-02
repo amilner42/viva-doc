@@ -72,7 +72,7 @@ export = (app: Application) => {
           owner,
           repo,
           sha: currentCommitId
-        } as any)
+        } as any).then(R.path(["data"]))
       }
 
       const retrieveFile = async (path: string): Promise<any> => {
