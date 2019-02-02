@@ -269,7 +269,6 @@ const getSingleFileDiff = (diffByLines: string[]): [string[], FileDiff] => {
         // Check if we've hit another diff hunk
         if (line.startsWith(HUNK_PREFIX)) {
           diffLineNumber = extractStartLineFromHunk(line)
-          console.log(`Second hunk: ${diffLineNumber}`)
           break
         }
 

@@ -14,7 +14,6 @@ export const analyzeCommitDiffAndSubmitStatus = async (
 
   try {
     diffAsStr = await retrieveDiff()
-    console.log(`Diff: ${diffAsStr}`)
   } catch (err) {
     // @PROD handle this error properly
     console.log(`failure to retreive diff: ${JSON.stringify(err)}`)
@@ -25,14 +24,11 @@ export const analyzeCommitDiffAndSubmitStatus = async (
 
   try {
     diff = parseDiff(diffAsStr)
-    console.log(`Parsed Diff: ${JSON.stringify(diff)}`)
   } catch (err) {
     // @PROD handle this error properly
     console.log(`Hit err: ${err}  --- ${JSON.stringify(err)}`)
     return;
   }
-
-  // console.log(`Diff: ${JSON.stringify(diff)}`)
 
   return Promise.resolve();
 }
