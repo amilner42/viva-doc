@@ -4,6 +4,7 @@ import R from "ramda"
 
 import { Diff, parseDiff } from "./diff-parser"
 import { Language, LanguageParserError, extractFileType } from "./languages/index"
+import { AnalysisError } from "./error"
 
 // TODO DOC
 // @THROWS TODO
@@ -19,7 +20,7 @@ export const analyzeCommitDiffAndSubmitStatus = async (
   const analyzableDiff: Diff = R.filter(
     (fileDiff) => {
       try {
-        extractFileType(fileDiff.fileName)
+        extractFileType(fileDiff.filePath)
         return true
       } catch ( err ) {
         if (err instanceof LanguageParserError) {
@@ -49,7 +50,16 @@ export const analyzeCommitDiffAndSubmitStatus = async (
     return
   }
 
-  // Otherwise we have to analyze each file
-  // TODO
+  let files: string[];
+
+  // Fetch all files needed for analysis
+  try {
+    files = await Promise.all(analyzableDiff.map((fileDiff) => {
+      return retrieveFile(fileDiff.filePath)
+    }))
+  } catch (err) {
+    throw new AnalysisError(`Failed to retrieve files: ${err} --- ${JSON.stringify(err)}`)
+  }
+
   return
 }

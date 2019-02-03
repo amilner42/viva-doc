@@ -16,24 +16,24 @@ export type FileDiff = NewFileDiff | ModifiedFileDiff | RenamedFileDiff | Delete
 
 export interface NewFileDiff {
   diffType: "new",
-  fileName: string
+  filePath: string
 }
 
 export interface ModifiedFileDiff {
   diffType: "modified",
-  fileName: string,
+  filePath: string,
   alteredLines: AlteredLines
 }
 
 export interface RenamedFileDiff {
   diffType: "renamed",
-  fileName: string,
+  filePath: string,
   alteredLines: AlteredLines
 }
 
 export interface DeletedFileDiff {
   diffType: "deleted",
-  fileName: string
+  filePath: string
 }
 
 // All errors from this module
@@ -82,7 +82,7 @@ const getSingleFileDiff = (diffByLines: string[]): [string[], FileDiff] => {
 
   let lineIndex = 0;
   let parseStage: ParseStage = "line-1"
-  let fileName: string | null = null;
+  let filePath: string | null = null;
   let diffType: DiffType = null;
   let skip = 0;
   let deletedFile: DeletedFileDiff | null = null;
@@ -144,18 +144,18 @@ const getSingleFileDiff = (diffByLines: string[]): [string[], FileDiff] => {
           throw new DiffParserError(`Expected exactly 2 files on the first line: ${line}`)
         }
 
-        const fileNameA = bothFiles[0]
-        const fileNameB = bothFiles[1]
+        const filePathA = bothFiles[0]
+        const filePathB = bothFiles[1]
 
-        if(fileNameA === "" || fileNameB === "") {
+        if(filePathA === "" || filePathB === "") {
           throw new DiffParserError(`You can't have empty file names: ${line}`)
         }
 
-        // Regardless of DiffType `fileNameA` is always our file name
-        fileName = fileNameA;
+        // Regardless of DiffType `filePathA` is always our file name
+        filePath = filePathA;
 
         // We have a rename situation
-        if(fileNameA !== fileNameB) {
+        if(filePathA !== filePathB) {
           diffType = "renamed"
         }
 
@@ -166,7 +166,7 @@ const getSingleFileDiff = (diffByLines: string[]): [string[], FileDiff] => {
       case "line-2":
 
         // Should always be set on the first line
-        if(fileName === null) {
+        if(filePath === null) {
           throw new DiffParserError("Internal Error: 1");
         }
 
@@ -176,7 +176,7 @@ const getSingleFileDiff = (diffByLines: string[]): [string[], FileDiff] => {
             // We can proceed to the next git diff
             return [
               R.drop(4, diffByLines),
-              { diffType, fileName, alteredLines: noAlteredLines() }
+              { diffType, filePath, alteredLines: noAlteredLines() }
             ]
           } else {
             // It's a rename and a modifcation, we still have to parse modifications
@@ -190,13 +190,13 @@ const getSingleFileDiff = (diffByLines: string[]): [string[], FileDiff] => {
 
         // Deleted file
         if (line.startsWith(DELETED_FILE_PREFIX)) {
-          deletedFile = { diffType: "deleted", fileName }
+          deletedFile = { diffType: "deleted", filePath }
           break;
         }
 
         // New file
         if (line.startsWith(NEW_FILE_PREFIX)) {
-          newFile = { diffType: "new", fileName }
+          newFile = { diffType: "new", filePath }
           break;
         }
 
@@ -210,7 +210,7 @@ const getSingleFileDiff = (diffByLines: string[]): [string[], FileDiff] => {
       case "diff":
 
         // At this stage we should have the file name and the diff type
-        if (diffType === null || !(diffType === "modified" || diffType === "renamed") || fileName === null) {
+        if (diffType === null || !(diffType === "modified" || diffType === "renamed") || filePath === null) {
           throw new DiffParserError("Internal Error: 3")
         }
 
@@ -221,13 +221,13 @@ const getSingleFileDiff = (diffByLines: string[]): [string[], FileDiff] => {
           // Meaningless if/else to make ts happy.
           if(diffType === "modified") {
             modifiedFile = {
-              fileName,
+              filePath,
               diffType,
               alteredLines: noAlteredLines()
             }
           } else {
             modifiedFile = {
-              fileName,
+              filePath,
               diffType,
               alteredLines: noAlteredLines()
             }

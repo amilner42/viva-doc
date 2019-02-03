@@ -79,8 +79,13 @@ export = (app: Application) => {
         return context.github.repos.getContents({
           owner,
           repo,
-          path
-        }).then(R.path(["data"]))
+          path,
+          ref: currentCommitId
+        })
+        .then(R.path<any>(["data"]))
+        .then((data) => {
+          return (new Buffer(data.content, data.encoding)).toString("ascii")
+        })
       }
 
       const setStatus = async (statusState: "success" | "failure") => {

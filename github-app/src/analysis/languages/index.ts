@@ -1,5 +1,7 @@
 // Module representing the interface to all language-specific code
 
+import R from "ramda"
+
 import { AnalysisError } from "../error"
 
 /** EXTERNAL TYPES */
@@ -31,8 +33,9 @@ export const getLanguage = (extension: string): Language => {
   throw new LanguageParserError("unsupported-extension", `No language for file extension: ${extension}`)
 }
 
-export const extractFileType = (fileName: string): Language => {
+export const extractFileType = (filePath: string): Language => {
 
+  const fileName: string = R.last(filePath.split("/")) as string
   const [ , extension ] = fileName.split(".")
 
   if (extension === undefined) {
