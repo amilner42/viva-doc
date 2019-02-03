@@ -1,34 +1,55 @@
 // Base module for all analysis
 
-import { Diff, ParseDiffError, parseDiff } from "./diff-parser"
+import R from "ramda"
 
-// @PROD This is the prototype-version, doesn't handle errors great
-// In prod we'll probably need to save things to a db in case of error and retry later.
+import { Diff, parseDiff } from "./diff-parser"
+import { Language, LanguageParserError, extractFileType } from "./languages/index"
+
+// TODO DOC
+// @THROWS TODO
 export const analyzeCommitDiffAndSubmitStatus = async (
   retrieveDiff: () => Promise<any>,
   retrieveFile: (path: string) => Promise<any>,
   setStatus: (statusState: "success" | "failure") => Promise<any>
 ): Promise<void> => {
 
-  let diffAsStr: string;
+  const fullDiff: Diff = parseDiff(await retrieveDiff())
 
-  try {
-    diffAsStr = await retrieveDiff()
-  } catch (err) {
-    // @PROD handle this error properly
-    console.log(`failure to retreive diff: ${JSON.stringify(err)}`)
-    return;
+  // Keep only the languages we support
+  const analyzableDiff: Diff = R.filter(
+    (fileDiff) => {
+      try {
+        extractFileType(fileDiff.fileName)
+        return true
+      } catch ( err ) {
+        if (err instanceof LanguageParserError) {
+          switch (err.type) {
+
+            case "unsupported-extension":
+              return false;
+
+            case "unsupported-file":
+              return false;
+          }
+
+          // Otherwise propogate error
+          throw err;
+        }
+
+        // Otherwise propogate error
+        throw err;
+      }
+    },
+    fullDiff
+  )
+
+  // Nothing to analyze
+  if (analyzableDiff.length === 0) {
+    setStatus("success")
+    return
   }
 
-  let diff: Diff;
-
-  try {
-    diff = parseDiff(diffAsStr)
-  } catch (err) {
-    // @PROD handle this error properly
-    console.log(`Hit err: ${err}  --- ${JSON.stringify(err)}`)
-    return;
-  }
-
-  return Promise.resolve();
+  // Otherwise we have to analyze each file
+  // TODO
+  return
 }

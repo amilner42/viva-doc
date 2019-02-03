@@ -1,6 +1,8 @@
 // Module for handling parsing git diffs
 import R from "ramda"
 
+import { AnalysisError } from "./error"
+
 /** EXTERNAL TYPES */
 
 export type Diff = FileDiff[]
@@ -35,10 +37,9 @@ export interface DeletedFileDiff {
 }
 
 // All errors from this module
-export class ParseDiffError extends Error {
+export class DiffParserError extends AnalysisError {
   constructor(...args: any[]) {
     super(...args);
-    Error.captureStackTrace(this, ParseDiffError);
   }
 }
 
@@ -124,13 +125,13 @@ const getSingleFileDiff = (diffByLines: string[]): [string[], FileDiff] => {
         let remainingLine = line
 
         if(!remainingLine.startsWith(FILE_DIFF_FIRST_LINE)) {
-          throw new ParseDiffError(`Expected diff to start with "${FILE_DIFF_FIRST_LINE}": ${line}`)
+          throw new DiffParserError(`Expected diff to start with "${FILE_DIFF_FIRST_LINE}": ${line}`)
         }
 
         remainingLine = line.substr(FILE_DIFF_FIRST_LINE.length)
 
         if(!remainingLine.startsWith(fileAPrefix)) {
-          throw new ParseDiffError(
+          throw new DiffParserError(
             `Malformed first line of git diff, must have "${fileAPrefix}" after "${FILE_DIFF_FIRST_LINE}": ${line}`
           )
         }
@@ -140,14 +141,14 @@ const getSingleFileDiff = (diffByLines: string[]): [string[], FileDiff] => {
         const bothFiles = remainingLine.split(fileBPrefix)
 
         if(bothFiles.length !== 2) {
-          throw new ParseDiffError(`Expected exactly 2 files on the first line: ${line}`)
+          throw new DiffParserError(`Expected exactly 2 files on the first line: ${line}`)
         }
 
         const fileNameA = bothFiles[0]
         const fileNameB = bothFiles[1]
 
         if(fileNameA === "" || fileNameB === "") {
-          throw new ParseDiffError(`You can't have empty file names: ${line}`)
+          throw new DiffParserError(`You can't have empty file names: ${line}`)
         }
 
         // Regardless of DiffType `fileNameA` is always our file name
@@ -166,7 +167,7 @@ const getSingleFileDiff = (diffByLines: string[]): [string[], FileDiff] => {
 
         // Should always be set on the first line
         if(fileName === null) {
-          throw new ParseDiffError("Internal Error: 1");
+          throw new DiffParserError("Internal Error: 1");
         }
 
         if (diffType === "renamed") {
@@ -210,7 +211,7 @@ const getSingleFileDiff = (diffByLines: string[]): [string[], FileDiff] => {
 
         // At this stage we should have the file name and the diff type
         if (diffType === null || !(diffType === "modified" || diffType === "renamed") || fileName === null) {
-          throw new ParseDiffError("Internal Error: 3")
+          throw new DiffParserError("Internal Error: 3")
         }
 
         // We should be on a diff hunk if we have no saved start line
@@ -238,7 +239,7 @@ const getSingleFileDiff = (diffByLines: string[]): [string[], FileDiff] => {
         // Otherwise we could be in the last diff or hit a new diff hunk
 
         if (modifiedFile === null) {
-          throw new ParseDiffError("Internal Error: 5")
+          throw new DiffParserError("Internal Error: 5")
         }
 
         // An unaltered line
@@ -274,7 +275,7 @@ const getSingleFileDiff = (diffByLines: string[]): [string[], FileDiff] => {
 
         // Otherwise we're on to another git diff
         if (modifiedFile === null) {
-          throw new ParseDiffError("Internal Error: 4")
+          throw new DiffParserError("Internal Error: 4")
         }
         return [ R.drop(lineIndex - 1, diffByLines), modifiedFile ]
 
@@ -296,7 +297,7 @@ const getSingleFileDiff = (diffByLines: string[]): [string[], FileDiff] => {
     return [ [], modifiedFile ]
   }
 
-  throw new ParseDiffError("Internal Error: 2")
+  throw new DiffParserError("Internal Error: 2")
 }
 
 // Extracts the start line on the from range of a git diff hunk:
@@ -305,11 +306,11 @@ const getSingleFileDiff = (diffByLines: string[]): [string[], FileDiff] => {
 const extractStartLineFromHunk = (line: string): number => {
 
   if(!line.startsWith(HUNK_PREFIX)) {
-    throw new ParseDiffError(`Malformed git hunk, supposed to start with "${HUNK_PREFIX}": ${line}`)
+    throw new DiffParserError(`Malformed git hunk, supposed to start with "${HUNK_PREFIX}": ${line}`)
   }
 
   if(!line.includes(HUNK_SUFFIX)) {
-    throw new ParseDiffError(`Malformed diff hunk, supposed to include "${HUNK_SUFFIX}": ${line}`)
+    throw new DiffParserError(`Malformed diff hunk, supposed to include "${HUNK_SUFFIX}": ${line}`)
   }
 
   const indexOfSuffix = line.indexOf(HUNK_SUFFIX);
@@ -317,13 +318,13 @@ const extractStartLineFromHunk = (line: string): number => {
   const fromAndToRange = hunkValue.split(" ")
 
   if (fromAndToRange.length !== 2) {
-    throw new ParseDiffError(`Malformed diff hunk, supposed to have to and from range sep by a space: ${line}`)
+    throw new DiffParserError(`Malformed diff hunk, supposed to have to and from range sep by a space: ${line}`)
   }
 
   const toRange = fromAndToRange[1];
 
   if (!toRange.startsWith(HUNK_TO_RANGE_PREFIX)) {
-    throw new ParseDiffError(`Malformed diff hunk, toRange doesn't start with a "${HUNK_TO_RANGE_PREFIX}": ${line}`)
+    throw new DiffParserError(`Malformed diff hunk, toRange doesn't start with a "${HUNK_TO_RANGE_PREFIX}": ${line}`)
   }
 
   const rangeAfterPrefixAsArray: string[] = toRange.substr(1).split("")
@@ -331,7 +332,7 @@ const extractStartLineFromHunk = (line: string): number => {
   const toRangeStartLineNumber = parseInt(numericalChars.join(""))
 
   if (isNaN(toRangeStartLineNumber)) {
-    throw new ParseDiffError(`Malformed diff hunk, expected a number for toRange start line: ${line}`)
+    throw new DiffParserError(`Malformed diff hunk, expected a number for toRange start line: ${line}`)
   }
 
   return toRangeStartLineNumber

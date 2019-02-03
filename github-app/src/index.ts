@@ -93,12 +93,17 @@ export = (app: Application) => {
         }).then(R.path(["data"]))
       }
 
-      analyzeCommitDiffAndSubmitStatus(
-        retrieveDiff,
-        retrieveFile,
-        setStatus
-      )
-    }
-  })
+      try {
+        analyzeCommitDiffAndSubmitStatus(
+          retrieveDiff,
+          retrieveFile,
+          setStatus
+        )
+      } catch (err) {
+        // @PROD handle error
+        console.log(`ERROR: ${err} --- ${JSON.stringify(err)}`)
+      }
+    } // for loop each commit
+   })
 
 }
