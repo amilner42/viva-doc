@@ -7,9 +7,12 @@ import { AnalysisError } from "./error"
 
 export type Diff = FileDiff[]
 
-export interface AlteredLines {
-  addedLines: number[],
-  deletedLines: number[]
+export type AlteredLines = LineDiff[];
+
+export interface LineDiff {
+  type: "added" | "deleted"
+  lineNumber: number;
+  content: string;
 }
 
 export type FileDiff = NewFileDiff | ModifiedFileDiff | RenamedFileDiff | DeletedFileDiff
@@ -177,7 +180,7 @@ const getSingleFileDiff = (diffByLines: string[]): [string[], FileDiff] => {
             // We can proceed to the next git diff
             return [
               R.drop(4, diffByLines),
-              { diffType, filePath, alteredLines: noAlteredLines() }
+              { diffType, filePath, alteredLines: [] }
             ]
           } else {
             // It's a rename and a modifcation, we still have to parse modifications
@@ -224,13 +227,13 @@ const getSingleFileDiff = (diffByLines: string[]): [string[], FileDiff] => {
             modifiedFile = {
               filePath,
               diffType,
-              alteredLines: noAlteredLines()
+              alteredLines: []
             }
           } else {
             modifiedFile = {
               filePath,
               diffType,
-              alteredLines: noAlteredLines()
+              alteredLines: []
             }
           }
 
@@ -251,19 +254,23 @@ const getSingleFileDiff = (diffByLines: string[]): [string[], FileDiff] => {
 
         // A deleted line
         if (line.startsWith(MODIFIED_DELETED_LINE_PREFIX)) {
-          const lastDelete = R.last(modifiedFile.alteredLines.deletedLines)
 
-          // We won't record multiple deletes in a row, just where the delete started
-          if(lastDelete !== diffLineNumber) {
-            modifiedFile.alteredLines.deletedLines.push(diffLineNumber)
-          }
+          modifiedFile.alteredLines.push({
+            type: "deleted",
+            lineNumber: diffLineNumber,
+            content: line.substr(MODIFIED_DELETED_LINE_PREFIX.length)
+          })
 
           break
         }
 
         // An added line
         if (line.startsWith(MODIFIED_ADDED_LINE_PREFIX)) {
-          modifiedFile.alteredLines.addedLines.push(diffLineNumber)
+          modifiedFile.alteredLines.push({
+            type: "added",
+            lineNumber: diffLineNumber,
+            content: line.substr(MODIFIED_ADDED_LINE_PREFIX.length)
+          })
           diffLineNumber++
           break
         }
@@ -337,12 +344,4 @@ const extractStartLineFromHunk = (line: string): number => {
   }
 
   return toRangeStartLineNumber
-}
-
-// Gets a new object representing no altered lines.
-const noAlteredLines = (): AlteredLines => {
-  return R.clone({
-    addedLines: [],
-    deletedLines: []
-  })
 }
