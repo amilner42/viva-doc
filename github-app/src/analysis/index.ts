@@ -2,7 +2,8 @@
 
 import R from "ramda"
 
-import { Diff, parseDiff } from "./diff-parser"
+import { Diff, FileDiff, parseDiff } from "./diff-parser"
+import { File, analyzeFile } from "./file-parser"
 import { Language, LanguageParserError, extractFileType } from "./languages/index"
 import { AnalysisError } from "./error"
 
@@ -50,15 +51,27 @@ export const analyzeCommitDiffAndSubmitStatus = async (
     return
   }
 
-  let files: string[];
+  let files: File[];
 
   // Fetch all files needed for analysis
   try {
-    files = await Promise.all(analyzableDiff.map((fileDiff) => {
-      return retrieveFile(fileDiff.filePath)
+    files = await Promise.all(analyzableDiff.map(async (fileDiff) => {
+      let content = await retrieveFile(fileDiff.filePath)
+      return R.merge({ content }, fileDiff)
     }))
   } catch (err) {
     throw new AnalysisError(`Failed to retrieve files: ${err} --- ${JSON.stringify(err)}`)
+  }
+
+  // Analyze all files
+  const fileAnalysisResults = files.map(analyzeFile)
+
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i]
+    const fileAnalysis = fileAnalysisResults[i]
+
+    console.log(`File         : ${JSON.stringify(file)}`)
+    console.log(`File analysis: ${JSON.stringify(fileAnalysis)}`)
   }
 
   return

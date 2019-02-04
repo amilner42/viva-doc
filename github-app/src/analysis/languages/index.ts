@@ -3,6 +3,8 @@
 import R from "ramda"
 
 import { AnalysisError } from "../error"
+import { File, VdTag } from "../file-parser"
+import * as javascript from "./javascript"
 
 /** EXTERNAL TYPES */
 
@@ -33,6 +35,7 @@ export const getLanguage = (extension: string): Language => {
   throw new LanguageParserError("unsupported-extension", `No language for file extension: ${extension}`)
 }
 
+// Extract the language from the extension or throw an error if we don't support that language.
 export const extractFileType = (filePath: string): Language => {
 
   const fileName: string = R.last(filePath.split("/")) as string
@@ -43,4 +46,17 @@ export const extractFileType = (filePath: string): Language => {
   }
 
   return getLanguage(extension)
+}
+
+// Parses the tags based on the langauge of the file
+export const parseVdTags = (file: File): VdTag[] => {
+
+  const language = extractFileType(file.filePath)
+
+  switch (language) {
+
+    case "Javascript":
+      return javascript.parseVdTags(file)
+  }
+
 }
