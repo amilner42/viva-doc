@@ -46,13 +46,13 @@ const VD_TAG = "@VD"
 // Returns all line numbers of @VD tags that need to be approved.
 export const analyzeFile = (params: AnalyzeFileParams): VdTagNeedingApproval[] => {
 
-  return getTagsNeedingApproval(parseVdTags(params))
+  return getTagsNeedingApproval(params, parseVdTags(params))
 }
 
 /** INERNAL FUNCTIONS */
 
 // TODO
-const getTagsNeedingApproval = (vdTags: VdTag[]): VdTagNeedingApproval[] => {
+const getTagsNeedingApproval = (params: AnalyzeFileParams, vdTags: VdTag[]): VdTagNeedingApproval[] => {
 
   throw new Error("NOT IMPLEMENETED YET")
 }

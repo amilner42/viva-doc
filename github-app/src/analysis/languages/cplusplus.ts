@@ -1,8 +1,8 @@
-// Module for javascript-specific parsing functionality
+// Module for cplusplus-specific parsing functionality
 
 import { VdTag, AnalyzeFileParams } from "../tag-parser"
 
-// Parses all VD tags from a javascript file.
+// Parses all VD tags from a cplusplus file.
 export const parseVdTags = (params: AnalyzeFileParams): VdTag[] => {
 
   // Parse file according to diff type
