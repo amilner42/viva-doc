@@ -2,7 +2,7 @@
 
 import R from "ramda"
 
-import { AnalysisError } from "../error"
+import { AnalysisError } from "../index"
 import { AnalyzeFileParams, VdTag } from "../tag-parser"
 import * as javascript from "./javascript"
 

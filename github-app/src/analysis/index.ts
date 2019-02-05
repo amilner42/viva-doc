@@ -2,10 +2,18 @@
 
 import R from "ramda"
 
+import { ProtoAppError } from "../error"
 import { Diff, parseDiff } from "./diff-parser"
 import { AnalyzeFileParams, analyzeFile } from "./tag-parser"
 import { LanguageParserError, extractFileType } from "./languages/index"
-import { AnalysisError } from "./error"
+
+/** EXTERNAL TYPES */
+
+export class AnalysisError extends ProtoAppError {
+  constructor(msg: string) { super(msg) }
+}
+
+/** EXTERNAL FUNCTIONS */
 
 // TODO DOC
 // @THROWS TODO

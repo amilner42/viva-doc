@@ -1,8 +1,8 @@
 // Module for handling parsing git diffs
 import R from "ramda"
 
-import { AnalysisError } from "./error"
 import { Maybe } from "../functional-types"
+import { AnalysisError } from "./index"
 
 /** EXTERNAL TYPES */
 
