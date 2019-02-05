@@ -1,11 +1,16 @@
 // Module for handling parsing files for VD tags.
 
-import { FileDiff } from "./diff-parser"
+import { ModifiedFileDiff, RenamedFileDiff, DeletedFileDiff, NewFileDiff } from "./diff-parser"
 import { parseVdTags } from "./languages/index"
 
 /** EXTERNAL TYPES */
 
-export type File = ({ content: string[] } & FileDiff)
+export type AnalyzeFileParams =
+  { type: "modified", previousFileContent: string, fileContent: string, diff: ModifiedFileDiff } |
+  { type: "renamed", previousFileContent: string, fileContent: string, diff: RenamedFileDiff } |
+  { type: "new", diff: NewFileDiff } |
+  { type: "deleted", diff: DeletedFileDiff }
+
 
 // All possible VD tag types
 export type VdTag = VdFunctionTag
@@ -39,23 +44,15 @@ const VD_TAG = "@VD"
 /** EXTERNAL FUNCTIONS */
 
 // Returns all line numbers of @VD tags that need to be approved.
-export const analyzeFile = (file: File): VdTagNeedingApproval[] => {
+export const analyzeFile = (params: AnalyzeFileParams): VdTagNeedingApproval[] => {
 
-  // With no tags there's nothing to worry about
-  if(!file.content.includes(VD_TAG)) {
-    return []
-  }
-
-  // Otherwise we need to parse the file and extract the comment
-  const vdTags: VdTag[] = parseVdTags(file)
-
-  // TODO
-  return getTagsNeedingApproval(vdTags)
+  return getTagsNeedingApproval(parseVdTags(params))
 }
 
 /** INERNAL FUNCTIONS */
 
 // TODO
 const getTagsNeedingApproval = (vdTags: VdTag[]): VdTagNeedingApproval[] => {
+
   throw new Error("NOT IMPLEMENETED YET")
 }

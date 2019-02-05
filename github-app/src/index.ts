@@ -46,9 +46,11 @@ export = (app: Application) => {
     const pushPayload = context.payload
     const commits = pushPayload.commits
     const { owner, repo } = context.repo()
+    const baseCommitId = pushPayload.before
 
-    for (let commit of commits) {
-      const currentCommitId = commit.id
+    for (let i = 0; i < commits.length; i++) {
+      const previousCommitId = (i === 0) ? baseCommitId : commits[i - 1]
+      const currentCommitId = commits[0].id
 
       // First: set status to pending for each commit
       context.github.repos.createStatus({
@@ -75,17 +77,26 @@ export = (app: Application) => {
         } as any).then(R.path(["data"]))
       }
 
-      const retrieveFile = async (path: string): Promise<any> => {
-        return context.github.repos.getContents({
-          owner,
-          repo,
-          path,
-          ref: currentCommitId
-        })
-        .then(R.path<any>(["data"]))
-        .then((data) => {
-          return (new Buffer(data.content, data.encoding)).toString("ascii")
-        })
+      const retrieveFiles = async (previousFilePath: string, newFilePath: string): Promise<[string, string]> => {
+
+        const getFile = async (commitId: string, path: string): Promise<string> => {
+          return context.github.repos.getContents({
+            owner,
+            repo,
+            path,
+            ref: commitId
+          })
+          .then(R.path<any>(["data"]))
+          .then((data) => {
+            return (new Buffer(data.content, data.encoding)).toString("ascii")
+          })
+        }
+
+
+        const previousFile = await getFile(previousCommitId, previousFilePath)
+        const currentFile = await getFile(currentCommitId, newFilePath)
+
+        return [ previousFile, currentFile ]
       }
 
       const setStatus = async (statusState: "success" | "failure") => {
@@ -101,7 +112,7 @@ export = (app: Application) => {
       try {
         analyzeCommitDiffAndSubmitStatus(
           retrieveDiff,
-          retrieveFile,
+          retrieveFiles,
           setStatus
         )
       } catch (err) {

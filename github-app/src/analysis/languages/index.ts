@@ -3,7 +3,7 @@
 import R from "ramda"
 
 import { AnalysisError } from "../error"
-import { File, VdTag } from "../file-parser"
+import { AnalyzeFileParams, VdTag } from "../tag-parser"
 import * as javascript from "./javascript"
 
 /** EXTERNAL TYPES */
@@ -49,14 +49,15 @@ export const extractFileType = (filePath: string): Language => {
 }
 
 // Parses the tags based on the langauge of the file
-export const parseVdTags = (file: File): VdTag[] => {
+export const parseVdTags = (params: AnalyzeFileParams): VdTag[] => {
 
-  const language = extractFileType(file.filePath)
+  // TODO what about the case where the language changes on a "rename"?
+  const language = extractFileType(params.diff.filePath)
 
   switch (language) {
 
     case "Javascript":
-      return javascript.parseVdTags(file)
+      return javascript.parseVdTags(params)
   }
 
 }

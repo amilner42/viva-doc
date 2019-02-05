@@ -2,16 +2,16 @@
 
 import R from "ramda"
 
-import { Diff, FileDiff, parseDiff } from "./diff-parser"
-import { File, analyzeFile } from "./file-parser"
-import { Language, LanguageParserError, extractFileType } from "./languages/index"
+import { Diff, parseDiff } from "./diff-parser"
+import { AnalyzeFileParams, analyzeFile } from "./tag-parser"
+import { LanguageParserError, extractFileType } from "./languages/index"
 import { AnalysisError } from "./error"
 
 // TODO DOC
 // @THROWS TODO
 export const analyzeCommitDiffAndSubmitStatus = async (
   retrieveDiff: () => Promise<any>,
-  retrieveFile: (path: string) => Promise<any>,
+  retrieveFiles: (previousFilePath: string, newFilePath: string) => Promise<[string, string]>,
   setStatus: (statusState: "success" | "failure") => Promise<any>
 ): Promise<void> => {
 
@@ -51,28 +51,42 @@ export const analyzeCommitDiffAndSubmitStatus = async (
     return
   }
 
-  let files: File[];
+  let fileAnalysisParamsArray: AnalyzeFileParams[];
 
   // Fetch all files needed for analysis
   try {
-    files = await Promise.all(analyzableDiff.map(async (fileDiff) => {
-      let content = await retrieveFile(fileDiff.filePath)
-      return R.merge({ content }, fileDiff)
+    fileAnalysisParamsArray = await Promise.all(analyzableDiff.map(async (fileDiff): Promise<AnalyzeFileParams> => {
+
+      let previousFileContent;
+      let fileContent;
+
+      switch (fileDiff.diffType) {
+
+        case "modified":
+          [ previousFileContent, fileContent ] = await retrieveFiles(fileDiff.filePath, fileDiff.filePath)
+          return { type: "modified", previousFileContent, fileContent, diff: fileDiff  }
+
+        case "renamed":
+          [ previousFileContent, fileContent ] = await retrieveFiles(fileDiff.filePath, fileDiff.newFilePath)
+          return { type: "renamed", previousFileContent, fileContent, diff: fileDiff  }
+
+
+        case "deleted":
+          return { type: "deleted", diff: fileDiff }
+
+        case "new":
+          return { type: "new", diff: fileDiff }
+      }
+
     }))
+
   } catch (err) {
     throw new AnalysisError(`Failed to retrieve files: ${err} --- ${JSON.stringify(err)}`)
   }
 
   // Analyze all files
-  const fileAnalysisResults = files.map(analyzeFile)
-
-  for (let i = 0; i < files.length; i++) {
-    const file = files[i]
-    const fileAnalysis = fileAnalysisResults[i]
-
-    console.log(`File         : ${JSON.stringify(file)}`)
-    console.log(`File analysis: ${JSON.stringify(fileAnalysis)}`)
-  }
+  const tagsNeedingApproval = fileAnalysisParamsArray.map(analyzeFile)
+  console.log(`Tags needing approval: ${JSON.stringify(tagsNeedingApproval)}`)
 
   return
 }
