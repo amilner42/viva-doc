@@ -47,8 +47,8 @@ export interface DeletedFileDiff {
 
 // All errors from this module
 export class DiffParserError extends AnalysisError {
-  constructor(...args: any[]) {
-    super(...args);
+  constructor(msg: string) {
+    super(msg);
   }
 }
 

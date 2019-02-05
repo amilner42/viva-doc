@@ -6,8 +6,11 @@ export class AnalysisError {
 
   // Stack trace
   public stack: any;
+  public message: string;
 
-  constructor(...args: any[]) {
-    Error.captureStackTrace(this, AnalysisError);
+  constructor(msg: string) {
+    const err = new Error()
+    this.stack = err.stack
+    this.message = msg
   }
 }
