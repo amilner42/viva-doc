@@ -2,8 +2,9 @@
 
 import R from "ramda"
 
+import { Maybe } from "../../functional-types"
 import { AnalysisError } from "../index"
-import { DiffWithFiles, VdTag } from "../tag-parser"
+import { DiffWithFiles, VdTag, DiffWithFilesAndTags } from "../tag-parser"
 
 // Language parsing imports
 import * as cpp from "./cplusplus"
@@ -28,6 +29,11 @@ export class LanguageParserError extends AnalysisError {
     super(`Language Parser Error --- Type: ${type} , Optional Message: ${mssg}`)
     this.type = type
   }
+}
+
+// TODO
+export interface FileParser {
+
 }
 
 /** EXTERNAL FUNCTIONS */
@@ -69,29 +75,92 @@ export const extractFileType = (filePath: string): Language => {
   return getLanguage(extension)
 }
 
+// export type DiffWithFilesAndTags =
+
 // Parses the tags based on the langauge of the file
-export const parseVdTags = (params: DiffWithFiles): VdTag[] => {
+export const parseVdTags = (diffWF: DiffWithFiles): DiffWithFilesAndTags => {
 
   // TODO what about the case where the language changes on a "rename"?
-  const language = extractFileType(params.diff.filePath)
+  const language = extractFileType(diffWF.filePath)
+  const fileParser: FileParser = getFileParser(language)
 
+  switch (diffWF.diffType) {
+
+    case "new": {
+
+      const file =
+        R.pipe(
+          R.map(R.path(["content"])),
+          R.join("\n")
+        )(diffWF.alteredLines)
+
+      return R.merge(
+        diffWF,
+        { fileTags: parseFile(fileParser, file )}
+      )
+    }
+
+    case "deleted": {
+
+      const file =
+        R.pipe(
+          R.map(R.path(["content"])),
+          R.join("\n")
+        )(diffWF.alteredLines)
+
+
+      return R.merge(diffWF, { fileTags: parseFile(fileParser, file) })
+    }
+
+    case "renamed":
+      return R.merge(
+        diffWF,
+        {
+          fileTags: parseFile(fileParser, diffWF.fileContent),
+          previousFileTags: parseFile(fileParser, diffWF.previousFileContent),
+        }
+      )
+
+    case "modified":
+      return R.merge(
+        diffWF,
+        {
+          fileTags: parseFile(fileParser, diffWF.fileContent),
+          previousFileTags: parseFile(fileParser, diffWF.previousFileContent)
+        }
+      )
+
+  } // end switch
+}
+
+// The abstract part of parsing a file, using the file parser to do language-specific functions.
+const parseFile = (fileParser: FileParser, file: String): VdTag[] => {
+  throw new Error("NOT IMPLEMENTED")
+}
+
+// TODO DOC
+const getFileParser = (language: Language): FileParser => {
   switch (language) {
 
     case "CPlusPlus":
-      return cpp.parseVdTags(params)
+      throw new Error("NOT IMPLEMENTED")
+      // return cpp.fileParser
 
     case "Java":
-      return java.parseVdTags(params)
+      throw new Error("NOT IMPLEMENTED")
+      // return java.fileParser
 
     case "Javascript":
-      return javascript.parseVdTags(params)
+      throw new Error("NOT IMPLEMENTED")
+      // return javascript.fileParser
 
     case "Python":
-      return python.parseVdTags(params)
+      throw new Error("NOT IMPLEMENTED")
+      // return python.fileParser
 
     case "Typescript":
-      return typescript.parseVdTags(params)
+      throw new Error("NOT IMPLEMENTED")
+      // return typescript.fileParser
 
-  }
-
+  } // end switch
 }

@@ -1,16 +1,60 @@
 // Module for handling parsing files for VD tags.
 
+import R from "ramda"
+
 import { ModifiedFileDiff, RenamedFileDiff, DeletedFileDiff, NewFileDiff } from "./diff-parser"
 import { parseVdTags } from "./languages/index"
 
 /** EXTERNAL TYPES */
 
+// Adding the files for diffs that contain the full file
 export type DiffWithFiles =
-  { diffType: "modified", diff: ModifiedFileDiff, previousFileContent: string, fileContent: string } |
-  { diffType: "renamed",  diff: RenamedFileDiff, previousFileContent: string, fileContent: string } |
-  { diffType: "new", diff: NewFileDiff } |
-  { diffType: "deleted", diff: DeletedFileDiff }
+  ModifiedDiffWithFiles |
+  RenamedDiffWithFiles |
+  NewDiffWithFiles |
+  DeletedDiffWithFiles
 
+
+export type ModifiedDiffWithFiles = ModifiedFileDiff & {
+  previousFileContent: string,
+  fileContent: string
+}
+
+export type RenamedDiffWithFiles = RenamedFileDiff & {
+  previousFileContent: string,
+  fileContent: string
+}
+
+// The full file is present already in the diff itself
+export type NewDiffWithFiles = NewFileDiff
+
+// The full file is present already in the diff itself
+export type DeletedDiffWithFiles = DeletedFileDiff
+
+//
+export type DiffWithFilesAndTags =
+  ModifiedDiffWithFilesAndTags |
+  RenamedDiffWithFilesAndTags |
+  NewDiffWithFilesAndTags |
+  DeletedDiffWithFilesAndTags
+
+export type ModifiedDiffWithFilesAndTags = ModifiedDiffWithFiles & {
+  previousFileTags: VdTag[];
+  fileTags: VdTag[];
+}
+
+export type RenamedDiffWithFilesAndTags = RenamedDiffWithFiles & {
+  previousFileTags: VdTag[];
+  fileTags: VdTag[];
+}
+
+export type NewDiffWithFilesAndTags = NewDiffWithFiles & {
+  fileTags: VdTag[];
+}
+
+export type DeletedDiffWithFilesAndTags= DeletedDiffWithFiles & {
+  fileTags: VdTag[];
+}
 
 /** All possible VD tag types
  *
@@ -26,7 +70,6 @@ export interface BaseTag {
   tagType: VdTagType;
   vdTagLineNumber: number;
   owner: string;
-  content: string[];
 }
 
 // All tags that have line ownership should have these properties.
@@ -96,18 +139,32 @@ const VD_TAG = "@VD"
 
 /** EXTERNAL FUNCTIONS */
 
-// Returns all line numbers of @VD tags that need to be approved.
-export const analyzeFile = (diffWithFiles: DiffWithFiles): Review[] => {
+// TODO DOC
+export const getFileReview = (diffWF: DiffWithFiles): Review[] => {
 
-  const vdTags = parseVdTags(diffWithFiles)
+  const diffWFAT = parseVdTags(diffWF)
 
-  switch ( diffWithFiles.diffType ) {
+  switch ( diffWFAT.diffType ) {
 
     case "new":
-      throw new Error("NOT IMPLEMENETED YET")
+
+      return R.map<VdTag, Review>((fileTag) => {
+        return {
+          reviewType: "new",
+          tag: fileTag,
+          isNewFile: true
+        }
+      }, diffWFAT.fileTags)
 
     case "deleted":
-      throw new Error("NOT IMPLEMENETED YET")
+
+      return R.map<VdTag, Review>((fileTag) => {
+        return {
+          reviewType: "deleted",
+          tag: fileTag,
+          isDeletedFile: true
+        }
+      }, diffWFAT.fileTags)
 
     case "renamed":
       throw new Error("NOT IMPLEMENETED YET")

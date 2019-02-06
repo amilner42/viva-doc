@@ -4,7 +4,7 @@ import R from "ramda"
 
 import { ProtoAppError } from "../error"
 import { Diff, parseDiff } from "./diff-parser"
-import { DiffWithFiles, analyzeFile } from "./tag-parser"
+import { DiffWithFiles, getFileReview } from "./tag-parser"
 import { LanguageParserError, extractFileType } from "./languages/index"
 
 /** EXTERNAL TYPES */
@@ -59,11 +59,11 @@ export const analyzeCommitDiffAndSubmitStatus = async (
     return
   }
 
-  let fileAnalysisParamsArray: DiffWithFiles[];
+  let diffWFs: DiffWithFiles[];
 
   // Fetch all files needed for analysis
   try {
-    fileAnalysisParamsArray = await Promise.all(analyzableDiff.map(async (fileDiff): Promise<DiffWithFiles> => {
+    diffWFs = await Promise.all(analyzableDiff.map(async (fileDiff): Promise<DiffWithFiles> => {
 
       let previousFileContent;
       let fileContent;
@@ -72,18 +72,17 @@ export const analyzeCommitDiffAndSubmitStatus = async (
 
         case "modified":
           [ previousFileContent, fileContent ] = await retrieveFiles(fileDiff.filePath, fileDiff.filePath)
-          return { diffType: "modified", previousFileContent, fileContent, diff: fileDiff  }
+          return R.merge(fileDiff, {  previousFileContent, fileContent })
 
         case "renamed":
           [ previousFileContent, fileContent ] = await retrieveFiles(fileDiff.filePath, fileDiff.newFilePath)
-          return { diffType: "renamed", previousFileContent, fileContent, diff: fileDiff  }
-
+          return R.merge(fileDiff, { previousFileContent, fileContent })
 
         case "deleted":
-          return { diffType: "deleted", diff: fileDiff }
+          return fileDiff
 
         case "new":
-          return { diffType: "new", diff: fileDiff }
+          return fileDiff
       }
 
     }))
@@ -93,8 +92,8 @@ export const analyzeCommitDiffAndSubmitStatus = async (
   }
 
   // Analyze all files
-  const tagsNeedingApproval = fileAnalysisParamsArray.map(analyzeFile)
-  console.log(`Tags needing approval: ${JSON.stringify(tagsNeedingApproval)}`)
+  const fileReviews = diffWFs.map(getFileReview)
+  console.log(`Tags needing approval: ${JSON.stringify(fileReviews)}`)
 
   return
 }
