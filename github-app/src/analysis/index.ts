@@ -2,16 +2,10 @@
 
 import R from "ramda"
 
-import { ProtoAppError } from "../error"
 import { Diff, parseDiff } from "./diff-parser"
 import { DiffWithFiles, getFileReview } from "./tag-parser"
 import { LanguageParserError, extractFileType } from "./languages/index"
-
-/** EXTERNAL TYPES */
-
-export class AnalysisError extends ProtoAppError {
-  constructor(msg: string) { super(msg) }
-}
+import { ProbotAppError } from "../error"
 
 /** EXTERNAL FUNCTIONS */
 
@@ -88,7 +82,7 @@ export const analyzeCommitDiffAndSubmitStatus = async (
     }))
 
   } catch (err) {
-    throw new AnalysisError(`Failed to retrieve files: ${err} --- ${JSON.stringify(err)}`)
+    throw new ProbotAppError(`Failed to retrieve files: ${err} --- ${JSON.stringify(err)}`)
   }
 
   // Analyze all files

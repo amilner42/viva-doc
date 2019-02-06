@@ -2,7 +2,7 @@
 import R from "ramda"
 
 import { Maybe } from "../functional-types"
-import { AnalysisError } from "./index"
+import { ProbotAppError } from "../error"
 
 /** EXTERNAL TYPES */
 
@@ -46,7 +46,7 @@ export interface DeletedFileDiff {
 }
 
 // All errors from this module
-export class DiffParserError extends AnalysisError {
+export class DiffParserError extends ProbotAppError {
   constructor(msg: string) {
     super(msg);
   }

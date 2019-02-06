@@ -3,7 +3,7 @@
 import R from "ramda"
 
 import { Maybe } from "../../functional-types"
-import { AnalysisError } from "../index"
+import { ProbotAppError } from "../../error"
 import { DiffWithFiles, VdTag, DiffWithFilesAndTags } from "../tag-parser"
 
 // Language parsing imports
@@ -21,7 +21,7 @@ export type Language = "CPlusPlus" | "Java" | "Javascript" | "Python" | "Typescr
 // All possible error types
 export type LanguageParserErrorType = "unsupported-file" | "unsupported-extension"
 
-export class LanguageParserError extends AnalysisError {
+export class LanguageParserError extends ProbotAppError {
 
   public type: LanguageParserErrorType;
 
