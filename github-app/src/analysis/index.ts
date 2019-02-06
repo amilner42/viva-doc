@@ -4,7 +4,7 @@ import R from "ramda"
 
 import { ProtoAppError } from "../error"
 import { Diff, parseDiff } from "./diff-parser"
-import { AnalyzeFileParams, analyzeFile } from "./tag-parser"
+import { DiffWithFiles, analyzeFile } from "./tag-parser"
 import { LanguageParserError, extractFileType } from "./languages/index"
 
 /** EXTERNAL TYPES */
@@ -59,11 +59,11 @@ export const analyzeCommitDiffAndSubmitStatus = async (
     return
   }
 
-  let fileAnalysisParamsArray: AnalyzeFileParams[];
+  let fileAnalysisParamsArray: DiffWithFiles[];
 
   // Fetch all files needed for analysis
   try {
-    fileAnalysisParamsArray = await Promise.all(analyzableDiff.map(async (fileDiff): Promise<AnalyzeFileParams> => {
+    fileAnalysisParamsArray = await Promise.all(analyzableDiff.map(async (fileDiff): Promise<DiffWithFiles> => {
 
       let previousFileContent;
       let fileContent;
@@ -72,18 +72,18 @@ export const analyzeCommitDiffAndSubmitStatus = async (
 
         case "modified":
           [ previousFileContent, fileContent ] = await retrieveFiles(fileDiff.filePath, fileDiff.filePath)
-          return { type: "modified", previousFileContent, fileContent, diff: fileDiff  }
+          return { diffType: "modified", previousFileContent, fileContent, diff: fileDiff  }
 
         case "renamed":
           [ previousFileContent, fileContent ] = await retrieveFiles(fileDiff.filePath, fileDiff.newFilePath)
-          return { type: "renamed", previousFileContent, fileContent, diff: fileDiff  }
+          return { diffType: "renamed", previousFileContent, fileContent, diff: fileDiff  }
 
 
         case "deleted":
-          return { type: "deleted", diff: fileDiff }
+          return { diffType: "deleted", diff: fileDiff }
 
         case "new":
-          return { type: "new", diff: fileDiff }
+          return { diffType: "new", diff: fileDiff }
       }
 
     }))

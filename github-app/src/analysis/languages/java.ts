@@ -1,20 +1,20 @@
 // Module for java-specific parsing functionality
 
-import { VdTag, AnalyzeFileParams } from "../tag-parser"
+import { VdTag, DiffWithFiles } from "../tag-parser"
 
 // Parses all VD tags from a java file.
-export const parseVdTags = (params: AnalyzeFileParams): VdTag[] => {
+export const parseVdTags = (diffWithFiles: DiffWithFiles): VdTag[] => {
 
   // Parse file according to diff type
-  switch (params.type) {
-
-    case "new":
-      throw new Error("NOT IMPLEMENETED")
+  switch (diffWithFiles.diffType) {
 
     case "deleted":
       throw new Error("NOT IMPLEMENETED")
 
     case "modified":
+      throw new Error("NOT IMPLEMENETED")
+
+    case "new":
       throw new Error("NOT IMPLEMENETED")
 
     case "renamed":

@@ -3,7 +3,7 @@
 import R from "ramda"
 
 import { AnalysisError } from "../index"
-import { AnalyzeFileParams, VdTag } from "../tag-parser"
+import { DiffWithFiles, VdTag } from "../tag-parser"
 
 // Language parsing imports
 import * as cpp from "./cplusplus"
@@ -70,7 +70,7 @@ export const extractFileType = (filePath: string): Language => {
 }
 
 // Parses the tags based on the langauge of the file
-export const parseVdTags = (params: AnalyzeFileParams): VdTag[] => {
+export const parseVdTags = (params: DiffWithFiles): VdTag[] => {
 
   // TODO what about the case where the language changes on a "rename"?
   const language = extractFileType(params.diff.filePath)

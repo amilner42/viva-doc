@@ -5,11 +5,11 @@ import { parseVdTags } from "./languages/index"
 
 /** EXTERNAL TYPES */
 
-export type AnalyzeFileParams =
-  { type: "modified", previousFileContent: string, fileContent: string, diff: ModifiedFileDiff } |
-  { type: "renamed", previousFileContent: string, fileContent: string, diff: RenamedFileDiff } |
-  { type: "new", diff: NewFileDiff } |
-  { type: "deleted", diff: DeletedFileDiff }
+export type DiffWithFiles =
+  { diffType: "modified", diff: ModifiedFileDiff, previousFileContent: string, fileContent: string } |
+  { diffType: "renamed",  diff: RenamedFileDiff, previousFileContent: string, fileContent: string } |
+  { diffType: "new", diff: NewFileDiff } |
+  { diffType: "deleted", diff: DeletedFileDiff }
 
 
 /** All possible VD tag types
@@ -23,9 +23,10 @@ export type VdTagType = "file" | "block" | "function" | "line"
 
 // All tags should have these properties.
 export interface BaseTag {
-  type: VdTagType;
+  tagType: VdTagType;
   vdTagLineNumber: number;
   owner: string;
+  content: string[];
 }
 
 // All tags that have line ownership should have these properties.
@@ -36,22 +37,22 @@ export interface LineOwnershipTag {
 
 // A tag representing documentation ownership of an entire file.
 export type VdFileTag = BaseTag & {
-  type: "file";
+  tagType: "file";
 }
 
 // A tag representing documentation ownership of a function.
 export type VdFunctionTag = BaseTag & LineOwnershipTag & {
-  type: "function";
+  tagType: "function";
 }
 
 // A tag representing documentation ownership of a explicitly specified block.
 export type VdBlockTag = BaseTag & LineOwnershipTag & {
-  type: "block";
+  tagType: "block";
 }
 
 // A tag representing documentation ownership of a single line of code.
 export type VdLineTag = BaseTag & LineOwnershipTag & {
-  type: "line";
+  tagType: "line";
 }
 
 // A review indicates that a certain `VdTag` must be reviewed.
@@ -62,22 +63,20 @@ export type ReviewType = "new" | "deleted" | "modified"
 
 // All Reviews should have these properties.
 export interface BaseReview {
-  type: ReviewType;
-  tagType: VdTagType;
+  reviewType: ReviewType;
+  tag: VdTag;
 }
 
 // A review for a new tag.
 export type ReviewNewTag = BaseReview & {
-  type: "new";
+  reviewType: "new";
   isNewFile: boolean;
-  content: string[];
 }
 
 // A review for a deleted tag.
 export type ReviewDeletedTag = BaseReview & {
-  type: "deleted";
+  reviewType: "deleted";
   isDeletedFile: boolean;
-  content: string[];
 }
 
 /** A review for a modified tag.
@@ -85,7 +84,7 @@ export type ReviewDeletedTag = BaseReview & {
   Modifications include any/all of the following: changing the tag, changing some code, changing the docs.
 */
 export type ReviewModifiedTag = BaseReview & {
-  type: "existing";
+  reviewType: "existing";
   modifiedTag: boolean;
   modifiedCode: boolean;
   modifiedDocs: boolean;
@@ -98,7 +97,24 @@ const VD_TAG = "@VD"
 /** EXTERNAL FUNCTIONS */
 
 // Returns all line numbers of @VD tags that need to be approved.
-export const analyzeFile = (params: AnalyzeFileParams): Review[] => {
+export const analyzeFile = (diffWithFiles: DiffWithFiles): Review[] => {
 
-  throw new Error("NOT IMPLEMENETED YET")
+  const vdTags = parseVdTags(diffWithFiles)
+
+  switch ( diffWithFiles.diffType ) {
+
+    case "new":
+      throw new Error("NOT IMPLEMENETED YET")
+
+    case "deleted":
+      throw new Error("NOT IMPLEMENETED YET")
+
+    case "renamed":
+      throw new Error("NOT IMPLEMENETED YET")
+
+    case "modified":
+      throw new Error("NOT IMPLEMENETED YET")
+
+  } // end switch
+
 }
