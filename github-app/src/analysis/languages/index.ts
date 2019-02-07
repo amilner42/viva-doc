@@ -2,7 +2,6 @@
 
 import R from "ramda"
 
-import { Maybe } from "../../functional-types"
 import { ProbotAppError } from "../../error"
 import { DiffWithFiles, VdTag, DiffWithFilesAndTags } from "../tag-parser"
 
@@ -133,34 +132,52 @@ export const parseVdTags = (diffWF: DiffWithFiles): DiffWithFilesAndTags => {
   } // end switch
 }
 
-// The abstract part of parsing a file, using the file parser to do language-specific functions.
-const parseFile = (fileParser: FileParser, file: String): VdTag[] => {
-  throw new Error("NOT IMPLEMENTED")
-}
-
-// TODO DOC
+// Returns the file parser for the given language if it has been implemented.
+// Work in progress...
 const getFileParser = (language: Language): FileParser => {
   switch (language) {
 
     case "CPlusPlus":
+      if (cpp.fileParser !== null) {
+        return cpp.fileParser
+      }
+
       throw new Error("NOT IMPLEMENTED")
-      // return cpp.fileParser
 
     case "Java":
+      if (java.fileParser !== null) {
+        return java.fileParser
+      }
+
       throw new Error("NOT IMPLEMENTED")
-      // return java.fileParser
 
     case "Javascript":
+      if (javascript.fileParser !== null) {
+        return javascript.fileParser
+      }
+
       throw new Error("NOT IMPLEMENTED")
-      // return javascript.fileParser
 
     case "Python":
+      if (python.fileParser !== null) {
+        return python.fileParser
+      }
+
       throw new Error("NOT IMPLEMENTED")
-      // return python.fileParser
 
     case "Typescript":
+      if (typescript.fileParser !== null) {
+        return typescript.fileParser
+      }
+
       throw new Error("NOT IMPLEMENTED")
-      // return typescript.fileParser
 
   } // end switch
+}
+
+
+// The abstract part of parsing a file, using the file parser to do language-specific functions.
+const parseFile = (fileParser: FileParser, file: String): VdTag[] => {
+
+  throw new Error("NOT IMPLEMENTED")
 }
