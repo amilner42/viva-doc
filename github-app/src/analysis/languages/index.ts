@@ -7,7 +7,7 @@ import { DiffWithFiles, VdTag, DiffWithFilesAndTags } from "../tag-parser"
 
 // Language parsing imports
 import * as cpp from "./cplusplus"
-import * as javascript from "./javascript"
+import * as javascript from "./javascript/index"
 import * as java from "./java"
 import * as python from "./python"
 import * as typescript from "./typescript"

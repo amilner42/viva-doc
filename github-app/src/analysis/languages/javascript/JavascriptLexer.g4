@@ -7,22 +7,25 @@ channels { ERROR }
 
 options { }
 
+// All tokens on the main channel:
+
 MultiLineComment:               '/*' .*? '*/';
 SingleLineComment:              '//' ~[\r\n\u2028\u2029]*;
-RegularExpressionLiteral:       '/' RegularExpressionFirstChar RegularExpressionChar* '/' IdentifierPart*;
-
 OpenParen:                      '(';
 CloseParen:                     ')';
 OpenBrace:                      '{';
 CloseBrace:                     '}';
-Comma:                          ',';
-ARROW:                          '=>';
+Arrow:                          '=>';
 
 Function:                       'function';
 
-/// Identifier Names and Identifiers
+Identifier: IdentifierStart IdentifierPart*;
 
-/// String Literals
+
+/// Hidden channel
+
+RegularExpressionLiteral:       '/' RegularExpressionFirstChar RegularExpressionChar* '/' IdentifierPart* -> channel(HIDDEN);
+
 StringLiteral:                 ('"' DoubleStringCharacter* '"'
              |                  '\'' SingleStringCharacter* '\'') -> channel(HIDDEN)
              ;
@@ -33,10 +36,7 @@ WhiteSpaces:                    [\t\u000B\u000C\u0020\u00A0]+ -> channel(HIDDEN)
 
 LineTerminator:                 [\r\n\u2028\u2029] -> channel(HIDDEN);
 
-/// Comments
-
-// Not hidden, need to know if it's function or functionASDFKASDF for example
-UnexpectedCharacter:            .;
+IrrelevantChar:            . -> channel(HIDDEN);
 
 // Fragment rules
 
