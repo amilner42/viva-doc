@@ -6,6 +6,8 @@ import { ParseTreeVisitor } from "antlr4ts/tree/ParseTreeVisitor";
 import { ProgramContext } from "./JavascriptParser";
 import { SourceElementsContext } from "./JavascriptParser";
 import { SourceElementContext } from "./JavascriptParser";
+import { MultiLineCommentContext } from "./JavascriptParser";
+import { SingleLineCommentContext } from "./JavascriptParser";
 import { FunctionDeclarationContext } from "./JavascriptParser";
 import { FunctionParamsContext } from "./JavascriptParser";
 import { FunctionParamContext } from "./JavascriptParser";
@@ -43,6 +45,20 @@ export interface JavascriptParserVisitor<Result> extends ParseTreeVisitor<Result
 	 * @return the visitor result
 	 */
 	visitSourceElement?: (ctx: SourceElementContext) => Result;
+
+	/**
+	 * Visit a parse tree produced by `JavascriptParser.multiLineComment`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitMultiLineComment?: (ctx: MultiLineCommentContext) => Result;
+
+	/**
+	 * Visit a parse tree produced by `JavascriptParser.singleLineComment`.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	visitSingleLineComment?: (ctx: SingleLineCommentContext) => Result;
 
 	/**
 	 * Visit a parse tree produced by `JavascriptParser.functionDeclaration`.

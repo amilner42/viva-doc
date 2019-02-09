@@ -6,6 +6,8 @@ import { ParseTreeListener } from "antlr4ts/tree/ParseTreeListener";
 import { ProgramContext } from "./JavascriptParser";
 import { SourceElementsContext } from "./JavascriptParser";
 import { SourceElementContext } from "./JavascriptParser";
+import { MultiLineCommentContext } from "./JavascriptParser";
+import { SingleLineCommentContext } from "./JavascriptParser";
 import { FunctionDeclarationContext } from "./JavascriptParser";
 import { FunctionParamsContext } from "./JavascriptParser";
 import { FunctionParamContext } from "./JavascriptParser";
@@ -52,6 +54,28 @@ export interface JavascriptParserListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	exitSourceElement?: (ctx: SourceElementContext) => void;
+
+	/**
+	 * Enter a parse tree produced by `JavascriptParser.multiLineComment`.
+	 * @param ctx the parse tree
+	 */
+	enterMultiLineComment?: (ctx: MultiLineCommentContext) => void;
+	/**
+	 * Exit a parse tree produced by `JavascriptParser.multiLineComment`.
+	 * @param ctx the parse tree
+	 */
+	exitMultiLineComment?: (ctx: MultiLineCommentContext) => void;
+
+	/**
+	 * Enter a parse tree produced by `JavascriptParser.singleLineComment`.
+	 * @param ctx the parse tree
+	 */
+	enterSingleLineComment?: (ctx: SingleLineCommentContext) => void;
+	/**
+	 * Exit a parse tree produced by `JavascriptParser.singleLineComment`.
+	 * @param ctx the parse tree
+	 */
+	exitSingleLineComment?: (ctx: SingleLineCommentContext) => void;
 
 	/**
 	 * Enter a parse tree produced by `JavascriptParser.functionDeclaration`.

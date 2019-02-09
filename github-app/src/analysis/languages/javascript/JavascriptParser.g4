@@ -26,12 +26,20 @@ sourceElements
     ;
 
 sourceElement
-    : MultiLineComment
-    | SingleLineComment
+    : multiLineComment
+    | singleLineComment
     | Identifier
     | functionDeclaration
     | parenPair
     | bracePair
+    ;
+
+multiLineComment
+    : MultiLineComment
+    ;
+
+singleLineComment
+    : SingleLineComment
     ;
 
 functionDeclaration
