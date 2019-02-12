@@ -33,31 +33,36 @@ class ExtractCommentsAndFunctionsListener implements JavascriptParserListener {
   }
 
   enterSingleLineComment(ctx: SingleLineCommentContext) {
-      if(ctx._stop === undefined) {
+      if(ctx._start.text === undefined) {
           throw new Error("TODO")
       }
 
-      this.fileAst.comments.push({
-        content: "TODO",
-        fromLine: ctx._start.line,
-        toLine: ctx._stop.line
-      })
+      const content = ctx._start.text
 
-      console.log(`Text: ${ctx.text}`)
+      this.fileAst.comments.push({
+        content,
+        fromLine: ctx._start.line,
+        toLine: ctx._start.line
+      })
   }
 
   enterMultiLineComment(ctx: MultiLineCommentContext) {
-      if(ctx._stop === undefined) {
-          throw new Error("TODO")
+      if (ctx._start.text === undefined) {
+        throw new Error("TODO")
       }
 
-      this.fileAst.comments.push({
-        content: "TODO",
-        fromLine: ctx._start.line,
-        toLine: ctx._stop.line
-      })
+      const content = ctx._start.text
 
-      console.log(`Text: ${ctx.text}`)
+      this.fileAst.comments.push({
+        content,
+        fromLine: ctx._start.line,
+        toLine: ctx._start.line + this.getLines(content)
+      })
+  }
+
+  // TODO BUG line might not be split by \n??
+  private getLines(content: string): number {
+    return content.split("\n").length - 1
   }
 }
 

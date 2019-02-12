@@ -35,7 +35,7 @@ sourceElement
     ;
 
 multiLineComment
-    : StartMultiLineComment .*? EndMultiLineComment
+    : MultiLineComment
     ;
 
 singleLineComment

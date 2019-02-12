@@ -9,8 +9,7 @@ options { }
 
 // All tokens on the main channel:
 
-StartMultiLineComment:          '/*';
-EndMultiLineComment:            '*/';
+MultiLineComment:               '/*' .*? '*/';
 SingleLineComment:              '//' ~[\r\n\u2028\u2029]*;
 OpenParen:                      '(';
 CloseParen:                     ')';
