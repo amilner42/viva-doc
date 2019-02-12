@@ -6,13 +6,19 @@ import { ProbotAppError } from "../../error"
 import { DiffWithFiles, VdTag, DiffWithFilesAndTags } from "../tag-parser"
 
 // Language parsing imports
-import * as cpp from "./cplusplus"
+import * as cpp from "./cplusplus/index"
 import * as javascript from "./javascript/index"
-import * as java from "./java"
-import * as python from "./python"
-import * as typescript from "./typescript"
+import * as java from "./java/index"
+import * as python from "./python/index"
+import * as typescript from "./typescript/index"
 
 /** EXTERNAL TYPES */
+
+// Language-agnostic AST parsed from file content.
+export interface FileAST {
+  functions: { fromLine: number; toLine: number; }[];
+  comments: { fromLine: number; toLine: number; content: string; }[];
+}
 
 // Enum of languages we support
 export type Language = "CPlusPlus" | "Java" | "Javascript" | "Python" | "Typescript"
@@ -28,11 +34,6 @@ export class LanguageParserError extends ProbotAppError {
     super(`Language Parser Error --- Type: ${type} , Optional Message: ${mssg}`)
     this.type = type
   }
-}
-
-// TODO
-export interface FileParser {
-
 }
 
 /** EXTERNAL FUNCTIONS */
@@ -81,7 +82,11 @@ export const parseVdTags = (diffWF: DiffWithFiles): DiffWithFilesAndTags => {
 
   // TODO what about the case where the language changes on a "rename"?
   const language = extractFileType(diffWF.filePath)
-  const fileParser: FileParser = getFileParser(language)
+
+  const getFileTags = (fileContent: string): VdTag[] => {
+    const fileAst = parse(language, fileContent)
+    return astToTags(language, fileAst)
+  }
 
   switch (diffWF.diffType) {
 
@@ -95,7 +100,7 @@ export const parseVdTags = (diffWF: DiffWithFiles): DiffWithFilesAndTags => {
 
       return R.merge(
         diffWF,
-        { fileTags: parseFile(fileParser, file )}
+        { fileTags: getFileTags(file) }
       )
     }
 
@@ -108,15 +113,15 @@ export const parseVdTags = (diffWF: DiffWithFiles): DiffWithFilesAndTags => {
         )(diffWF.alteredLines)
 
 
-      return R.merge(diffWF, { fileTags: parseFile(fileParser, file) })
+      return R.merge(diffWF, { fileTags: getFileTags(file) })
     }
 
     case "renamed":
       return R.merge(
         diffWF,
         {
-          fileTags: parseFile(fileParser, diffWF.fileContent),
-          previousFileTags: parseFile(fileParser, diffWF.previousFileContent),
+          fileTags: getFileTags(diffWF.fileContent),
+          previousFileTags: getFileTags(diffWF.previousFileContent),
         }
       )
 
@@ -124,60 +129,60 @@ export const parseVdTags = (diffWF: DiffWithFiles): DiffWithFilesAndTags => {
       return R.merge(
         diffWF,
         {
-          fileTags: parseFile(fileParser, diffWF.fileContent),
-          previousFileTags: parseFile(fileParser, diffWF.previousFileContent)
+          fileTags: getFileTags(diffWF.fileContent),
+          previousFileTags: getFileTags(diffWF.previousFileContent)
         }
       )
 
   } // end switch
 }
 
-// Returns the file parser for the given language if it has been implemented.
-// Work in progress...
-const getFileParser = (language: Language): FileParser => {
+export const newEmptyFileAst = (): FileAST => R.clone({ functions: [], comments: [] })
+
+/** INTERNAL FUNCTIONS */
+
+/** Parse the AST from the file given the language. */
+const parse = (language: Language, fileContent: string): FileAST => {
+
   switch (language) {
 
     case "CPlusPlus":
-      if (cpp.fileParser !== null) {
-        return cpp.fileParser
-      }
-
-      throw new Error("NOT IMPLEMENTED")
+      return cpp.parse(fileContent)
 
     case "Java":
-      if (java.fileParser !== null) {
-        return java.fileParser
-      }
-
-      throw new Error("NOT IMPLEMENTED")
+      return java.parse(fileContent)
 
     case "Javascript":
-      if (javascript.fileParser !== null) {
-        return javascript.fileParser
-      }
-
-      throw new Error("NOT IMPLEMENTED")
+      return javascript.parse(fileContent)
 
     case "Python":
-      if (python.fileParser !== null) {
-        return python.fileParser
-      }
-
-      throw new Error("NOT IMPLEMENTED")
+      return python.parse(fileContent)
 
     case "Typescript":
-      if (typescript.fileParser !== null) {
-        return typescript.fileParser
-      }
-
-      throw new Error("NOT IMPLEMENTED")
+      return typescript.parse(fileContent)
 
   } // end switch
 }
 
+// Converts raw parsed data to VD tags
+const astToTags = (language: Language, fileAst: FileAST): VdTag[] => {
 
-// The abstract part of parsing a file, using the file parser to do language-specific functions.
-const parseFile = (fileParser: FileParser, file: String): VdTag[] => {
+  switch (language) {
 
-  throw new Error("NOT IMPLEMENTED")
+    case "CPlusPlus":
+      return cpp.astToTags(fileAst)
+
+    case "Java":
+      return java.astToTags(fileAst)
+
+    case "Javascript":
+      return javascript.astToTags(fileAst)
+
+    case "Python":
+      return python.astToTags(fileAst)
+
+    case "Typescript":
+      return typescript.astToTags(fileAst)
+
+  } // end switch
 }
