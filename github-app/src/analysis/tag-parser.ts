@@ -68,7 +68,6 @@ export type VdTagType = "file" | "block" | "function" | "line"
 // All tags should have these properties.
 export interface BaseTag {
   tagType: VdTagType;
-  vdTagLineNumber: number;
   owner: string;
 }
 

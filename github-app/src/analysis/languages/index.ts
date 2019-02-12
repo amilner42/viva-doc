@@ -2,8 +2,9 @@
 
 import R from "ramda"
 
+import { reduceFileAst } from "./util"
 import { ProbotAppError } from "../../error"
-import { DiffWithFiles, VdTag, DiffWithFilesAndTags } from "../tag-parser"
+import { DiffWithFiles, VdTag, VdTagType, DiffWithFilesAndTags } from "../tag-parser"
 
 // Language parsing imports
 import * as cpp from "./cplusplus/index"
@@ -14,10 +15,50 @@ import * as typescript from "./typescript/index"
 
 /** EXTERNAL TYPES */
 
-// Language-agnostic AST parsed from file content.
+// Language-agnostic AST parsed from file content containing all functions and comments.
 export interface FileAST {
-  functions: { fromLine: number; toLine: number; }[];
-  comments: { fromLine: number; toLine: number; content: string; }[];
+  // All detected functions
+  functions: {
+    [ fromLine: number]: FunctionNode[]
+  };
+  // All comments
+  comments: {
+    [ toLine: number ]: CommentNode[]
+  };
+}
+
+export interface FunctionNode {
+  fromLine: number;
+  toLine: number;
+}
+
+export interface CommentNode {
+  fromLine: number;
+  toLine: number;
+  content: string;
+}
+
+// Language-agnostic AST slightly more specific than the `FileAST` thereby making it easier to put algorithms on top
+// of it related to VD.
+export interface ReducedFileAST {
+  // All functions detected in file
+  functions: {
+    [ fromLine: number]: FunctionNode[]
+  };
+
+  // Only comments that are relevant to VD
+  comments: {
+    [ toLine: number ]: ReducedCommentNode
+  };
+}
+
+/** A ReducedCommentNode must repreent a comment that has some VD information in it. */
+export interface ReducedCommentNode {
+  fromLine: number;
+  toLine: number;
+  data:
+    { dataType: "tag-declaration", owner: string, tagType: VdTagType } |
+    { dataType: "tag-end-block" }
 }
 
 // Enum of languages we support
@@ -74,8 +115,6 @@ export const extractFileType = (filePath: string): Language => {
 
   return getLanguage(extension)
 }
-
-// export type DiffWithFilesAndTags =
 
 // Parses the tags based on the langauge of the file
 export const parseVdTags = (diffWF: DiffWithFiles): DiffWithFilesAndTags => {
@@ -137,7 +176,31 @@ export const parseVdTags = (diffWF: DiffWithFiles): DiffWithFilesAndTags => {
   } // end switch
 }
 
-export const newEmptyFileAst = (): FileAST => R.clone({ functions: [], comments: [] })
+export const newEmptyFileAst = (): FileAST => R.clone({ functions: {}, comments: {} })
+
+export const newEmptyReducedFileAst = (): ReducedFileAST => R.clone({ functions: {}, comments: {} })
+
+// Add a function to the AST
+// @MODIFIES fileAst
+export const addFunctionToAst = (fileAst: FileAST | ReducedFileAST, functionNode: FunctionNode): void => {
+  if (fileAst.functions[functionNode.fromLine] === undefined) {
+    fileAst.functions[functionNode.fromLine] = [ functionNode ]
+    return
+  }
+
+  fileAst.functions[functionNode.fromLine].push(functionNode)
+}
+
+// Add a comment to the AST
+// @MODIFIES fileAst
+export const addCommentToAst = (fileAst: FileAST, commentNode: CommentNode): void => {
+  if (fileAst.comments[commentNode.toLine] === undefined) {
+    fileAst.comments[commentNode.toLine] = [ commentNode ]
+    return
+  }
+
+  fileAst.comments[commentNode.toLine].push(commentNode)
+}
 
 /** INTERNAL FUNCTIONS */
 
@@ -164,25 +227,27 @@ const parse = (language: Language, fileContent: string): FileAST => {
   } // end switch
 }
 
-// Converts raw parsed data to VD tags
+// Converts ast to VD tags
 const astToTags = (language: Language, fileAst: FileAST): VdTag[] => {
+
+  const reducedAst = reduceFileAst(fileAst)
 
   switch (language) {
 
     case "CPlusPlus":
-      return cpp.astToTags(fileAst)
+      return cpp.astToTags(reducedAst)
 
     case "Java":
-      return java.astToTags(fileAst)
+      return java.astToTags(reducedAst)
 
     case "Javascript":
-      return javascript.astToTags(fileAst)
+      return javascript.astToTags(reducedAst)
 
     case "Python":
-      return python.astToTags(fileAst)
+      return python.astToTags(reducedAst)
 
     case "Typescript":
-      return typescript.astToTags(fileAst)
+      return typescript.astToTags(reducedAst)
 
   } // end switch
 }

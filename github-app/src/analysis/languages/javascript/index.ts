@@ -1,7 +1,7 @@
 // Module for javascript-specific parsing functionality
 
-import {  ErrorHappenedStrategy, standardTagsFromFileAst  } from "../util"
-import { FileAST, newEmptyFileAst } from "../index"
+import {  ErrorHappenedStrategy, standardTagsFromReducedFileAst  } from "../util"
+import { FileAST, newEmptyFileAst, addFunctionToAst, addCommentToAst } from "../index"
 
 import { ANTLRInputStream, CommonTokenStream } from 'antlr4ts'
 import { ParseTreeWalker } from "antlr4ts/tree/ParseTreeWalker"
@@ -22,42 +22,35 @@ class ExtractCommentsAndFunctionsListener implements JavascriptParserListener {
   }
 
   enterFunctionDeclaration(ctx: FunctionDeclarationContext) {
-      if(ctx._stop === undefined) {
-          throw new Error("TODO")
-      }
+    if (ctx._stop === undefined) {
+        throw new Error("TODO")
+    }
 
-      this.fileAst.functions.push({
-        fromLine: ctx._start.line,
-        toLine: ctx._stop.line
-      })
+    addFunctionToAst(this.fileAst, { fromLine: ctx._start.line, toLine: ctx._stop.line })
   }
 
   enterSingleLineComment(ctx: SingleLineCommentContext) {
-      if(ctx._start.text === undefined) {
-          throw new Error("TODO")
-      }
+    if (ctx._start.text === undefined) {
+        throw new Error("TODO")
+    }
 
-      const content = ctx._start.text
-
-      this.fileAst.comments.push({
-        content,
-        fromLine: ctx._start.line,
-        toLine: ctx._start.line
-      })
+    const content = ctx._start.text
+    addCommentToAst(this.fileAst, { content, fromLine: ctx._start.line, toLine: ctx._start.line })
   }
 
   enterMultiLineComment(ctx: MultiLineCommentContext) {
-      if (ctx._start.text === undefined) {
-        throw new Error("TODO")
-      }
+    if (ctx._start.text === undefined) {
+      throw new Error("TODO")
+    }
 
-      const content = ctx._start.text
-
-      this.fileAst.comments.push({
-        content,
-        fromLine: ctx._start.line,
+    const content = ctx._start.text
+    addCommentToAst(
+      this.fileAst,
+      {
+        content, fromLine: ctx._start.line,
         toLine: ctx._start.line + this.getLines(content)
-      })
+      }
+    )
   }
 
   // TODO BUG line might not be split by \n??
@@ -87,4 +80,4 @@ export const parse = (fileContent: string): FileAST => {
   return listener.fileAst
 }
 
-export const astToTags = standardTagsFromFileAst
+export const astToTags = standardTagsFromReducedFileAst
