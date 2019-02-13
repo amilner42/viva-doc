@@ -95,7 +95,7 @@ export const reduceFileAst = (fileAst: FileAST): ReducedFileAST => {
       reducedFileAst.comments[commentNode.toLine] = {
         fromLine: commentNode.fromLine,
         toLine: commentNode.toLine,
-        data: { dataType: "tag-end-block" }
+        data: { dataType: "tag-end-block", seen: false }
       }
       continue;
     }
@@ -145,7 +145,7 @@ export const standardTagsFromReducedFileAst = (reducedFileAst: ReducedFileAST): 
             const functionNodes = reducedFileAst.functions[reducedCommentNode.toLine + 1]
 
             // No function
-            if (functionNodes === null) {
+            if (functionNodes === undefined) {
               throw new Error("TODO")
             }
 
@@ -177,7 +177,16 @@ export const standardTagsFromReducedFileAst = (reducedFileAst: ReducedFileAST): 
                 continue;
               }
 
-              if ( reducedFileAst.comments[commentLineNumber].data.dataType === "tag-end-block" ) {
+              const currentCommentNode = reducedFileAst.comments[commentLineNumber]
+
+              if (currentCommentNode.data.dataType === "tag-end-block" ) {
+
+                // Can't use the same end-block twice
+                if (currentCommentNode.data.seen) {
+                  throw new Error("TODO")
+                }
+
+                currentCommentNode.data.seen = true
                 vdTags.push({
                   tagType: "block",
                   startLineNumber: reducedCommentNode.fromLine,

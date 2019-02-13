@@ -58,7 +58,7 @@ export interface ReducedCommentNode {
   toLine: number;
   data:
     { dataType: "tag-declaration", owner: string, tagType: VdTagType } |
-    { dataType: "tag-end-block" }
+    { dataType: "tag-end-block", seen: boolean /** meta-data for whether it's been seen */ }
 }
 
 // Enum of languages we support
