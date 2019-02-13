@@ -26,7 +26,7 @@ class ExtractCommentsAndFunctionsListener implements JavascriptParserListener {
         throw new Error("TODO")
     }
 
-    addFunctionToAst(this.fileAst, { fromLine: ctx._start.line, toLine: ctx._stop.line })
+    addFunctionToAst(this.fileAst, { startLine: ctx._start.line, endLine: ctx._stop.line })
   }
 
   enterSingleLineComment(ctx: SingleLineCommentContext) {
@@ -35,7 +35,7 @@ class ExtractCommentsAndFunctionsListener implements JavascriptParserListener {
     }
 
     const content = ctx._start.text
-    addCommentToAst(this.fileAst, { content, fromLine: ctx._start.line, toLine: ctx._start.line })
+    addCommentToAst(this.fileAst, { content, startLine: ctx._start.line, endLine: ctx._start.line })
   }
 
   enterMultiLineComment(ctx: MultiLineCommentContext) {
@@ -47,8 +47,9 @@ class ExtractCommentsAndFunctionsListener implements JavascriptParserListener {
     addCommentToAst(
       this.fileAst,
       {
-        content, fromLine: ctx._start.line,
-        toLine: ctx._start.line + this.getLines(content)
+        content,
+        startLine: ctx._start.line,
+        endLine: ctx._start.line + this.getLines(content)
       }
     )
   }

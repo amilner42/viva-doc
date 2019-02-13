@@ -78,9 +78,9 @@ export const reduceFileAst = (fileAst: FileAST): ReducedFileAST => {
     if (matchTagAnnotation) {
       const [ , , owner, tagType ] = matchTagAnnotation as RegExpMatchArray
 
-      reducedFileAst.comments[commentNode.toLine] = {
-        fromLine: commentNode.fromLine,
-        toLine: commentNode.toLine,
+      reducedFileAst.comments[commentNode.endLine] = {
+        startLine: commentNode.startLine,
+        endLine: commentNode.endLine,
         data: {
           dataType: "tag-declaration",
           tagType: tagType as VdTagType, // regex only matches valid tag types
@@ -92,9 +92,9 @@ export const reduceFileAst = (fileAst: FileAST): ReducedFileAST => {
 
     // End of a block
     if (matchEndBlock) {
-      reducedFileAst.comments[commentNode.toLine] = {
-        fromLine: commentNode.fromLine,
-        toLine: commentNode.toLine,
+      reducedFileAst.comments[commentNode.endLine] = {
+        startLine: commentNode.startLine,
+        endLine: commentNode.endLine,
         data: { dataType: "tag-end-block", seen: false }
       }
       continue;
@@ -136,13 +136,13 @@ export const standardTagsFromReducedFileAst = (reducedFileAst: ReducedFileAST): 
             vdTags.push({
               tagType: "line",
               owner: reducedCommentNode.data.owner,
-              startLineNumber: reducedCommentNode.fromLine,
-              endLineNumber: reducedCommentNode.toLine + 1
+              startLine: reducedCommentNode.startLine,
+              endLine: reducedCommentNode.endLine + 1
             })
             continue
 
           case "function":
-            const functionNodes = reducedFileAst.functions[reducedCommentNode.toLine + 1]
+            const functionNodes = reducedFileAst.functions[reducedCommentNode.endLine + 1]
 
             // No function
             if (functionNodes === undefined) {
@@ -158,8 +158,8 @@ export const standardTagsFromReducedFileAst = (reducedFileAst: ReducedFileAST): 
 
             vdTags.push({
               tagType: "function",
-              startLineNumber: reducedCommentNode.fromLine,
-              endLineNumber: functionNode.toLine,
+              startLine: reducedCommentNode.startLine,
+              endLine: functionNode.endLine,
               owner: reducedCommentNode.data.owner
             })
             continue
@@ -173,7 +173,7 @@ export const standardTagsFromReducedFileAst = (reducedFileAst: ReducedFileAST): 
 
             // Find end-block annotation
             for (let commentLineNumber of commentLineNumbers) {
-              if (commentLineNumber < reducedCommentNode.toLine) {
+              if (commentLineNumber < reducedCommentNode.endLine) {
                 continue;
               }
 
@@ -189,8 +189,8 @@ export const standardTagsFromReducedFileAst = (reducedFileAst: ReducedFileAST): 
                 currentCommentNode.data.seen = true
                 vdTags.push({
                   tagType: "block",
-                  startLineNumber: reducedCommentNode.fromLine,
-                  endLineNumber: reducedFileAst.comments[commentLineNumber].toLine,
+                  startLine: reducedCommentNode.startLine,
+                  endLine: reducedFileAst.comments[commentLineNumber].endLine,
                   owner: reducedCommentNode.data.owner
                 })
                 continue loopAnalyzeComments

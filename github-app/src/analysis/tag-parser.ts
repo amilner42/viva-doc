@@ -73,8 +73,8 @@ export interface BaseTag {
 
 // All tags that have line ownership should have these properties.
 export interface LineOwnershipTag {
-  startLineNumber: number;
-  endLineNumber: number;
+  startLine: number;
+  endLine: number;
 }
 
 // A tag representing documentation ownership of an entire file.

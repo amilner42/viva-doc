@@ -19,22 +19,22 @@ import * as typescript from "./typescript/index"
 export interface FileAST {
   // All detected functions
   functions: {
-    [ fromLine: number]: FunctionNode[]
+    [ startLine: number]: FunctionNode[]
   };
   // All comments
   comments: {
-    [ toLine: number ]: CommentNode[]
+    [ endLine: number ]: CommentNode[]
   };
 }
 
 export interface FunctionNode {
-  fromLine: number;
-  toLine: number;
+  startLine: number;
+  endLine: number;
 }
 
 export interface CommentNode {
-  fromLine: number;
-  toLine: number;
+  startLine: number;
+  endLine: number;
   content: string;
 }
 
@@ -43,19 +43,19 @@ export interface CommentNode {
 export interface ReducedFileAST {
   // All functions detected in file
   functions: {
-    [ fromLine: number]: FunctionNode[]
+    [ startLine: number]: FunctionNode[]
   };
 
   // Only comments that are relevant to VD
   comments: {
-    [ toLine: number ]: ReducedCommentNode
+    [ endLine: number ]: ReducedCommentNode
   };
 }
 
 /** A ReducedCommentNode must repreent a comment that has some VD information in it. */
 export interface ReducedCommentNode {
-  fromLine: number;
-  toLine: number;
+  startLine: number;
+  endLine: number;
   data:
     { dataType: "tag-declaration", owner: string, tagType: VdTagType } |
     { dataType: "tag-end-block", seen: boolean /** meta-data for whether it's been seen */ }
@@ -183,23 +183,23 @@ export const newEmptyReducedFileAst = (): ReducedFileAST => R.clone({ functions:
 // Add a function to the AST
 // @MODIFIES fileAst
 export const addFunctionToAst = (fileAst: FileAST | ReducedFileAST, functionNode: FunctionNode): void => {
-  if (fileAst.functions[functionNode.fromLine] === undefined) {
-    fileAst.functions[functionNode.fromLine] = [ functionNode ]
+  if (fileAst.functions[functionNode.startLine] === undefined) {
+    fileAst.functions[functionNode.startLine] = [ functionNode ]
     return
   }
 
-  fileAst.functions[functionNode.fromLine].push(functionNode)
+  fileAst.functions[functionNode.startLine].push(functionNode)
 }
 
 // Add a comment to the AST
 // @MODIFIES fileAst
 export const addCommentToAst = (fileAst: FileAST, commentNode: CommentNode): void => {
-  if (fileAst.comments[commentNode.toLine] === undefined) {
-    fileAst.comments[commentNode.toLine] = [ commentNode ]
+  if (fileAst.comments[commentNode.endLine] === undefined) {
+    fileAst.comments[commentNode.endLine] = [ commentNode ]
     return
   }
 
-  fileAst.comments[commentNode.toLine].push(commentNode)
+  fileAst.comments[commentNode.endLine].push(commentNode)
 }
 
 /** INTERNAL FUNCTIONS */
