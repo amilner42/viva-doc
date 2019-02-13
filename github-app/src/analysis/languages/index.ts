@@ -16,7 +16,7 @@ import * as typescript from "./typescript/index"
 /** EXTERNAL TYPES */
 
 // Language-agnostic AST parsed from file content containing all functions and comments.
-export interface FileAST {
+export interface FileAst {
   // All detected functions
   functions: {
     [ startLine: number]: FunctionNode[]
@@ -38,9 +38,9 @@ export interface CommentNode {
   content: string;
 }
 
-// Language-agnostic AST slightly more specific than the `FileAST` thereby making it easier to put algorithms on top
+// Language-agnostic AST slightly more specific than the `FileAst` thereby making it easier to put algorithms on top
 // of it related to VD.
-export interface ReducedFileAST {
+export interface ReducedFileAst {
   // All functions detected in file
   functions: {
     [ startLine: number]: FunctionNode[]
@@ -176,13 +176,13 @@ export const parseVdTags = (diffWF: DiffWithFiles): DiffWithFilesAndTags => {
   } // end switch
 }
 
-export const newEmptyFileAst = (): FileAST => R.clone({ functions: {}, comments: {} })
+export const newEmptyFileAst = (): FileAst => R.clone({ functions: {}, comments: {} })
 
-export const newEmptyReducedFileAst = (): ReducedFileAST => R.clone({ functions: {}, comments: {} })
+export const newEmptyReducedFileAst = (): ReducedFileAst => R.clone({ functions: {}, comments: {} })
 
 // Add a function to the AST
 // @MODIFIES fileAst
-export const addFunctionToAst = (fileAst: FileAST | ReducedFileAST, functionNode: FunctionNode): void => {
+export const addFunctionToAst = (fileAst: FileAst | ReducedFileAst, functionNode: FunctionNode): void => {
   if (fileAst.functions[functionNode.startLine] === undefined) {
     fileAst.functions[functionNode.startLine] = [ functionNode ]
     return
@@ -193,7 +193,7 @@ export const addFunctionToAst = (fileAst: FileAST | ReducedFileAST, functionNode
 
 // Add a comment to the AST
 // @MODIFIES fileAst
-export const addCommentToAst = (fileAst: FileAST, commentNode: CommentNode): void => {
+export const addCommentToAst = (fileAst: FileAst, commentNode: CommentNode): void => {
   if (fileAst.comments[commentNode.endLine] === undefined) {
     fileAst.comments[commentNode.endLine] = [ commentNode ]
     return
@@ -205,7 +205,7 @@ export const addCommentToAst = (fileAst: FileAST, commentNode: CommentNode): voi
 /** INTERNAL FUNCTIONS */
 
 /** Parse the AST from the file given the language. */
-const parse = (language: Language, fileContent: string): FileAST => {
+const parse = (language: Language, fileContent: string): FileAst => {
 
   switch (language) {
 
@@ -228,7 +228,7 @@ const parse = (language: Language, fileContent: string): FileAST => {
 }
 
 // Converts ast to VD tags
-const astToTags = (language: Language, fileAst: FileAST): VdTag[] => {
+const astToTags = (language: Language, fileAst: FileAst): VdTag[] => {
 
   const reducedAst = reduceFileAst(fileAst)
 

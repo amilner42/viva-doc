@@ -1,7 +1,7 @@
 // Module for javascript-specific parsing functionality
 
 import {  ErrorHappenedStrategy, standardTagsFromReducedFileAst  } from "../util"
-import { FileAST, newEmptyFileAst, addFunctionToAst, addCommentToAst } from "../index"
+import { FileAst, newEmptyFileAst, addFunctionToAst, addCommentToAst } from "../index"
 
 import { ANTLRInputStream, CommonTokenStream } from 'antlr4ts'
 import { ParseTreeWalker } from "antlr4ts/tree/ParseTreeWalker"
@@ -15,7 +15,7 @@ import { JavascriptParserListener } from "./JavascriptParserListener"
  */
 class ExtractCommentsAndFunctionsListener implements JavascriptParserListener {
 
-  public fileAst: FileAST;
+  public fileAst: FileAst;
 
   constructor() {
     this.fileAst = newEmptyFileAst()
@@ -60,7 +60,7 @@ class ExtractCommentsAndFunctionsListener implements JavascriptParserListener {
   }
 }
 
-export const parse = (fileContent: string): FileAST => {
+export const parse = (fileContent: string): FileAst => {
 
   // Create lexer and parser
   const inputStream = new ANTLRInputStream(fileContent)

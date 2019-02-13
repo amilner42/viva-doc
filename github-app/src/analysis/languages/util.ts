@@ -1,6 +1,6 @@
 import R from "ramda"
 
-import { FileAST, ReducedFileAST, newEmptyReducedFileAst } from "./index"
+import { FileAst, ReducedFileAst, newEmptyReducedFileAst } from "./index"
 import { VdTag, VdTagType } from "../tag-parser"
 
 import { DefaultErrorStrategy } from 'antlr4ts/DefaultErrorStrategy';
@@ -31,7 +31,7 @@ export class ErrorHappenedStrategy extends DefaultErrorStrategy {
 
 /** Reduce an AST to only contain relevant information.
  */
-export const reduceFileAst = (fileAst: FileAST): ReducedFileAST => {
+export const reduceFileAst = (fileAst: FileAst): ReducedFileAst => {
   const reducedFileAst = newEmptyReducedFileAst()
 
   // Functions all deep-copied
@@ -110,7 +110,7 @@ export const reduceFileAst = (fileAst: FileAST): ReducedFileAST => {
   Noteable exceptions are languages like python which can have comments under the function declarations instead of
   before.
  */
-export const standardTagsFromReducedFileAst = (reducedFileAst: ReducedFileAST): VdTag[] => {
+export const standardTagsFromReducedFileAst = (reducedFileAst: ReducedFileAst): VdTag[] => {
 
   const vdTags: VdTag[] = []
 
