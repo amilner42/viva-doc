@@ -1,12 +1,11 @@
-// Module for handling parsing git diffs
+// Module for handling parsing git diffs.
+
 import R from "ramda"
 
-import { Maybe } from "../functional-types"
-import { ProbotAppError } from "../error"
+import * as FT from "../functional-types"
+import * as AppError from "../error"
 
 /** EXTERNAL TYPES */
-
-export type Diff = FileDiff[]
 
 export type AlteredLines = LineDiff[];
 
@@ -46,7 +45,7 @@ export interface DeletedFileDiff {
 }
 
 // All errors from this module
-export class DiffParserError extends ProbotAppError {
+export class DiffParserError extends AppError.ProbotAppError {
   constructor(msg: string) {
     super(msg);
   }
@@ -66,19 +65,19 @@ const HUNK_TO_RANGE_PREFIX = "+"
 
 /** External Functions */
 
-// Main function of the module, will parse the git diff string into a `Diff`
-export const parseDiff = (diffAsStr: string): Diff => {
+// Main function of the module, will parse the git diff into a series of file diffs.
+export const parseDiff = (diffAsStr: string): FileDiff[] => {
   // We dropLast here to get rid of the trailing "\n" causing our remainingLines to end in a [ ..., "" ]
   let remainingLines = R.dropLast(1, diffAsStr.split("\n"));
-  const diff: Diff = [];
+  const fileDiffs: FileDiff[] = [];
 
   while(remainingLines.length !== 0) {
     let [ postDiffRemainingLines, fileDiff ] = getSingleFileDiff(remainingLines)
-    diff.push(fileDiff)
+    fileDiffs.push(fileDiff)
     remainingLines = postDiffRemainingLines
   }
 
-  return diff;
+  return fileDiffs;
 }
 
 /** INTERNAL */
@@ -89,16 +88,16 @@ const getSingleFileDiff = (diffByLines: string[]): [string[], FileDiff] => {
 
   let lineIndex = 0;
   let parseStage: ParseStage = "line-1"
-  let filePath: Maybe<string> = null;
-  let newFilePath: Maybe<string> = null;
-  let diffType: Maybe<DiffType> = null;
+  let filePath: FT.Maybe<string> = null;
+  let newFilePath: FT.Maybe<string> = null;
+  let diffType: FT.Maybe<DiffType> = null;
   let skip = 0;
-  let deletedFile: Maybe<DeletedFileDiff> = null;
+  let deletedFile: FT.Maybe<DeletedFileDiff> = null;
   let passedDeletedFileHunk: boolean = false;
-  let newFile: Maybe<NewFileDiff> = null;
+  let newFile: FT.Maybe<NewFileDiff> = null;
   let passedNewFileHunk: boolean = false;
-  let modifiedFile: Maybe<ModifiedFileDiff | RenamedFileDiff> = null;
-  let diffLineNumber: Maybe<number> = null;
+  let modifiedFile: FT.Maybe<ModifiedFileDiff | RenamedFileDiff> = null;
+  let diffLineNumber: FT.Maybe<number> = null;
 
   for (let line of diffByLines) {
     lineIndex++;

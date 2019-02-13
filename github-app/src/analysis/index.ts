@@ -1,11 +1,12 @@
-// Base module for all analysis
+// Top level module for all analysis.
 
 import R from "ramda"
 
-import { Diff, parseDiff } from "./diff-parser"
-import { DiffWithFiles, getFileReview } from "./tag-parser"
-import { LanguageParserError, extractFileType } from "./languages/index"
-import { ProbotAppError } from "../error"
+import * as Diff from "./diff-parser"
+import * as Tag from "./tag-parser"
+import * as Review from "./review"
+import * as Lang from "./languages/index"
+import * as AppError from "../error"
 
 /** EXTERNAL FUNCTIONS */
 
@@ -17,16 +18,16 @@ export const analyzeCommitDiffAndSubmitStatus = async (
   setStatus: (statusState: "success" | "failure") => Promise<any>
 ): Promise<void> => {
 
-  const fullDiff: Diff = parseDiff(await retrieveDiff())
+  const fileDiffs: Diff.FileDiff[] = Diff.parseDiff(await retrieveDiff())
 
   // Keep only the languages we support
-  const analyzableDiff: Diff = R.filter(
+  const filesDiffsToAnalyze: Diff.FileDiff[] = R.filter(
     (fileDiff) => {
       try {
-        extractFileType(fileDiff.filePath)
+        Lang.extractFileType(fileDiff.filePath)
         return true
       } catch ( err ) {
-        if (err instanceof LanguageParserError) {
+        if (err instanceof Lang.LanguageParserError) {
           switch (err.type) {
 
             case "unsupported-extension":
@@ -44,20 +45,20 @@ export const analyzeCommitDiffAndSubmitStatus = async (
         throw err;
       }
     },
-    fullDiff
+    fileDiffs
   )
 
-  // Nothing to analyze
-  if (analyzableDiff.length === 0) {
+  // No files to analyze
+  if (filesDiffsToAnalyze.length === 0) {
     setStatus("success")
     return
   }
 
-  let diffWFs: DiffWithFiles[];
+  let fileDiffsWithFiles: Tag.DiffWithFiles[];
 
   // Fetch all files needed for analysis
   try {
-    diffWFs = await Promise.all(analyzableDiff.map(async (fileDiff): Promise<DiffWithFiles> => {
+    fileDiffsWithFiles = await Promise.all(filesDiffsToAnalyze.map(async (fileDiff): Promise<Tag.DiffWithFiles> => {
 
       let previousFileContent;
       let fileContent;
@@ -82,11 +83,11 @@ export const analyzeCommitDiffAndSubmitStatus = async (
     }))
 
   } catch (err) {
-    throw new ProbotAppError(`Failed to retrieve files: ${err} --- ${JSON.stringify(err)}`)
+    throw new AppError.ProbotAppError(`Failed to retrieve files: ${err} --- ${JSON.stringify(err)}`)
   }
 
-  // Analyze all files
-  const fileReviews = diffWFs.map(getFileReview)
+  // An array of reviews for each file.
+  const fileReviews = fileDiffsWithFiles.map(Tag.parseTags).map(Review.getReviews)
   console.log(`Tags needing approval: ${JSON.stringify(fileReviews)}`)
 
   return

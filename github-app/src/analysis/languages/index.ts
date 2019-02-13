@@ -1,10 +1,10 @@
-// Module representing the interface to all language-specific code
+// Module for access to all language-specific code.
 
 import R from "ramda"
 
-import { reduceFileAst } from "./util"
-import { ProbotAppError } from "../../error"
-import { DiffWithFiles, VdTag, VdTagType, DiffWithFilesAndTags } from "../tag-parser"
+import * as LangUtil from "./util"
+import * as AppError from "../../error"
+import * as Tag from "../tag-parser"
 
 // Language parsing imports
 import * as cpp from "./cplusplus/index"
@@ -57,7 +57,7 @@ export interface ReducedCommentNode {
   startLine: number;
   endLine: number;
   data:
-    { dataType: "tag-declaration", owner: string, tagType: VdTagType } |
+    { dataType: "tag-declaration", owner: string, tagType: Tag.VdTagType } |
     { dataType: "tag-end-block", seen: boolean /** meta-data for whether it's been seen */ }
 }
 
@@ -67,7 +67,7 @@ export type Language = "CPlusPlus" | "Java" | "Javascript" | "Python" | "Typescr
 // All possible error types
 export type LanguageParserErrorType = "unsupported-file" | "unsupported-extension"
 
-export class LanguageParserError extends ProbotAppError {
+export class LanguageParserError extends AppError.ProbotAppError {
 
   public type: LanguageParserErrorType;
 
@@ -116,66 +116,6 @@ export const extractFileType = (filePath: string): Language => {
   return getLanguage(extension)
 }
 
-// Parses the tags based on the langauge of the file
-export const parseVdTags = (diffWF: DiffWithFiles): DiffWithFilesAndTags => {
-
-  // TODO what about the case where the language changes on a "rename"?
-  const language = extractFileType(diffWF.filePath)
-
-  const getFileTags = (fileContent: string): VdTag[] => {
-    const fileAst = parse(language, fileContent)
-    return astToTags(language, fileAst)
-  }
-
-  switch (diffWF.diffType) {
-
-    case "new": {
-
-      const file =
-        R.pipe(
-          R.map(R.path(["content"])),
-          R.join("\n")
-        )(diffWF.alteredLines)
-
-      return R.merge(
-        diffWF,
-        { fileTags: getFileTags(file) }
-      )
-    }
-
-    case "deleted": {
-
-      const file =
-        R.pipe(
-          R.map(R.path(["content"])),
-          R.join("\n")
-        )(diffWF.alteredLines)
-
-
-      return R.merge(diffWF, { fileTags: getFileTags(file) })
-    }
-
-    case "renamed":
-      return R.merge(
-        diffWF,
-        {
-          fileTags: getFileTags(diffWF.fileContent),
-          previousFileTags: getFileTags(diffWF.previousFileContent),
-        }
-      )
-
-    case "modified":
-      return R.merge(
-        diffWF,
-        {
-          fileTags: getFileTags(diffWF.fileContent),
-          previousFileTags: getFileTags(diffWF.previousFileContent)
-        }
-      )
-
-  } // end switch
-}
-
 export const newEmptyFileAst = (): FileAst => R.clone({ functions: {}, comments: {} })
 
 export const newEmptyReducedFileAst = (): ReducedFileAst => R.clone({ functions: {}, comments: {} })
@@ -202,10 +142,8 @@ export const addCommentToAst = (fileAst: FileAst, commentNode: CommentNode): voi
   fileAst.comments[commentNode.endLine].push(commentNode)
 }
 
-/** INTERNAL FUNCTIONS */
-
 /** Parse the AST from the file given the language. */
-const parse = (language: Language, fileContent: string): FileAst => {
+export const parse = (language: Language, fileContent: string): FileAst => {
 
   switch (language) {
 
@@ -228,9 +166,9 @@ const parse = (language: Language, fileContent: string): FileAst => {
 }
 
 // Converts ast to VD tags
-const astToTags = (language: Language, fileAst: FileAst): VdTag[] => {
+export const astToTags = (language: Language, fileAst: FileAst): Tag.VdTag[] => {
 
-  const reducedAst = reduceFileAst(fileAst)
+  const reducedAst = LangUtil.reduceFileAst(fileAst)
 
   switch (language) {
 

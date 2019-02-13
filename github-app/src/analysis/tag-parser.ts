@@ -1,9 +1,9 @@
-// Module for handling parsing files for VD tags.
+// Module for handling parsing VD tags from files.
 
 import R from "ramda"
 
-import { ModifiedFileDiff, RenamedFileDiff, DeletedFileDiff, NewFileDiff } from "./diff-parser"
-import { parseVdTags } from "./languages/index"
+import * as Diff from "./diff-parser"
+import * as Lang from "./languages/index"
 
 /** EXTERNAL TYPES */
 
@@ -15,21 +15,21 @@ export type DiffWithFiles =
   DeletedDiffWithFiles
 
 
-export type ModifiedDiffWithFiles = ModifiedFileDiff & {
+export type ModifiedDiffWithFiles = Diff.ModifiedFileDiff & {
   previousFileContent: string,
   fileContent: string
 }
 
-export type RenamedDiffWithFiles = RenamedFileDiff & {
+export type RenamedDiffWithFiles = Diff.RenamedFileDiff & {
   previousFileContent: string,
   fileContent: string
 }
 
 // The full file is present already in the diff itself
-export type NewDiffWithFiles = NewFileDiff
+export type NewDiffWithFiles = Diff.NewFileDiff
 
 // The full file is present already in the diff itself
-export type DeletedDiffWithFiles = DeletedFileDiff
+export type DeletedDiffWithFiles = Diff.DeletedFileDiff
 
 //
 export type DiffWithFilesAndTags =
@@ -97,80 +97,64 @@ export type VdLineTag = BaseTag & LineOwnershipTag & {
   tagType: "line";
 }
 
-// A review indicates that a certain `VdTag` must be reviewed.
-export type Review = ReviewNewTag | ReviewDeletedTag | ReviewModifiedTag
-
-// A tag can be new, deleted, or modified in some way.
-export type ReviewType = "new" | "deleted" | "modified"
-
-// All Reviews should have these properties.
-export interface BaseReview {
-  reviewType: ReviewType;
-  tag: VdTag;
-}
-
-// A review for a new tag.
-export type ReviewNewTag = BaseReview & {
-  reviewType: "new";
-  isNewFile: boolean;
-}
-
-// A review for a deleted tag.
-export type ReviewDeletedTag = BaseReview & {
-  reviewType: "deleted";
-  isDeletedFile: boolean;
-}
-
-/** A review for a modified tag.
-
-  Modifications include any/all of the following: changing the tag, changing some code, changing the docs.
-*/
-export type ReviewModifiedTag = BaseReview & {
-  reviewType: "existing";
-  modifiedTag: boolean;
-  modifiedCode: boolean;
-  modifiedDocs: boolean;
-}
-
-/** CONSTANTS */
-
-const VD_TAG = "@VD"
-
 /** EXTERNAL FUNCTIONS */
 
-// TODO DOC
-export const getFileReview = (diffWF: DiffWithFiles): Review[] => {
+// Parses the tags based on the langauge of the file
+export const parseTags = (diffWF: DiffWithFiles): DiffWithFilesAndTags => {
 
-  const diffWFAT = parseVdTags(diffWF)
+  // TODO what about the case where the language changes on a "rename"?
+  const language = Lang.extractFileType(diffWF.filePath)
 
-  switch ( diffWFAT.diffType ) {
+  const getFileTags = (fileContent: string): VdTag[] => {
+    const fileAst = Lang.parse(language, fileContent)
+    return Lang.astToTags(language, fileAst)
+  }
 
-    case "new":
+  switch (diffWF.diffType) {
 
-      return R.map<VdTag, Review>((fileTag) => {
-        return {
-          reviewType: "new",
-          tag: fileTag,
-          isNewFile: true
-        }
-      }, diffWFAT.fileTags)
+    case "new": {
 
-    case "deleted":
+      const file =
+        R.pipe(
+          R.map(R.path(["content"])),
+          R.join("\n")
+        )(diffWF.alteredLines)
 
-      return R.map<VdTag, Review>((fileTag) => {
-        return {
-          reviewType: "deleted",
-          tag: fileTag,
-          isDeletedFile: true
-        }
-      }, diffWFAT.fileTags)
+      return R.merge(
+        diffWF,
+        { fileTags: getFileTags(file) }
+      )
+    }
+
+    case "deleted": {
+
+      const file =
+        R.pipe(
+          R.map(R.path(["content"])),
+          R.join("\n")
+        )(diffWF.alteredLines)
+
+
+      return R.merge(diffWF, { fileTags: getFileTags(file) })
+    }
 
     case "renamed":
-      throw new Error("NOT IMPLEMENETED YET")
+      return R.merge(
+        diffWF,
+        {
+          fileTags: getFileTags(diffWF.fileContent),
+          previousFileTags: getFileTags(diffWF.previousFileContent),
+        }
+      )
 
     case "modified":
-      throw new Error("NOT IMPLEMENETED YET")
+      return R.merge(
+        diffWF,
+        {
+          fileTags: getFileTags(diffWF.fileContent),
+          previousFileTags: getFileTags(diffWF.previousFileContent)
+        }
+      )
 
   } // end switch
-
 }

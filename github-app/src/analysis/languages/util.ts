@@ -1,9 +1,11 @@
+// Module for utility functions for common language-related things.
+
 import R from "ramda"
-
-import { FileAst, ReducedFileAst, newEmptyReducedFileAst } from "./index"
-import { VdTag, VdTagType } from "../tag-parser"
-
 import { DefaultErrorStrategy } from 'antlr4ts/DefaultErrorStrategy';
+
+import * as Lang from "./index"
+import * as Tag from "../tag-parser"
+
 
 
 // All VD information must have this prefix
@@ -31,8 +33,8 @@ export class ErrorHappenedStrategy extends DefaultErrorStrategy {
 
 /** Reduce an AST to only contain relevant information.
  */
-export const reduceFileAst = (fileAst: FileAst): ReducedFileAst => {
-  const reducedFileAst = newEmptyReducedFileAst()
+export const reduceFileAst = (fileAst: Lang.FileAst): Lang.ReducedFileAst => {
+  const reducedFileAst = Lang.newEmptyReducedFileAst()
 
   // Functions all deep-copied
   reducedFileAst.functions = R.clone(fileAst.functions)
@@ -83,7 +85,7 @@ export const reduceFileAst = (fileAst: FileAst): ReducedFileAst => {
         endLine: commentNode.endLine,
         data: {
           dataType: "tag-declaration",
-          tagType: tagType as VdTagType, // regex only matches valid tag types
+          tagType: tagType as Tag.VdTagType, // regex only matches valid tag types
           owner
         }
       }
@@ -110,9 +112,9 @@ export const reduceFileAst = (fileAst: FileAst): ReducedFileAst => {
   Noteable exceptions are languages like python which can have comments under the function declarations instead of
   before.
  */
-export const standardTagsFromReducedFileAst = (reducedFileAst: ReducedFileAst): VdTag[] => {
+export const standardTagsFromReducedFileAst = (reducedFileAst: Lang.ReducedFileAst): Tag.VdTag[] => {
 
-  const vdTags: VdTag[] = []
+  const vdTags: Tag.VdTag[] = []
 
   loopAnalyzeComments:
   for (let commentLineNumber in reducedFileAst.comments) {

@@ -1,14 +1,14 @@
-// Base module containing probot app
+// Base module for probot app.
 
-import { Application } from 'probot' // eslint-disable-line no-unused-vars
+import * as Probot from 'probot' // eslint-disable-line no-unused-vars
 import R from "ramda"
 
-import { analyzeCommitDiffAndSubmitStatus } from "./analysis/index"
+import * as Analysis from "./analysis/index"
 
 const VIVA_DOC_STATUS_NAME = "continuous-documentation/viva-doc"
 const VIVA_DOC_STATUS_CONTEXT = "Documentation Analysis";
 
-export = (app: Application) => {
+export = (app: Probot.Application) => {
 
   // On installation going to set the default branch to be protected.
   // @PROD This will not be the solution in production, but rather probably refer to the config file to figure out which
@@ -110,7 +110,7 @@ export = (app: Application) => {
       }
 
       try {
-        analyzeCommitDiffAndSubmitStatus(
+        Analysis.analyzeCommitDiffAndSubmitStatus(
           retrieveDiff,
           retrieveFiles,
           setStatus
