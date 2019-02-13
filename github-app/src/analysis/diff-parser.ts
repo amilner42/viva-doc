@@ -86,6 +86,8 @@ type ParseStage = "line-1" | "line-2" | "diff"
 
 const getSingleFileDiff = (diffByLines: string[]): [string[], FileDiff] => {
 
+  // The index into the string[], this is useful for knowing how far into the string[] we've parsed so when we
+  // hit the next git diff we know how many lines we've consumed.
   let lineIndex = 0;
   let parseStage: ParseStage = "line-1"
   let filePath: FT.Maybe<string> = null;
@@ -93,10 +95,10 @@ const getSingleFileDiff = (diffByLines: string[]): [string[], FileDiff] => {
   let diffType: FT.Maybe<DiffType> = null;
   let skip = 0;
   let deletedFile: FT.Maybe<DeletedFileDiff> = null;
-  let passedDeletedFileHunk: boolean = false;
   let newFile: FT.Maybe<NewFileDiff> = null;
-  let passedNewFileHunk: boolean = false;
   let modifiedFile: FT.Maybe<ModifiedFileDiff | RenamedFileDiff> = null;
+   // Keeps track of the diff line number for added/removed lines, will start at 1 on deleted/added files,
+   // otherwise reads where in the file we are from the hunk.
   let diffLineNumber: FT.Maybe<number> = null;
 
   for (let line of diffByLines) {
@@ -111,19 +113,20 @@ const getSingleFileDiff = (diffByLines: string[]): [string[], FileDiff] => {
     if (deletedFile !== null) {
       if (!line.startsWith(FILE_DIFF_FIRST_LINE)) {
 
-        // We mark we are passed the hunk so remaining lines starting with "-" are deleted.
+        // Once we pass the hunk we set diffLineNumber to 1 to track remaining deleted lines
         if (line.startsWith(HUNK_PREFIX)) {
-          passedDeletedFileHunk = true;
-          lineIndex = 0;
+          diffLineNumber = 1;
           continue;
         }
 
-        if (line.startsWith(MODIFIED_DELETED_LINE_PREFIX) && passedDeletedFileHunk) {
+        // If we've passed the hunk then we record lines as deleted
+        if (line.startsWith(MODIFIED_DELETED_LINE_PREFIX) && diffLineNumber !== null) {
           deletedFile.alteredLines.push({
             type: "deleted",
             content: line.substr(MODIFIED_DELETED_LINE_PREFIX.length),
-            lineNumber: lineIndex
+            lineNumber: diffLineNumber
           })
+          diffLineNumber++
         }
         continue;
       }
@@ -135,19 +138,20 @@ const getSingleFileDiff = (diffByLines: string[]): [string[], FileDiff] => {
     if (newFile !== null) {
       if (!line.startsWith(FILE_DIFF_FIRST_LINE)) {
 
-        // We mark we are passed the hunk so remaining lines starting with "+" are added.
+        // Once we pass the hunk we set diffLineNumber to 1 to track remaining added lines
         if (line.startsWith(HUNK_PREFIX)) {
-          passedNewFileHunk = true;
-          lineIndex = 0;
+          diffLineNumber = 1
           continue;
         }
 
-        if (line.startsWith(MODIFIED_ADDED_LINE_PREFIX) && passedNewFileHunk) {
+        // If we've passed the hunk then we record lines as added
+        if (line.startsWith(MODIFIED_ADDED_LINE_PREFIX) && diffLineNumber !== null) {
           newFile.alteredLines.push({
             type: "added",
             content: line.substr(MODIFIED_ADDED_LINE_PREFIX.length),
-            lineNumber: lineIndex
+            lineNumber: diffLineNumber
           })
+          diffLineNumber++
         }
         continue;
       }
