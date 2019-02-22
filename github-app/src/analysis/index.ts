@@ -87,8 +87,12 @@ export const analyzeCommitDiffAndSubmitStatus = async (
   }
 
   // An array of reviews for each file.
-  const fileReviews = fileDiffsWithFiles.map(Tag.parseTags).map(Review.getReviews)
-  console.log(`Tags needing approval: ${JSON.stringify(fileReviews)}`)
+  const fileReviews = R.pipe(
+    R.map(Tag.parseTags),
+    R.map(Review.getReviews)
+  )(fileDiffsWithFiles)
+
+  console.log(`${JSON.stringify(fileReviews)}`)
 
   return
 }
