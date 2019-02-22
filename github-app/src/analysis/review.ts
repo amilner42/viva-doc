@@ -71,9 +71,9 @@ export type ReviewModified = BaseReview & {
 }
 
 // Get reviews from all the parsed information
-export const getReviews = (diffWFAT: Tag.DiffWithFilesAndTags): FileReview => {
+export const getReviews = (diffWCAT: Tag.FileDiffWithCodeAndTags): FileReview => {
 
-  switch ( diffWFAT.diffType ) {
+  switch ( diffWCAT.diffType ) {
 
     case "new": {
 
@@ -82,11 +82,11 @@ export const getReviews = (diffWFAT: Tag.DiffWithFilesAndTags): FileReview => {
           reviewType: "new",
           tag: fileTag,
         }
-      }, diffWFAT.fileTags)
+      }, diffWCAT.fileTags)
 
       return {
         fileReviewType: "new-file",
-        filePath: diffWFAT.filePath,
+        filePath: diffWCAT.filePath,
         reviews
       }
     }
@@ -98,11 +98,11 @@ export const getReviews = (diffWFAT: Tag.DiffWithFilesAndTags): FileReview => {
           reviewType: "deleted",
           tag: fileTag
         }
-      }, diffWFAT.fileTags)
+      }, diffWCAT.fileTags)
 
       return {
         fileReviewType: "deleted-file",
-        filePath: diffWFAT.filePath,
+        filePath: diffWCAT.filePath,
         reviews
       }
     }

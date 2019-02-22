@@ -54,11 +54,11 @@ export const analyzeCommitDiffAndSubmitStatus = async (
     return
   }
 
-  let fileDiffsWithFiles: Tag.DiffWithFiles[];
+  let fileDiffsWithCode: Tag.FileDiffWithCode[];
 
   // Fetch all files needed for analysis
   try {
-    fileDiffsWithFiles = await Promise.all(filesDiffsToAnalyze.map(async (fileDiff): Promise<Tag.DiffWithFiles> => {
+    fileDiffsWithCode = await Promise.all(filesDiffsToAnalyze.map(async (fileDiff): Promise<Tag.FileDiffWithCode> => {
 
       let previousFileContent;
       let fileContent;
@@ -90,7 +90,7 @@ export const analyzeCommitDiffAndSubmitStatus = async (
   const fileReviews = R.pipe(
     R.map(Tag.parseTags),
     R.map(Review.getReviews)
-  )(fileDiffsWithFiles)
+  )(fileDiffsWithCode)
 
   console.log(`${JSON.stringify(fileReviews)}`)
 

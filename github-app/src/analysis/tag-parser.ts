@@ -7,52 +7,52 @@ import * as Lang from "./languages/index"
 
 /** EXTERNAL TYPES */
 
-// Adding the files for diffs that contain the full file
-export type DiffWithFiles =
-  ModifiedDiffWithFiles |
-  RenamedDiffWithFiles |
-  NewDiffWithFiles |
-  DeletedDiffWithFiles
+/** A diff with the code for the relevant file attached. */
+export type FileDiffWithCode =
+  ModifiedFileDiffWithCode |
+  RenamedFileDiffWithCode |
+  NewFileDiffWithCode |
+  DeletedFileDiffWithCode
 
 
-export type ModifiedDiffWithFiles = Diff.ModifiedFileDiff & {
+export type ModifiedFileDiffWithCode = Diff.ModifiedFileDiff & {
   previousFileContent: string,
   fileContent: string
 }
 
-export type RenamedDiffWithFiles = Diff.RenamedFileDiff & {
+export type RenamedFileDiffWithCode = Diff.RenamedFileDiff & {
   previousFileContent: string,
   fileContent: string
 }
 
 // The full file is present already in the diff itself
-export type NewDiffWithFiles = Diff.NewFileDiff
+export type NewFileDiffWithCode = Diff.NewFileDiff
 
 // The full file is present already in the diff itself
-export type DeletedDiffWithFiles = Diff.DeletedFileDiff
+export type DeletedFileDiffWithCode = Diff.DeletedFileDiff
 
-//
-export type DiffWithFilesAndTags =
-  ModifiedDiffWithFilesAndTags |
-  RenamedDiffWithFilesAndTags |
-  NewDiffWithFilesAndTags |
-  DeletedDiffWithFilesAndTags
+/** TODO DOC */
+export type FileDiffWithCodeAndTags =
+  ModifiedFileDiffWithCodeAndTags |
+  RenamedFileDiffWithCodeAndTags |
+  NewFileDiffWithCodeAndTags |
+  DeletedFileDiffWithCodeAndTags
 
-export type ModifiedDiffWithFilesAndTags = ModifiedDiffWithFiles & {
+export type ModifiedFileDiffWithCodeAndTags = ModifiedFileDiffWithCode & {
   previousFileTags: VdTag[];
   fileTags: VdTag[];
 }
 
-export type RenamedDiffWithFilesAndTags = RenamedDiffWithFiles & {
+export type RenamedFileDiffWithCodeAndTags = RenamedFileDiffWithCode & {
   previousFileTags: VdTag[];
   fileTags: VdTag[];
 }
 
-export type NewDiffWithFilesAndTags = NewDiffWithFiles & {
+export type NewFileDiffWithCodeAndTags = NewFileDiffWithCode & {
   fileTags: VdTag[];
 }
 
-export type DeletedDiffWithFilesAndTags= DeletedDiffWithFiles & {
+export type DeletedFileDiffWithCodeAndTags= DeletedFileDiffWithCode & {
   fileTags: VdTag[];
 }
 
@@ -100,7 +100,7 @@ export type VdLineTag = BaseTag & LineOwnershipTag & {
 /** EXTERNAL FUNCTIONS */
 
 // Parses the tags based on the langauge of the file
-export const parseTags = (diffWF: DiffWithFiles): DiffWithFilesAndTags => {
+export const parseTags = (diffWF: FileDiffWithCode): FileDiffWithCodeAndTags => {
 
   // TODO what about the case where the language changes on a "rename"?
   const language = Lang.extractFileType(diffWF.filePath)
