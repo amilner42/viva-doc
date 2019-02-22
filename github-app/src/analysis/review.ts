@@ -2,7 +2,10 @@
 
 import R from "ramda"
 
+import * as Diff from "./diff-parser"
 import * as Tag from "./tag-parser"
+
+/** EXTERNAL TYPES */
 
 /** TODO DOC  */
 export type FileReview = NewFileReview | DeletedFileReview | RenamedFileReview | ModifiedFileReview
@@ -70,6 +73,8 @@ export type ReviewModified = BaseReview & {
   reviewType: "modified";
 }
 
+/** EXTERNAL FUNCTIONS */
+
 // Get reviews from all the parsed information
 export const getReviews = (diffWCAT: Tag.FileDiffWithCodeAndTags): FileReview => {
 
@@ -107,12 +112,58 @@ export const getReviews = (diffWCAT: Tag.FileDiffWithCodeAndTags): FileReview =>
       }
     }
 
-    case "renamed":
-      throw new Error("NOT IMPLEMENETED YET")
+    case "renamed": {
 
-    case "modified":
-      throw new Error("NOT IMPLEMENETED YET")
+      const reviews: Review[] = calculateReviewsFromModification({
+        oldTags: diffWCAT.previousFileTags,
+        newTags: diffWCAT.fileTags,
+        oldFileContent: diffWCAT.previousFileContent,
+        newFileContent: diffWCAT.fileContent,
+        alteredLines: diffWCAT.alteredLines
+      })
+
+      return {
+        fileReviewType: "renamed-file",
+        newFilePath: diffWCAT.newFilePath,
+        oldFilePath: diffWCAT.filePath,
+        reviews
+      }
+    }
+
+    case "modified": {
+
+      const reviews: Review[] = calculateReviewsFromModification({
+        oldTags: diffWCAT.previousFileTags,
+        newTags: diffWCAT.fileTags,
+        oldFileContent: diffWCAT.previousFileContent,
+        newFileContent: diffWCAT.fileContent,
+        alteredLines: diffWCAT.alteredLines
+      })
+
+      return {
+        fileReviewType: "modified-file",
+        filePath: diffWCAT.filePath,
+        reviews
+      }
+    }
 
   } // end switch
+}
 
+/** INTERNAL */
+
+interface CalculateModificationReviewParams {
+  oldTags: Tag.VdTag[],
+  newTags: Tag.VdTag[],
+  oldFileContent: string,
+  newFileContent: string,
+  alteredLines: Diff.AlteredLines
+}
+
+/** Calculates the reviews for some file modification given all helpful information.
+
+  This is the crux of the app. Commit.
+ */
+const calculateReviewsFromModification = (params: CalculateModificationReviewParams): Review[] => {
+  throw new Error("NOT IMPLEMENTED")
 }
