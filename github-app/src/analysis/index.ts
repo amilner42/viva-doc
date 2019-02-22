@@ -14,7 +14,7 @@ import * as AppError from "../error"
 // @THROWS TODO
 export const analyzeCommitDiffAndSubmitStatus = async (
   retrieveDiff: () => Promise<any>,
-  retrieveFiles: (previousFilePath: string, newFilePath: string) => Promise<[string, string]>,
+  retrieveFiles: (previousFilePath: string, currentFilePath: string) => Promise<[string, string]>,
   setStatus: (statusState: "success" | "failure") => Promise<any>
 ): Promise<void> => {
 
@@ -24,7 +24,8 @@ export const analyzeCommitDiffAndSubmitStatus = async (
   const filesDiffsToAnalyze: Diff.FileDiff[] = R.filter(
     (fileDiff) => {
       try {
-        Lang.extractFileType(fileDiff.filePath)
+        // TODO does this make sense on with diffType = rename?
+        Lang.extractFileType(fileDiff.currentFilePath)
         return true
       } catch ( err ) {
         if (err instanceof Lang.LanguageParserError) {
@@ -61,17 +62,17 @@ export const analyzeCommitDiffAndSubmitStatus = async (
     fileDiffsWithCode = await Promise.all(filesDiffsToAnalyze.map(async (fileDiff): Promise<Tag.FileDiffWithCode> => {
 
       let previousFileContent;
-      let fileContent;
+      let currentFileContent;
 
       switch (fileDiff.diffType) {
 
         case "modified":
-          [ previousFileContent, fileContent ] = await retrieveFiles(fileDiff.filePath, fileDiff.filePath)
-          return R.merge(fileDiff, {  previousFileContent, fileContent })
+          [ previousFileContent, currentFileContent ] = await retrieveFiles(fileDiff.currentFilePath, fileDiff.currentFilePath)
+          return R.merge(fileDiff, {  previousFileContent, currentFileContent })
 
         case "renamed":
-          [ previousFileContent, fileContent ] = await retrieveFiles(fileDiff.filePath, fileDiff.newFilePath)
-          return R.merge(fileDiff, { previousFileContent, fileContent })
+          [ previousFileContent, currentFileContent ] = await retrieveFiles(fileDiff.previousFilePath, fileDiff.currentFilePath)
+          return R.merge(fileDiff, { previousFileContent, currentFileContent })
 
         case "deleted":
           return fileDiff

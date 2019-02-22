@@ -7,6 +7,26 @@ import * as Lang from "./languages/index"
 
 /** EXTERNAL TYPES */
 
+/** COMPOSITION */
+
+export interface HasCurrentTags {
+  currentFileTags: VdTag[];
+}
+
+export interface HasPreviousTags {
+  previousFileTags: VdTag[];
+}
+
+export interface HasAttachedCode {
+  previousFileContent: string,
+  currentFileContent: string
+}
+
+export interface HasLineOwnership {
+  startLine: number;
+  endLine: number;
+}
+
 /** A diff with the code for the relevant file attached. */
 export type FileDiffWithCode =
   ModifiedFileDiffWithCode |
@@ -14,16 +34,9 @@ export type FileDiffWithCode =
   NewFileDiffWithCode |
   DeletedFileDiffWithCode
 
+export type ModifiedFileDiffWithCode = Diff.ModifiedFileDiff & HasAttachedCode
 
-export type ModifiedFileDiffWithCode = Diff.ModifiedFileDiff & {
-  previousFileContent: string,
-  fileContent: string
-}
-
-export type RenamedFileDiffWithCode = Diff.RenamedFileDiff & {
-  previousFileContent: string,
-  fileContent: string
-}
+export type RenamedFileDiffWithCode = Diff.RenamedFileDiff & HasAttachedCode
 
 // The full file is present already in the diff itself
 export type NewFileDiffWithCode = Diff.NewFileDiff
@@ -31,30 +44,20 @@ export type NewFileDiffWithCode = Diff.NewFileDiff
 // The full file is present already in the diff itself
 export type DeletedFileDiffWithCode = Diff.DeletedFileDiff
 
-/** TODO DOC */
+/** A diff with the code for the relevant file and parsed tags attached. */
 export type FileDiffWithCodeAndTags =
   ModifiedFileDiffWithCodeAndTags |
   RenamedFileDiffWithCodeAndTags |
   NewFileDiffWithCodeAndTags |
   DeletedFileDiffWithCodeAndTags
 
-export type ModifiedFileDiffWithCodeAndTags = ModifiedFileDiffWithCode & {
-  previousFileTags: VdTag[];
-  fileTags: VdTag[];
-}
+export type ModifiedFileDiffWithCodeAndTags = ModifiedFileDiffWithCode & HasCurrentTags & HasPreviousTags
 
-export type RenamedFileDiffWithCodeAndTags = RenamedFileDiffWithCode & {
-  previousFileTags: VdTag[];
-  fileTags: VdTag[];
-}
+export type RenamedFileDiffWithCodeAndTags = RenamedFileDiffWithCode & HasCurrentTags & HasPreviousTags
 
-export type NewFileDiffWithCodeAndTags = NewFileDiffWithCode & {
-  fileTags: VdTag[];
-}
+export type NewFileDiffWithCodeAndTags = NewFileDiffWithCode & HasCurrentTags
 
-export type DeletedFileDiffWithCodeAndTags= DeletedFileDiffWithCode & {
-  fileTags: VdTag[];
-}
+export type DeletedFileDiffWithCodeAndTags= DeletedFileDiffWithCode & HasCurrentTags
 
 /** All possible VD tag types
  *
@@ -71,29 +74,23 @@ export interface BaseTag {
   owner: string;
 }
 
-// All tags that have line ownership should have these properties.
-export interface LineOwnershipTag {
-  startLine: number;
-  endLine: number;
-}
-
 // A tag representing documentation ownership of an entire file.
 export type VdFileTag = BaseTag & {
   tagType: "file";
 }
 
 // A tag representing documentation ownership of a function.
-export type VdFunctionTag = BaseTag & LineOwnershipTag & {
+export type VdFunctionTag = BaseTag & HasLineOwnership & {
   tagType: "function";
 }
 
 // A tag representing documentation ownership of a explicitly specified block.
-export type VdBlockTag = BaseTag & LineOwnershipTag & {
+export type VdBlockTag = BaseTag & HasLineOwnership & {
   tagType: "block";
 }
 
 // A tag representing documentation ownership of a single line of code.
-export type VdLineTag = BaseTag & LineOwnershipTag & {
+export type VdLineTag = BaseTag & HasLineOwnership & {
   tagType: "line";
 }
 
@@ -103,7 +100,7 @@ export type VdLineTag = BaseTag & LineOwnershipTag & {
 export const parseTags = (diffWF: FileDiffWithCode): FileDiffWithCodeAndTags => {
 
   // TODO what about the case where the language changes on a "rename"?
-  const language = Lang.extractFileType(diffWF.filePath)
+  const language = Lang.extractFileType(diffWF.currentFilePath)
 
   const getFileTags = (fileContent: string): VdTag[] => {
     const fileAst = Lang.parse(language, fileContent)
@@ -122,7 +119,7 @@ export const parseTags = (diffWF: FileDiffWithCode): FileDiffWithCodeAndTags => 
 
       return R.merge(
         diffWF,
-        { fileTags: getFileTags(file) }
+        { currentFileTags: getFileTags(file) }
       )
     }
 
@@ -135,14 +132,14 @@ export const parseTags = (diffWF: FileDiffWithCode): FileDiffWithCodeAndTags => 
         )(diffWF.alteredLines)
 
 
-      return R.merge(diffWF, { fileTags: getFileTags(file) })
+      return R.merge(diffWF, { currentFileTags: getFileTags(file) })
     }
 
     case "renamed":
       return R.merge(
         diffWF,
         {
-          fileTags: getFileTags(diffWF.fileContent),
+          currentFileTags: getFileTags(diffWF.currentFileContent),
           previousFileTags: getFileTags(diffWF.previousFileContent),
         }
       )
@@ -151,7 +148,7 @@ export const parseTags = (diffWF: FileDiffWithCode): FileDiffWithCodeAndTags => 
       return R.merge(
         diffWF,
         {
-          fileTags: getFileTags(diffWF.fileContent),
+          currentFileTags: getFileTags(diffWF.currentFileContent),
           previousFileTags: getFileTags(diffWF.previousFileContent)
         }
       )

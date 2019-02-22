@@ -7,7 +7,19 @@ import * as AppError from "../error"
 
 /** EXTERNAL TYPES */
 
-export type AlteredLines = LineDiff[];
+/** COMPOSITION */
+
+export interface HasCurrentFilePath {
+  currentFilePath: string;
+}
+
+export interface HasPreviousFilePath {
+  previousFilePath: string;
+}
+
+export interface HasAlteredLines {
+  alteredLines: LineDiff[];
+}
 
 export interface LineDiff {
   type: "added" | "deleted"
@@ -19,29 +31,20 @@ export type DiffType = "new" | "modified" | "renamed" | "deleted"
 
 export type FileDiff = NewFileDiff | ModifiedFileDiff | RenamedFileDiff | DeletedFileDiff
 
-export interface NewFileDiff {
-  diffType: "new",
-  filePath: string,
-  alteredLines: AlteredLines
+export type NewFileDiff = HasCurrentFilePath & HasAlteredLines & {
+  diffType: "new";
 }
 
-export interface ModifiedFileDiff {
-  diffType: "modified",
-  filePath: string,
-  alteredLines: AlteredLines
+export type ModifiedFileDiff = HasCurrentFilePath & HasAlteredLines & {
+  diffType: "modified";
 }
 
-export interface RenamedFileDiff {
-  diffType: "renamed",
-  filePath: string, // TODO change name and handle cases
-  newFilePath: string,
-  alteredLines: AlteredLines
+export type RenamedFileDiff = HasCurrentFilePath & HasPreviousFilePath & HasAlteredLines & {
+  diffType: "renamed";
 }
 
-export interface DeletedFileDiff {
+export type DeletedFileDiff = HasCurrentFilePath & HasAlteredLines & {
   diffType: "deleted",
-  filePath: string,
-  alteredLines: AlteredLines
 }
 
 // All errors from this module
@@ -90,8 +93,8 @@ const getSingleFileDiff = (diffByLines: string[]): [string[], FileDiff] => {
   // hit the next git diff we know how many lines we've consumed.
   let lineIndex = 0;
   let parseStage: ParseStage = "line-1"
-  let filePath: FT.Maybe<string> = null;
-  let newFilePath: FT.Maybe<string> = null;
+  let previousFilePath: FT.Maybe<string> = null;
+  let currentFilePath: FT.Maybe<string> = null;
   let diffType: FT.Maybe<DiffType> = null;
   let skip = 0;
   let deletedFile: FT.Maybe<DeletedFileDiff> = null;
@@ -200,8 +203,9 @@ const getSingleFileDiff = (diffByLines: string[]): [string[], FileDiff] => {
           diffType = "renamed"
         }
 
-        filePath = filePathA;
-        newFilePath = filePathB; // For renamed files
+        // For renamed files we need both
+        previousFilePath = filePathA;
+        currentFilePath = filePathB;
 
         parseStage = "line-2"
         break;
@@ -210,7 +214,7 @@ const getSingleFileDiff = (diffByLines: string[]): [string[], FileDiff] => {
       case "line-2":
 
         // Should always be set on the first line
-        if(filePath === null || newFilePath === null) {
+        if(previousFilePath === null || currentFilePath === null) {
           throw new DiffParserError("Internal Error: 1");
         }
 
@@ -220,7 +224,7 @@ const getSingleFileDiff = (diffByLines: string[]): [string[], FileDiff] => {
             // We can proceed to the next git diff
             return [
               R.drop(4, diffByLines),
-              { diffType, filePath, newFilePath, alteredLines: [] }
+              { diffType, currentFilePath, previousFilePath, alteredLines: [] }
             ]
           } else {
             // It's a rename and a modifcation, we still have to parse modifications
@@ -234,13 +238,13 @@ const getSingleFileDiff = (diffByLines: string[]): [string[], FileDiff] => {
 
         // Deleted file
         if (line.startsWith(DELETED_FILE_PREFIX)) {
-          deletedFile = { diffType: "deleted", filePath, alteredLines: [] }
+          deletedFile = { diffType: "deleted", currentFilePath, alteredLines: [] }
           break;
         }
 
         // New file
         if (line.startsWith(NEW_FILE_PREFIX)) {
-          newFile = { diffType: "new", filePath, alteredLines: [] }
+          newFile = { diffType: "new", currentFilePath, alteredLines: [] }
           break;
         }
 
@@ -256,8 +260,8 @@ const getSingleFileDiff = (diffByLines: string[]): [string[], FileDiff] => {
         // At this stage we should have the file name and the diff type
         if (  diffType === null
            || !(diffType === "modified" || diffType === "renamed")
-           || filePath === null
-           || newFilePath === null
+           || currentFilePath === null
+           || previousFilePath === null
            ) {
           throw new DiffParserError("Internal Error: 3")
         }
@@ -269,14 +273,14 @@ const getSingleFileDiff = (diffByLines: string[]): [string[], FileDiff] => {
           // Meaningless if/else to make ts happy.
           if(diffType === "modified") {
             modifiedFile = {
-              filePath,
+              currentFilePath,
               diffType,
               alteredLines: []
             }
           } else {
             modifiedFile = {
-              filePath,
-              newFilePath,
+              currentFilePath,
+              previousFilePath,
               diffType,
               alteredLines: []
             }

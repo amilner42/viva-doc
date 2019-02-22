@@ -17,31 +17,24 @@ export interface BaseFileReview {
 }
 
 /** TODO DOC */
-export interface HasSingleFilePath {
-  filePath: string;
-}
-
-/** TODO DOC */
-export type NewFileReview = BaseFileReview & HasSingleFilePath & {
+export type NewFileReview = BaseFileReview & Diff.HasCurrentFilePath & {
   fileReviewType: "new-file";
   reviews: ReviewNew[];
 }
 
 /** TODO DOC */
-export type DeletedFileReview = BaseFileReview & HasSingleFilePath & {
+export type DeletedFileReview = BaseFileReview & Diff.HasCurrentFilePath & {
   fileReviewType: "deleted-file";
   reviews: ReviewDeleted[];
 }
 
 /** TODO DOC */
-export type RenamedFileReview = BaseFileReview & {
+export type RenamedFileReview = BaseFileReview & Diff.HasPreviousFilePath & Diff.HasCurrentFilePath & {
   fileReviewType: "renamed-file";
-  oldFilePath: string;
-  newFilePath: string;
 }
 
 /** TODO DOC */
-export type ModifiedFileReview = BaseFileReview & HasSingleFilePath & {
+export type ModifiedFileReview = BaseFileReview & Diff.HasCurrentFilePath & {
   fileReviewType: "modified-file";
 }
 
@@ -87,11 +80,11 @@ export const getReviews = (diffWCAT: Tag.FileDiffWithCodeAndTags): FileReview =>
           reviewType: "new",
           tag: fileTag,
         }
-      }, diffWCAT.fileTags)
+      }, diffWCAT.currentFileTags)
 
       return {
         fileReviewType: "new-file",
-        filePath: diffWCAT.filePath,
+        currentFilePath: diffWCAT.currentFilePath,
         reviews
       }
     }
@@ -103,11 +96,11 @@ export const getReviews = (diffWCAT: Tag.FileDiffWithCodeAndTags): FileReview =>
           reviewType: "deleted",
           tag: fileTag
         }
-      }, diffWCAT.fileTags)
+      }, diffWCAT.currentFileTags)
 
       return {
         fileReviewType: "deleted-file",
-        filePath: diffWCAT.filePath,
+        currentFilePath: diffWCAT.currentFilePath,
         reviews
       }
     }
@@ -115,17 +108,17 @@ export const getReviews = (diffWCAT: Tag.FileDiffWithCodeAndTags): FileReview =>
     case "renamed": {
 
       const reviews: Review[] = calculateReviewsFromModification({
-        oldTags: diffWCAT.previousFileTags,
-        newTags: diffWCAT.fileTags,
-        oldFileContent: diffWCAT.previousFileContent,
-        newFileContent: diffWCAT.fileContent,
+        previousTags: diffWCAT.previousFileTags,
+        currentTags: diffWCAT.currentFileTags,
+        previousFileContent: diffWCAT.previousFileContent,
+        currentFileContent: diffWCAT.currentFileContent,
         alteredLines: diffWCAT.alteredLines
       })
 
       return {
         fileReviewType: "renamed-file",
-        newFilePath: diffWCAT.newFilePath,
-        oldFilePath: diffWCAT.filePath,
+        currentFilePath: diffWCAT.currentFilePath,
+        previousFilePath: diffWCAT.previousFilePath,
         reviews
       }
     }
@@ -133,16 +126,16 @@ export const getReviews = (diffWCAT: Tag.FileDiffWithCodeAndTags): FileReview =>
     case "modified": {
 
       const reviews: Review[] = calculateReviewsFromModification({
-        oldTags: diffWCAT.previousFileTags,
-        newTags: diffWCAT.fileTags,
-        oldFileContent: diffWCAT.previousFileContent,
-        newFileContent: diffWCAT.fileContent,
+        previousTags: diffWCAT.previousFileTags,
+        currentTags: diffWCAT.currentFileTags,
+        previousFileContent: diffWCAT.previousFileContent,
+        currentFileContent: diffWCAT.currentFileContent,
         alteredLines: diffWCAT.alteredLines
       })
 
       return {
         fileReviewType: "modified-file",
-        filePath: diffWCAT.filePath,
+        currentFilePath: diffWCAT.currentFilePath,
         reviews
       }
     }
@@ -153,11 +146,11 @@ export const getReviews = (diffWCAT: Tag.FileDiffWithCodeAndTags): FileReview =>
 /** INTERNAL */
 
 interface CalculateModificationReviewParams {
-  oldTags: Tag.VdTag[],
-  newTags: Tag.VdTag[],
-  oldFileContent: string,
-  newFileContent: string,
-  alteredLines: Diff.AlteredLines
+  previousTags: Tag.VdTag[],
+  currentTags: Tag.VdTag[],
+  previousFileContent: string,
+  currentFileContent: string,
+  alteredLines: Diff.LineDiff[]
 }
 
 /** Calculates the reviews for some file modification given all helpful information.

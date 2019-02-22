@@ -77,7 +77,7 @@ export = (app: Probot.Application) => {
         } as any).then(R.path(["data"]))
       }
 
-      const retrieveFiles = async (previousFilePath: string, newFilePath: string): Promise<[string, string]> => {
+      const retrieveFiles = async (previousFilePath: string, currentFilePath: string): Promise<[string, string]> => {
 
         const getFile = async (commitId: string, path: string): Promise<string> => {
           return context.github.repos.getContents({
@@ -94,7 +94,7 @@ export = (app: Probot.Application) => {
 
 
         const previousFile = await getFile(previousCommitId, previousFilePath)
-        const currentFile = await getFile(currentCommitId, newFilePath)
+        const currentFile = await getFile(currentCommitId, currentFilePath)
 
         return [ previousFile, currentFile ]
       }
