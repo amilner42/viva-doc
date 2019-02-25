@@ -73,72 +73,50 @@ export const getReviews = (diffWCAT: Tag.FileDiffWithCodeAndTags): FileReview =>
 
   switch ( diffWCAT.diffType ) {
 
-    case "new": {
-
-      const reviews: ReviewNew[] = R.map<Tag.VdTag, ReviewNew>((fileTag) => {
-        return {
-          reviewType: "new",
-          tag: fileTag,
-        }
-      }, diffWCAT.currentFileTags)
-
+    case "new":
+      // Simple case, all tags are new tags
       return {
         fileReviewType: "new-file",
         currentFilePath: diffWCAT.currentFilePath,
-        reviews
+        reviews: mapTagsToNewReviews(diffWCAT.currentFileTags)
       }
-    }
 
-    case "deleted": {
-
-      const reviews: ReviewDeleted[] = R.map<Tag.VdTag, ReviewDeleted>((fileTag) => {
-        return {
-          reviewType: "deleted",
-          tag: fileTag
-        }
-      }, diffWCAT.currentFileTags)
-
+    case "deleted":
+      // Simple case, all tags are deleted tags
       return {
         fileReviewType: "deleted-file",
         currentFilePath: diffWCAT.currentFilePath,
-        reviews
+        reviews: mapTagsToDeletedReviews(diffWCAT.currentFileTags)
       }
-    }
 
-    case "renamed": {
-
-      const reviews: Review[] = calculateReviewsFromModification({
-        previousTags: diffWCAT.previousFileTags,
-        currentTags: diffWCAT.currentFileTags,
-        previousFileContent: diffWCAT.previousFileContent,
-        currentFileContent: diffWCAT.currentFileContent,
-        alteredLines: diffWCAT.alteredLines
-      })
-
+    case "renamed":
+      // Tricky case, need to calculate reviews from modification
       return {
         fileReviewType: "renamed-file",
         currentFilePath: diffWCAT.currentFilePath,
         previousFilePath: diffWCAT.previousFilePath,
-        reviews
+        reviews: calculateReviewsFromModification({
+          previousTags: diffWCAT.previousFileTags,
+          currentTags: diffWCAT.currentFileTags,
+          previousFileContent: diffWCAT.previousFileContent,
+          currentFileContent: diffWCAT.currentFileContent,
+          alteredLines: diffWCAT.alteredLines
+        })
       }
-    }
 
-    case "modified": {
-
-      const reviews: Review[] = calculateReviewsFromModification({
-        previousTags: diffWCAT.previousFileTags,
-        currentTags: diffWCAT.currentFileTags,
-        previousFileContent: diffWCAT.previousFileContent,
-        currentFileContent: diffWCAT.currentFileContent,
-        alteredLines: diffWCAT.alteredLines
-      })
-
+    case "modified":
+      // Tricky case, need to calculate reviews from modification
       return {
         fileReviewType: "modified-file",
         currentFilePath: diffWCAT.currentFilePath,
-        reviews
+        reviews: calculateReviewsFromModification({
+          previousTags: diffWCAT.previousFileTags,
+          currentTags: diffWCAT.currentFileTags,
+          previousFileContent: diffWCAT.previousFileContent,
+          currentFileContent: diffWCAT.currentFileContent,
+          alteredLines: diffWCAT.alteredLines
+        })
       }
-    }
 
   } // end switch
 }
@@ -158,5 +136,36 @@ interface CalculateModificationReviewParams {
   This is the crux of the app. Commit.
  */
 const calculateReviewsFromModification = (params: CalculateModificationReviewParams): Review[] => {
+
+  // Simple case: no old/new tags
+  if (params.previousTags.length === 0 && params.currentTags.length === 0) {
+    return []
+  }
+
+  // Simple case: no old tags, some new tags
+  if (params.previousTags.length === 0) {
+    return mapTagsToNewReviews(params.currentTags)
+  }
+
+  // Simple case: old tags, no new tags
+  if (params.currentTags.length === 0) {
+    return mapTagsToDeletedReviews(params.previousTags)
+  }
+
+  // Remaining difficult case: there are old/new tags, diff must be analyzed
   throw new Error("NOT IMPLEMENTED")
+}
+
+/** Create some `ReviewNew`s from some tags. */
+const mapTagsToNewReviews = (tags: Tag.VdTag[]): ReviewNew[] => {
+  return R.map<Tag.VdTag, ReviewNew>((tag) => {
+    return { reviewType: "new", tag }
+  }, tags)
+}
+
+/** Create some `ReviewDeleted`s from some tags. */
+const mapTagsToDeletedReviews = (tags: Tag.VdTag[]): ReviewDeleted[] => {
+  return R.map<Tag.VdTag, ReviewDeleted>((tag) => {
+    return { reviewType: "deleted", tag }
+  }, tags)
 }

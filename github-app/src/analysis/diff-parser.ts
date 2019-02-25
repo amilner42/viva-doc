@@ -21,9 +21,15 @@ export interface HasAlteredLines {
   alteredLines: LineDiff[];
 }
 
+/** A single line of a git diff.
+
+  Includes both the line number in the current version of the file and the line number from the previous version
+  of the file.
+ */
 export interface LineDiff {
   type: "added" | "deleted"
-  lineNumber: number;
+  currentLineNumber: number;
+  previousLineNumber: number;
   content: string;
 }
 
@@ -64,7 +70,8 @@ const MODIFIED_ADDED_LINE_PREFIX = "+"
 const MODIFIED_DELETED_LINE_PREFIX = "-"
 const HUNK_PREFIX = "@@ "
 const HUNK_SUFFIX = " @@" // there can be an optional header after this
-const HUNK_TO_RANGE_PREFIX = "+"
+const HUNK_CURRENT_RANGE_PREFIX = "+"
+const HUNK_PREVIOUS_RANGE_PREFIX = "-"
 
 /** External Functions */
 
@@ -102,7 +109,7 @@ const getSingleFileDiff = (diffByLines: string[]): [string[], FileDiff] => {
   let modifiedFile: FT.Maybe<ModifiedFileDiff | RenamedFileDiff> = null;
    // Keeps track of the diff line number for added/removed lines, will start at 1 on deleted/added files,
    // otherwise reads where in the file we are from the hunk.
-  let diffLineNumber: FT.Maybe<number> = null;
+  let lineNumbers: FT.Maybe<{ currentLineNumber: number, previousLineNumber: number }> = null;
 
   for (let line of diffByLines) {
     lineIndex++;
@@ -116,20 +123,21 @@ const getSingleFileDiff = (diffByLines: string[]): [string[], FileDiff] => {
     if (deletedFile !== null) {
       if (!line.startsWith(FILE_DIFF_FIRST_LINE)) {
 
-        // Once we pass the hunk we set diffLineNumber to 1 to track remaining deleted lines
+        // Once we pass the hunk we set lineNumbers to 1 to track remaining deleted lines
         if (line.startsWith(HUNK_PREFIX)) {
-          diffLineNumber = 1;
+          lineNumbers = { currentLineNumber: 1, previousLineNumber: 1 }
           continue;
         }
 
         // If we've passed the hunk then we record lines as deleted
-        if (line.startsWith(MODIFIED_DELETED_LINE_PREFIX) && diffLineNumber !== null) {
+        if (line.startsWith(MODIFIED_DELETED_LINE_PREFIX) && lineNumbers !== null) {
           deletedFile.alteredLines.push({
             type: "deleted",
             content: line.substr(MODIFIED_DELETED_LINE_PREFIX.length),
-            lineNumber: diffLineNumber
+            currentLineNumber: 1,
+            previousLineNumber: lineNumbers.previousLineNumber
           })
-          diffLineNumber++
+          lineNumbers.previousLineNumber++
         }
         continue;
       }
@@ -141,20 +149,21 @@ const getSingleFileDiff = (diffByLines: string[]): [string[], FileDiff] => {
     if (newFile !== null) {
       if (!line.startsWith(FILE_DIFF_FIRST_LINE)) {
 
-        // Once we pass the hunk we set diffLineNumber to 1 to track remaining added lines
+        // Once we pass the hunk we set lineNumbers to 1 to track remaining added lines
         if (line.startsWith(HUNK_PREFIX)) {
-          diffLineNumber = 1
+          lineNumbers = { previousLineNumber: 1, currentLineNumber: 1 }
           continue;
         }
 
         // If we've passed the hunk then we record lines as added
-        if (line.startsWith(MODIFIED_ADDED_LINE_PREFIX) && diffLineNumber !== null) {
+        if (line.startsWith(MODIFIED_ADDED_LINE_PREFIX) && lineNumbers !== null) {
           newFile.alteredLines.push({
             type: "added",
             content: line.substr(MODIFIED_ADDED_LINE_PREFIX.length),
-            lineNumber: diffLineNumber
+            previousLineNumber: 1,
+            currentLineNumber: lineNumbers.currentLineNumber
           })
-          diffLineNumber++
+          lineNumbers.currentLineNumber++
         }
         continue;
       }
@@ -267,8 +276,8 @@ const getSingleFileDiff = (diffByLines: string[]): [string[], FileDiff] => {
         }
 
         // We should be on a diff hunk if we have no saved start line
-        if (diffLineNumber === null) {
-          diffLineNumber = extractStartLineFromHunk(line)
+        if (lineNumbers === null) {
+          lineNumbers = extractStartLineNumbersFromHunk(line)
 
           // Meaningless if/else to make ts happy.
           if(diffType === "modified") {
@@ -297,7 +306,8 @@ const getSingleFileDiff = (diffByLines: string[]): [string[], FileDiff] => {
 
         // An unaltered line
         if (line.startsWith(MODIFIED_NO_CHANGE_LINE_PREFIX)) {
-          diffLineNumber++
+          lineNumbers.currentLineNumber++
+          lineNumbers.previousLineNumber++
           break
         }
 
@@ -306,10 +316,12 @@ const getSingleFileDiff = (diffByLines: string[]): [string[], FileDiff] => {
 
           modifiedFile.alteredLines.push({
             type: "deleted",
-            lineNumber: diffLineNumber,
+            previousLineNumber: lineNumbers.previousLineNumber,
+            currentLineNumber: lineNumbers.currentLineNumber,
             content: line.substr(MODIFIED_DELETED_LINE_PREFIX.length)
           })
 
+          lineNumbers.previousLineNumber++
           break
         }
 
@@ -317,16 +329,17 @@ const getSingleFileDiff = (diffByLines: string[]): [string[], FileDiff] => {
         if (line.startsWith(MODIFIED_ADDED_LINE_PREFIX)) {
           modifiedFile.alteredLines.push({
             type: "added",
-            lineNumber: diffLineNumber,
+            previousLineNumber: lineNumbers.previousLineNumber,
+            currentLineNumber: lineNumbers.currentLineNumber,
             content: line.substr(MODIFIED_ADDED_LINE_PREFIX.length)
           })
-          diffLineNumber++
+          lineNumbers.currentLineNumber++
           break
         }
 
         // Check if we've hit another diff hunk
         if (line.startsWith(HUNK_PREFIX)) {
-          diffLineNumber = extractStartLineFromHunk(line)
+          lineNumbers = extractStartLineNumbersFromHunk(line)
           break
         }
 
@@ -360,7 +373,14 @@ const getSingleFileDiff = (diffByLines: string[]): [string[], FileDiff] => {
 // Extracts the start line on the from range of a git diff hunk:
 // Eg.
 //  `@@ -1,4 +1,4 @@` should return "1" because of the "+1"
-const extractStartLineFromHunk = (line: string): number => {
+const extractStartLineNumbersFromHunk = (line: string): { previousLineNumber: number, currentLineNumber: number } => {
+
+  // For extracting 11 from text formatted like: `-11,4`
+  const getNumberFromText = (textWithPrefix: string, prefix: string): number => {
+    const textAfterPrefixAsArray: string[] = textWithPrefix.substr(prefix.length).split("")
+    const numericalChars: string[] = R.takeWhile(R.pipe(R.equals(","), R.not), textAfterPrefixAsArray) // parse until ","
+    return parseInt(numericalChars.join(""))
+  }
 
   if(!line.startsWith(HUNK_PREFIX)) {
     throw new DiffParserError(`Malformed git hunk, supposed to start with "${HUNK_PREFIX}": ${line}`)
@@ -372,25 +392,28 @@ const extractStartLineFromHunk = (line: string): number => {
 
   const indexOfSuffix = line.indexOf(HUNK_SUFFIX);
   const hunkValue = line.substr(3, indexOfSuffix - 3)
-  const fromAndToRange = hunkValue.split(" ")
+  const previousAndCurrentLineNumberText = hunkValue.split(" ")
 
-  if (fromAndToRange.length !== 2) {
+  if (previousAndCurrentLineNumberText.length !== 2) {
     throw new DiffParserError(`Malformed diff hunk, supposed to have to and from range sep by a space: ${line}`)
   }
 
-  const toRange = fromAndToRange[1];
+  const previousLineNumberText = previousAndCurrentLineNumberText[0];
+  const currentLineNumberText = previousAndCurrentLineNumberText[1];
 
-  if (!toRange.startsWith(HUNK_TO_RANGE_PREFIX)) {
-    throw new DiffParserError(`Malformed diff hunk, toRange doesn't start with a "${HUNK_TO_RANGE_PREFIX}": ${line}`)
+  if(!previousLineNumberText.startsWith(HUNK_PREVIOUS_RANGE_PREFIX)) {
+    throw new DiffParserError(`Malformed diff hunk, previousLineNumberText doesn't start with a "${HUNK_PREVIOUS_RANGE_PREFIX}": ${line}`)
+  }
+  if (!currentLineNumberText.startsWith(HUNK_CURRENT_RANGE_PREFIX)) {
+    throw new DiffParserError(`Malformed diff hunk, currentLineNumberText doesn't start with a "${HUNK_CURRENT_RANGE_PREFIX}": ${line}`)
   }
 
-  const rangeAfterPrefixAsArray: string[] = toRange.substr(1).split("")
-  const numericalChars: string[] = R.takeWhile(R.pipe(R.equals(","), R.not), rangeAfterPrefixAsArray) // parse until ","
-  const toRangeStartLineNumber = parseInt(numericalChars.join(""))
+  const previousLineNumber = getNumberFromText(previousLineNumberText, HUNK_PREVIOUS_RANGE_PREFIX)
+  const currentLineNumber = getNumberFromText(currentLineNumberText, HUNK_CURRENT_RANGE_PREFIX)
 
-  if (isNaN(toRangeStartLineNumber)) {
-    throw new DiffParserError(`Malformed diff hunk, expected a number for toRange start line: ${line}`)
+  if (isNaN(previousLineNumber) || isNaN(currentLineNumber)) {
+    throw new DiffParserError(`Malformed diff hunk, expecting numbers for previousLineNumber and currentLineNumber: ${previousAndCurrentLineNumberText}`)
   }
 
-  return toRangeStartLineNumber
+  return { previousLineNumber, currentLineNumber }
 }
