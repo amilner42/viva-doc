@@ -5,7 +5,7 @@ import { DefaultErrorStrategy } from 'antlr4ts/DefaultErrorStrategy';
 
 import * as Lang from "./index"
 import * as Tag from "../tag-parser"
-
+import * as F from "../../functional-types"
 
 
 // All VD information must have this prefix
@@ -31,6 +31,55 @@ export class ErrorHappenedStrategy extends DefaultErrorStrategy {
   }
 }
 
+/** Checkes if a string contains a single VD tag annotation.
+
+  Throws an error if the string doesn't follow VD annotation rules:
+    1. Can only have 1 tag annotation prefix (` @VD`)
+      - This thereby prevents multiple full tag annotations
+    2. Must have a full tag/end-block if you have the @VD prefix somewhere
+    3. Cannot have both a tag and an end block
+*/
+export const matchSingleVdTagAnnotation =
+    ( str: string )
+    : F.Tri<"no-match", "match-block", { owner: string, tagType: Tag.VdTagType }> => {
+
+  const matchVdTagAnnotationPrefix = str.match(MATCH_VD_COMMENT_PREFIX_REGEX)
+
+  if (matchVdTagAnnotationPrefix === null) {
+    return F.branch1<"no-match">("no-match");
+  }
+
+  // Breaks rule 1
+  if (matchVdTagAnnotationPrefix.length > 1) {
+    throw new Error("TODO")
+  }
+
+  const matchTagAnnotation = str.match(MATCH_VD_COMMENT_TAG_ANNOTATION_REGEX)
+  const matchEndBlock = str.match(MATCH_VD_COMMENT_END_BLOCK_ANNOTATION_REGEX)
+  const hasMatchedTag = matchTagAnnotation !== null
+  const hasMatchedEndBlock =  matchEndBlock !== null
+
+  // Breaks rule 2
+  if(!hasMatchedEndBlock && !hasMatchedTag) {
+    throw new Error("TODO")
+  }
+
+  // Breaks rule 3
+  if(hasMatchedEndBlock && hasMatchedTag) {
+    throw new Error("TODO")
+  }
+
+  // Matched a single tag
+  if (hasMatchedTag) {
+    const [ , , owner, tagType ] = matchTagAnnotation as [ null, null, string, Tag.VdTagType ]
+
+    return F.branch3({ owner, tagType  })
+  }
+
+  // Matched end block
+  return F.branch2<"match-block">("match-block");
+}
+
 /** Reduce an AST to only contain relevant information.
  */
 export const reduceFileAst = (fileAst: Lang.FileAst): Lang.ReducedFileAst => {
@@ -49,57 +98,33 @@ export const reduceFileAst = (fileAst: Lang.FileAst): Lang.ReducedFileAst => {
       throw Error("TODO")
     }
 
-    // Check against VD prefix
     const commentNode = commentNodes[0]
-    let matches = commentNode.content.match(MATCH_VD_COMMENT_PREFIX_REGEX)
-    if (matches === null) {
-      // No VD tag
-      continue;
-    }
-    // More than one VD prefix
-    if (matches.length > 1) {
-      throw new Error("TODO")
-    }
+    const match = matchSingleVdTagAnnotation(commentNode.content)
+    switch (match.branchTag) {
 
-    const matchTagAnnotation = commentNode.content.match(MATCH_VD_COMMENT_TAG_ANNOTATION_REGEX)
-    const matchEndBlock = commentNode.content.match(MATCH_VD_COMMENT_END_BLOCK_ANNOTATION_REGEX)
-    const hasMatchedTag = matchTagAnnotation !== null
-    const hasMatchedEndBlock =  matchEndBlock !== null
+      case "case-1":
+        continue
 
-    // New annotation and ending block supported?
-    if(hasMatchedEndBlock && hasMatchedTag) {
-      throw new Error("TODO")
-    }
-
-    // Tag prefix but no proper information of any kind
-    if(!hasMatchedEndBlock && !hasMatchedTag) {
-      throw new Error("TODO")
-    }
-
-    //  Tag Annotation
-    if (matchTagAnnotation) {
-      const [ , , owner, tagType ] = matchTagAnnotation as RegExpMatchArray
-
-      reducedFileAst.comments[commentNode.endLine] = {
-        startLine: commentNode.startLine,
-        endLine: commentNode.endLine,
-        data: {
-          dataType: "tag-declaration",
-          tagType: tagType as Tag.VdTagType, // regex only matches valid tag types
-          owner
+      case "case-2":
+        reducedFileAst.comments[commentNode.endLine] = {
+          startLine: commentNode.startLine,
+          endLine: commentNode.endLine,
+          data: { dataType: "tag-end-block", seen: false }
         }
-      }
-      continue;
-    }
+        continue
 
-    // End of a block
-    if (matchEndBlock) {
-      reducedFileAst.comments[commentNode.endLine] = {
-        startLine: commentNode.startLine,
-        endLine: commentNode.endLine,
-        data: { dataType: "tag-end-block", seen: false }
-      }
-      continue;
+      case "case-3":
+        const { owner, tagType } = match.value
+        reducedFileAst.comments[commentNode.endLine] = {
+          startLine: commentNode.startLine,
+          endLine: commentNode.endLine,
+          data: {
+            dataType: "tag-declaration",
+            tagType,
+            owner
+          }
+        }
+        continue;
     }
 
   } // End loop

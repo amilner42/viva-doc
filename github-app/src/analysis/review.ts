@@ -2,8 +2,10 @@
 
 import R from "ramda"
 
+import * as LangUtil from "./languages/util"
 import * as Diff from "./diff-parser"
 import * as Tag from "./tag-parser"
+import * as F from "../functional-types"
 
 /** EXTERNAL TYPES */
 
@@ -137,22 +139,27 @@ interface CalculateModificationReviewParams {
  */
 const calculateReviewsFromModification = (params: CalculateModificationReviewParams): Review[] => {
 
-  // Simple case: no old/new tags
+  /** Simple case: no old/new tags */
   if (params.previousTags.length === 0 && params.currentTags.length === 0) {
     return []
   }
 
-  // Simple case: no old tags, some new tags
+  /** Simple case: no old tags, some new tags */
   if (params.previousTags.length === 0) {
     return mapTagsToNewReviews(params.currentTags)
   }
 
-  // Simple case: old tags, no new tags
+  /** Simple case: old tags, no new tags */
   if (params.currentTags.length === 0) {
     return mapTagsToDeletedReviews(params.previousTags)
   }
 
-  // Remaining difficult case: there are old/new tags, diff must be analyzed
+  /** Complex case: there are old/new tags, diff must be analyzed
+
+    NOTE: The complex case is the common case.
+  */
+  const tagMap: TagMap = getTagMap(params.previousTags, params.currentTags, params.alteredLines)
+
   throw new Error("NOT IMPLEMENTED")
 }
 
@@ -168,4 +175,54 @@ const mapTagsToDeletedReviews = (tags: Tag.VdTag[]): ReviewDeleted[] => {
   return R.map<Tag.VdTag, ReviewDeleted>((tag) => {
     return { reviewType: "deleted", tag }
   }, tags)
+}
+
+/** A map between old and new tags across a diff.
+
+  `null` on `oldTagsToNewTags` represents that the old tag was deleted.
+  `null` on `newTagsToOldTags` represents that the tag is new and doesn't match an old tag.
+*/
+interface TagMap {
+  oldTagsToNewTags: F.Maybe<number>[];
+  newTagsToOldTags: F.Maybe<number>[];
+}
+
+/** Creates a map between the old tags and the new tags given the line diffs. */
+const getTagMap = (oldTags: Tag.VdTag[], newTags: Tag.VdTag[], alteredLines: Diff.LineDiff[]): TagMap => {
+
+  // Initialize tagMap to be entirely `null` for all entries.
+  const tagMap: TagMap = {
+    oldTagsToNewTags: R.repeat(null, oldTags.length),
+    newTagsToOldTags: R.repeat(null, newTags.length)
+  }
+
+  for (let alteredLine of alteredLines) {
+
+    const matchTag = LangUtil.matchSingleVdTagAnnotation(alteredLine.content)
+
+    switch (matchTag.branchTag) {
+
+      // No VD annotation or just matched an end-block tag
+      case "case-1":
+      case "case-2":
+        continue;
+
+      // Matched a tag
+      case "case-3":
+
+        // TODO CONTINUE
+        switch (alteredLine.type) {
+
+          case "added":
+            throw new Error("NOT IMPLEMENTED")
+
+          case "deleted":
+            throw new Error("NOT IMPLEMENTED")
+
+        } // end switch
+
+    } // end switch
+  } // end for
+
+  return tagMap;
 }

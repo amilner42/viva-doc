@@ -2,7 +2,7 @@
 
 import R from "ramda"
 
-import * as FT from "../functional-types"
+import * as F from "../functional-types"
 import * as AppError from "../error"
 
 /** EXTERNAL TYPES */
@@ -27,7 +27,7 @@ export interface HasAlteredLines {
   of the file.
  */
 export interface LineDiff {
-  type: "added" | "deleted"
+  type: "added" | "deleted";
   currentLineNumber: number;
   previousLineNumber: number;
   content: string;
@@ -100,16 +100,16 @@ const getSingleFileDiff = (diffByLines: string[]): [string[], FileDiff] => {
   // hit the next git diff we know how many lines we've consumed.
   let lineIndex = 0;
   let parseStage: ParseStage = "line-1"
-  let previousFilePath: FT.Maybe<string> = null;
-  let currentFilePath: FT.Maybe<string> = null;
-  let diffType: FT.Maybe<DiffType> = null;
+  let previousFilePath: F.Maybe<string> = null;
+  let currentFilePath: F.Maybe<string> = null;
+  let diffType: F.Maybe<DiffType> = null;
   let skip = 0;
-  let deletedFile: FT.Maybe<DeletedFileDiff> = null;
-  let newFile: FT.Maybe<NewFileDiff> = null;
-  let modifiedFile: FT.Maybe<ModifiedFileDiff | RenamedFileDiff> = null;
+  let deletedFile: F.Maybe<DeletedFileDiff> = null;
+  let newFile: F.Maybe<NewFileDiff> = null;
+  let modifiedFile: F.Maybe<ModifiedFileDiff | RenamedFileDiff> = null;
    // Keeps track of the diff line number for added/removed lines, will start at 1 on deleted/added files,
    // otherwise reads where in the file we are from the hunk.
-  let lineNumbers: FT.Maybe<{ currentLineNumber: number, previousLineNumber: number }> = null;
+  let lineNumbers: F.Maybe<{ currentLineNumber: number, previousLineNumber: number }> = null;
 
   for (let line of diffByLines) {
     lineIndex++;
