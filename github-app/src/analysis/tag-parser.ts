@@ -72,6 +72,7 @@ export type VdTagType = "file" | "block" | "function" | "line"
 export interface BaseTag {
   tagType: VdTagType;
   owner: string;
+  tagAnnotationLine: number;
 }
 
 // A tag representing documentation ownership of an entire file.

@@ -8,12 +8,24 @@ import * as Tag from "../tag-parser"
 import * as F from "../../functional-types"
 
 
-// All VD information must have this prefix
-const MATCH_VD_COMMENT_PREFIX_REGEX = /\s(@VD)\b/g
-// Matching a new tag
-const MATCH_VD_COMMENT_TAG_ANNOTATION_REGEX = /\s(@VD @([a-zA-Z0-9-]*) (function|block|file|line))\b/
-// The end of a block tag
-const MATCH_VD_COMMENT_END_BLOCK_ANNOTATION_REGEX = /\s(@VD end-block)\b/g
+/** All VD information must have this prefix
+
+  Regex uses look-before/look-ahead to prevent consuming spaces to get 2 matches on the following: " @VD @VD"
+
+  Does a global purposefully search to see if comment [illegaly] contains more than a single "@VD"
+*/
+const MATCH_VD_COMMENT_PREFIX_REGEX = /(?<=\s)@VD(?=\s|$)/g
+
+/** Matching a new tag annotation
+
+  Captures 3 groups:
+    - All space characters (\s) before the annotation, allowing to figure out the annotation offset
+    - The username
+    - The type of tag annotation
+*/
+const MATCH_VD_COMMENT_TAG_ANNOTATION_REGEX = /(\s+)@VD ([a-zA-Z0-9-]*) (function|block|file|line)(?=\s|$)/
+/** The end of a block tag */
+const MATCH_VD_COMMENT_END_BLOCK_ANNOTATION_REGEX = /\s@VD end-block(?=\s|$)/
 
 /** To keep track of the existance of some error during parsing. */
 export class ErrorHappenedStrategy extends DefaultErrorStrategy {
@@ -31,7 +43,7 @@ export class ErrorHappenedStrategy extends DefaultErrorStrategy {
   }
 }
 
-/** Checkes if a string contains a single VD tag annotation.
+/** Checkes if a string contains a single VD tag annotation and returns relevant information.
 
   Throws an error if the string doesn't follow VD annotation rules:
     1. Can only have 1 tag annotation prefix (` @VD`)
@@ -41,7 +53,7 @@ export class ErrorHappenedStrategy extends DefaultErrorStrategy {
 */
 export const matchSingleVdTagAnnotation =
     ( str: string )
-    : F.Tri<"no-match", "match-block", { owner: string, tagType: Tag.VdTagType }> => {
+    : F.Tri<"no-match", "match-block", { owner: string, tagType: Tag.VdTagType, tagAnnotationLineOffset: number }> => {
 
   const matchVdTagAnnotationPrefix = str.match(MATCH_VD_COMMENT_PREFIX_REGEX)
 
@@ -71,9 +83,10 @@ export const matchSingleVdTagAnnotation =
 
   // Matched a single tag
   if (hasMatchedTag) {
-    const [ , , owner, tagType ] = matchTagAnnotation as [ null, null, string, Tag.VdTagType ]
+    const [ , whiteSpaceBeforeAnnotation, owner, tagType ] = matchTagAnnotation as [ string, string, string, Tag.VdTagType ]
+    const tagAnnotationLineOffset = whiteSpaceBeforeAnnotation.split("\n").length - 1
 
-    return F.branch3({ owner, tagType  })
+    return F.branch3({ owner, tagType, tagAnnotationLineOffset })
   }
 
   // Matched end block
@@ -114,14 +127,15 @@ export const reduceFileAst = (fileAst: Lang.FileAst): Lang.ReducedFileAst => {
         continue
 
       case "case-3":
-        const { owner, tagType } = match.value
+        const { owner, tagType, tagAnnotationLineOffset } = match.value
         reducedFileAst.comments[commentNode.endLine] = {
           startLine: commentNode.startLine,
           endLine: commentNode.endLine,
           data: {
             dataType: "tag-declaration",
             tagType,
-            owner
+            owner,
+            tagAnnotationLine: commentNode.startLine + tagAnnotationLineOffset
           }
         }
         continue;
@@ -155,7 +169,8 @@ export const standardTagsFromReducedFileAst = (reducedFileAst: Lang.ReducedFileA
           case "file":
             vdTags.push({
               tagType: "file",
-              owner: reducedCommentNode.data.owner
+              owner: reducedCommentNode.data.owner,
+              tagAnnotationLine: reducedCommentNode.data.tagAnnotationLine
             })
             continue
 
@@ -164,7 +179,8 @@ export const standardTagsFromReducedFileAst = (reducedFileAst: Lang.ReducedFileA
               tagType: "line",
               owner: reducedCommentNode.data.owner,
               startLine: reducedCommentNode.startLine,
-              endLine: reducedCommentNode.endLine + 1
+              endLine: reducedCommentNode.endLine + 1,
+              tagAnnotationLine: reducedCommentNode.data.tagAnnotationLine
             })
             continue
 
@@ -187,7 +203,8 @@ export const standardTagsFromReducedFileAst = (reducedFileAst: Lang.ReducedFileA
               tagType: "function",
               startLine: reducedCommentNode.startLine,
               endLine: functionNode.endLine,
-              owner: reducedCommentNode.data.owner
+              owner: reducedCommentNode.data.owner,
+              tagAnnotationLine: reducedCommentNode.data.tagAnnotationLine
             })
             continue
 
@@ -218,7 +235,8 @@ export const standardTagsFromReducedFileAst = (reducedFileAst: Lang.ReducedFileA
                   tagType: "block",
                   startLine: reducedCommentNode.startLine,
                   endLine: reducedFileAst.comments[commentLineNumber].endLine,
-                  owner: reducedCommentNode.data.owner
+                  owner: reducedCommentNode.data.owner,
+                  tagAnnotationLine: reducedCommentNode.data.tagAnnotationLine
                 })
                 continue loopAnalyzeComments
               }
