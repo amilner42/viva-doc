@@ -177,23 +177,36 @@ const mapTagsToDeletedReviews = (tags: Tag.VdTag[]): ReviewDeleted[] => {
   }, tags)
 }
 
+/** Helper for creating types with the TagMap structure. */
+interface AbstractTagMap<A> {
+  oldTagsToNewTags: A[];
+  newTagsToOldTags: A[];
+}
+
 /** A map between old and new tags across a diff.
 
   `null` on `oldTagsToNewTags` represents that the old tag was deleted.
   `null` on `newTagsToOldTags` represents that the tag is new and doesn't match an old tag.
 */
-interface TagMap {
-  oldTagsToNewTags: F.Maybe<number>[];
-  newTagsToOldTags: F.Maybe<number>[];
-}
+type TagMap = AbstractTagMap<F.Maybe<number>>
+
+/** Used while creating a tag map.
+
+  The `undefined` is used during creation to represent a placeholder for some number, while `null` has the same meaning
+  as in the `TagMap`. A `PartialTagMap` can be coverted to a `TagMap` by simply pairing all the `undefined` in one
+  list with the `undefined` in the other list  [@refer `tagMapFromPartial`].
+
+  NOTE: A `TagMapPartial` should have the same amount of `undefined` in each list.
+*/
+type TagMapPartial = AbstractTagMap<undefined | null>
 
 /** Creates a map between the old tags and the new tags given the line diffs. */
 const getTagMap = (oldTags: Tag.VdTag[], newTags: Tag.VdTag[], alteredLines: Diff.LineDiff[]): TagMap => {
 
   // Initialize tagMap to be entirely `null` for all entries.
-  const tagMap: TagMap = {
-    oldTagsToNewTags: R.repeat(null, oldTags.length),
-    newTagsToOldTags: R.repeat(null, newTags.length)
+  const partialTagMap: TagMapPartial = {
+    oldTagsToNewTags: R.repeat(undefined, oldTags.length),
+    newTagsToOldTags: R.repeat(undefined, newTags.length)
   }
 
   for (let alteredLine of alteredLines) {
@@ -224,5 +237,46 @@ const getTagMap = (oldTags: Tag.VdTag[], newTags: Tag.VdTag[], alteredLines: Dif
     } // end switch
   } // end for
 
-  return tagMap;
+  return tagMapFromPartial(partialTagMap)
+}
+
+/** Converts a `PartialTagMap` to a full `TagMap`
+
+  Will throw an error if the `partialTagMap` is invalid.
+    1. There must be the same amount of `undefined` tags in the `oldTagsToNewTags` as in `newTagsToOldTags`.
+*/
+const tagMapFromPartial = (partialTagMap: TagMapPartial): TagMap => {
+
+  // Init all to `null`, will switch all `undefined` with the actual numbers.
+  const tagMap: TagMap = {
+    oldTagsToNewTags: R.repeat(null, partialTagMap.oldTagsToNewTags.length),
+    newTagsToOldTags: R.repeat(null, partialTagMap.newTagsToOldTags.length)
+  }
+
+  const countUndefined = (list: any[]) => {
+    return R.filter(R.equals(undefined), list).length
+  }
+
+  // Breaks rule 1
+  if(countUndefined(partialTagMap.newTagsToOldTags) !== countUndefined(partialTagMap.oldTagsToNewTags)) {
+    throw new Error("TODO")
+  }
+
+  let newTagIndex = 0
+
+  // Otherwise we zip up matching tags
+  for (let oldTagIndex = 0; oldTagIndex < partialTagMap.oldTagsToNewTags.length; oldTagIndex++) {
+
+    // Already assigned value, go to next oldTagIndex
+    if (partialTagMap.oldTagsToNewTags[oldTagIndex] !== undefined) { continue; }
+
+    // Get the next newTagIndex pointing to an `undefined`
+    while (partialTagMap.newTagsToOldTags[newTagIndex] !== undefined) { newTagIndex++ }
+
+    // Add them to the map
+    tagMap.oldTagsToNewTags[oldTagIndex] = newTagIndex
+    tagMap.newTagsToOldTags[newTagIndex] = oldTagIndex
+  }
+
+  return tagMap
 }
