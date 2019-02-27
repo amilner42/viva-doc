@@ -3,6 +3,7 @@
 import R from "ramda"
 
 import * as Diff from "./diff-parser"
+import * as F from "../functional-types"
 import * as Lang from "./languages/index"
 
 /** EXTERNAL TYPES */
@@ -155,4 +156,29 @@ export const parseTags = (diffWF: FileDiffWithCode): FileDiffWithCodeAndTags => 
       )
 
   } // end switch
+}
+
+/** Retrieve the index tag from a list of tags based on the tag annotation line number.
+
+  @throws A TODO error when there is more than one tag annotation on that line.
+*/
+export const getTagIndexFromAnnotationLine = (tags: VdTag[], tagAnnotationLine: number): F.Maybe<number> => {
+
+  let index: F.Maybe<number> = null;
+
+  for (let currentIndex = 0; currentIndex < tags.length; currentIndex++) {
+    if (tags[currentIndex].tagAnnotationLine === tagAnnotationLine) {
+
+      // First match
+      if (index === null) {
+        index = currentIndex;
+        continue;
+      }
+
+      // Second match
+      throw new Error("TODO")
+    }
+  }
+
+  return index;
 }

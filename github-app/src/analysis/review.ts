@@ -223,14 +223,31 @@ const getTagMap = (oldTags: Tag.VdTag[], newTags: Tag.VdTag[], alteredLines: Dif
       // Matched a tag
       case "case-3":
 
-        // TODO CONTINUE
         switch (alteredLine.type) {
 
           case "added":
-            throw new Error("NOT IMPLEMENTED")
+            const indexOfNewTag = Tag.getTagIndexFromAnnotationLine(newTags, alteredLine.currentLineNumber)
+
+            // TODO When would this happen
+            if (indexOfNewTag === null) {
+              throw new Error("TODO")
+            }
+
+            // Set that tag to be a new tag in the `partialTagMap`
+            partialTagMap.newTagsToOldTags[indexOfNewTag] = null;
+            continue;
 
           case "deleted":
-            throw new Error("NOT IMPLEMENTED")
+            const indexOfDeletedTag = Tag.getTagIndexFromAnnotationLine(oldTags, alteredLine.previousLineNumber)
+
+            // TODO When would this happen
+            if (indexOfDeletedTag === null) {
+              throw new Error("TODO")
+            }
+
+            // Set that tag to be a deleted tag in the `partialTagMap`
+            partialTagMap.oldTagsToNewTags[indexOfDeletedTag] = null;
+            continue;
 
         } // end switch
 
@@ -273,9 +290,10 @@ const tagMapFromPartial = (partialTagMap: TagMapPartial): TagMap => {
     // Get the next newTagIndex pointing to an `undefined`
     while (partialTagMap.newTagsToOldTags[newTagIndex] !== undefined) { newTagIndex++ }
 
-    // Add them to the map
+    // Add them to the map and move the `newTagIndex` forward
     tagMap.oldTagsToNewTags[oldTagIndex] = newTagIndex
     tagMap.newTagsToOldTags[newTagIndex] = oldTagIndex
+    newTagIndex++;
   }
 
   return tagMap
