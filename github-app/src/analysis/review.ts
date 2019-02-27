@@ -44,7 +44,6 @@ export type ModifiedFileReview = BaseFileReview & Diff.HasCurrentFilePath & {
 export type Review = ReviewNew | ReviewDeleted | ReviewModified
 
 // A tag can be new, deleted, or modified in some way.
-
 export type ReviewType = "new" | "deleted" | "modified"
 
 // All Reviews should have these properties.
