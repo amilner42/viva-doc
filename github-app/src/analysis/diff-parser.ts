@@ -19,15 +19,15 @@ export interface HasPreviousFilePath {
 }
 
 export interface HasAlteredLines {
-  alteredLines: LineDiff[];
+  alteredLines: AlteredLine[];
 }
 
-/** A single line of a git diff.
+/** A single [green/red] line from a git diff.
 
   Includes both the line number in the current version of the file and the line number from the previous version
   of the file.
  */
-export interface LineDiff {
+export interface AlteredLine {
   type: "added" | "deleted";
   currentLineNumber: number;
   previousLineNumber: number;

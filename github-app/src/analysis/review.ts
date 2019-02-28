@@ -129,7 +129,7 @@ interface CalculateModificationReviewParams {
   currentTags: Tag.VdTag[],
   previousFileContent: string,
   currentFileContent: string,
-  alteredLines: Diff.LineDiff[]
+  alteredLines: Diff.AlteredLine[]
 }
 
 /** Calculates the reviews for some file modification given all helpful information.
@@ -200,7 +200,7 @@ type TagMap = AbstractTagMap<F.Maybe<number>>
 type TagMapPartial = AbstractTagMap<undefined | null>
 
 /** Creates a map between the old tags and the new tags given the line diffs. */
-const getTagMap = (oldTags: Tag.VdTag[], newTags: Tag.VdTag[], alteredLines: Diff.LineDiff[]): TagMap => {
+const getTagMap = (oldTags: Tag.VdTag[], newTags: Tag.VdTag[], alteredLines: Diff.AlteredLine[]): TagMap => {
 
   // Initialize tagMap to be entirely `null` for all entries.
   const partialTagMap: TagMapPartial = {

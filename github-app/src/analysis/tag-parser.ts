@@ -117,7 +117,7 @@ export const parseTags = (diffWF: FileDiffWithCode): FileDiffWithCodeAndTags => 
 
       const file =
         R.pipe(
-          R.map((x: Diff.LineDiff) => { return x.content }),
+          R.map((x: Diff.AlteredLine) => { return x.content }),
           AnalysisUtil.mergeFromLines
         )(diffWF.alteredLines)
 
@@ -131,7 +131,7 @@ export const parseTags = (diffWF: FileDiffWithCode): FileDiffWithCodeAndTags => 
 
       const file =
         R.pipe(
-          R.map((x: Diff.LineDiff) => { return x.content }),
+          R.map((x: Diff.AlteredLine) => { return x.content }),
           AnalysisUtil.mergeFromLines
         )(diffWF.alteredLines)
 
