@@ -85,7 +85,7 @@ export const matchSingleVdTagAnnotation =
   // Matched a single tag
   if (hasMatchedTag) {
     const [ , whiteSpaceBeforeAnnotation, owner, tagType ] = matchTagAnnotation as [ string, string, string, Tag.VdTagType ]
-    const tagAnnotationLineOffset = AnalysisUtil.splitIntoLines(whiteSpaceBeforeAnnotation).length - 1
+    const tagAnnotationLineOffset = AnalysisUtil.getNumberOfLinesForContent(whiteSpaceBeforeAnnotation) - 1
 
     return F.branch3({ owner, tagType, tagAnnotationLineOffset })
   }
@@ -172,7 +172,9 @@ export const standardTagsFromReducedFileAst = (reducedFileAst: Lang.ReducedFileA
               tagType: "file",
               owner: reducedCommentNode.data.owner,
               tagAnnotationLine: reducedCommentNode.data.tagAnnotationLine,
-              content: AnalysisUtil.splitIntoLines(fileContent)
+              content: AnalysisUtil.splitFileContentIntoLines(fileContent),
+              startLine: 1,
+              endLine: AnalysisUtil.getNumberOfLinesForFile(fileContent)
             })
             continue
 
@@ -273,7 +275,7 @@ export const standardTagsFromReducedFileAst = (reducedFileAst: Lang.ReducedFileA
 /** Retrieve the content of a tag from a file given the start line and end line. */
 const getContentByLineNumbers = (fileContent: string, startLine: number, endLine: number): string[] => {
 
-  const fileSplitByLines = AnalysisUtil.splitIntoLines(fileContent)
+  const fileSplitByLines = AnalysisUtil.splitFileContentIntoLines(fileContent)
   const tagContent = []
 
   for (let lineIndex = startLine; lineIndex <= endLine; lineIndex++) {

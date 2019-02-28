@@ -78,9 +78,8 @@ const HUNK_PREVIOUS_RANGE_PREFIX = "-"
 
 // Main function of the module, will parse the git diff into a series of file diffs.
 export const parseDiff = (diffAsStr: string): FileDiff[] => {
-  // We dropLast here to get rid of the trailing "\n" causing our remainingLines to end in a [ ..., "" ]
-  let remainingLines = R.dropLast(1, AnalysisUtil.splitIntoLines(diffAsStr));
-  const fileDiffs: FileDiff[] = [];
+  let remainingLines = AnalysisUtil.splitFileContentIntoLines(diffAsStr)
+  const fileDiffs: FileDiff[] = []
 
   while(remainingLines.length !== 0) {
     let [ postDiffRemainingLines, fileDiff ] = getSingleFileDiff(remainingLines)

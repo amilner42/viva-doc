@@ -50,7 +50,7 @@ class ExtractCommentsAndFunctionsListener implements JavascriptParserListener {
       {
         content,
         startLine: ctx._start.line,
-        endLine: ctx._start.line + AnalysisUtil.splitIntoLines(content).length - 1
+        endLine: ctx._start.line + AnalysisUtil.getNumberOfLinesForContent(content) - 1
       }
     )
   }

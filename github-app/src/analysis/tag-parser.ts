@@ -24,11 +24,6 @@ export interface HasAttachedCode {
   currentFileContent: string
 }
 
-export interface HasLineOwnership {
-  startLine: number;
-  endLine: number;
-}
-
 /** A diff with the code for the relevant file attached. */
 export type FileDiffWithCode =
   ModifiedFileDiffWithCode |
@@ -76,6 +71,8 @@ export interface BaseTag {
   owner: string;
   tagAnnotationLine: number;
   content: string[];
+  startLine: number;
+  endLine: number;
 }
 
 // A tag representing documentation ownership of an entire file.
@@ -84,17 +81,17 @@ export type VdFileTag = BaseTag & {
 }
 
 // A tag representing documentation ownership of a function.
-export type VdFunctionTag = BaseTag & HasLineOwnership & {
+export type VdFunctionTag = BaseTag & {
   tagType: "function";
 }
 
 // A tag representing documentation ownership of a explicitly specified block.
-export type VdBlockTag = BaseTag & HasLineOwnership & {
+export type VdBlockTag = BaseTag & {
   tagType: "block";
 }
 
 // A tag representing documentation ownership of a single line of code.
-export type VdLineTag = BaseTag & HasLineOwnership & {
+export type VdLineTag = BaseTag & {
   tagType: "line";
 }
 
@@ -118,7 +115,7 @@ export const parseTags = (diffWF: FileDiffWithCode): FileDiffWithCodeAndTags => 
       const file =
         R.pipe(
           R.map((x: Diff.AlteredLine) => { return x.content }),
-          AnalysisUtil.mergeFromLines
+          AnalysisUtil.mergeLinesIntoFileContent
         )(diffWF.alteredLines)
 
       return R.merge(
@@ -132,7 +129,7 @@ export const parseTags = (diffWF: FileDiffWithCode): FileDiffWithCodeAndTags => 
       const file =
         R.pipe(
           R.map((x: Diff.AlteredLine) => { return x.content }),
-          AnalysisUtil.mergeFromLines
+          AnalysisUtil.mergeLinesIntoFileContent
         )(diffWF.alteredLines)
 
 
