@@ -15,7 +15,12 @@ import * as typescript from "./typescript/index"
 
 /** EXTERNAL TYPES */
 
-// Language-agnostic AST parsed from file content containing all functions and comments.
+/** Language-agnostic AST parsed from file content containing all functions and comments.
+
+  This AST does not contain the content of all nodes, only the line numbers. Only comments are parsed to capture the
+  content for VD tag analysis, functions are lexed to ignore many characters - you must use the full files to retrieve
+  the tag from the given line numbers.
+ */
 export interface FileAst {
   // All detected functions
   functions: {
@@ -166,26 +171,26 @@ export const parse = (language: Language, fileContent: string): FileAst => {
 }
 
 // Converts ast to VD tags
-export const astToTags = (language: Language, fileAst: FileAst): Tag.VdTag[] => {
+export const astToTags = (language: Language, fileAst: FileAst, fileContent: string): Tag.VdTag[] => {
 
   const reducedAst = LangUtil.reduceFileAst(fileAst)
 
   switch (language) {
 
     case "CPlusPlus":
-      return cpp.astToTags(reducedAst)
+      return cpp.astToTags(reducedAst, fileContent)
 
     case "Java":
-      return java.astToTags(reducedAst)
+      return java.astToTags(reducedAst, fileContent)
 
     case "Javascript":
-      return javascript.astToTags(reducedAst)
+      return javascript.astToTags(reducedAst, fileContent)
 
     case "Python":
-      return python.astToTags(reducedAst)
+      return python.astToTags(reducedAst, fileContent)
 
     case "Typescript":
-      return typescript.astToTags(reducedAst)
+      return typescript.astToTags(reducedAst, fileContent)
 
   } // end switch
 }

@@ -2,6 +2,7 @@
 
 import R from "ramda"
 
+import * as AnalysisUtil from "./util"
 import * as Diff from "./diff-parser"
 import * as F from "../functional-types"
 import * as Lang from "./languages/index"
@@ -74,6 +75,7 @@ export interface BaseTag {
   tagType: VdTagType;
   owner: string;
   tagAnnotationLine: number;
+  content: string[];
 }
 
 // A tag representing documentation ownership of an entire file.
@@ -106,7 +108,7 @@ export const parseTags = (diffWF: FileDiffWithCode): FileDiffWithCodeAndTags => 
 
   const getFileTags = (fileContent: string): VdTag[] => {
     const fileAst = Lang.parse(language, fileContent)
-    return Lang.astToTags(language, fileAst)
+    return Lang.astToTags(language, fileAst, fileContent)
   }
 
   switch (diffWF.diffType) {
@@ -115,8 +117,8 @@ export const parseTags = (diffWF: FileDiffWithCode): FileDiffWithCodeAndTags => 
 
       const file =
         R.pipe(
-          R.map(R.path(["content"])),
-          R.join("\n")
+          R.map((x: Diff.LineDiff) => { return x.content }),
+          AnalysisUtil.mergeFromLines
         )(diffWF.alteredLines)
 
       return R.merge(
@@ -129,8 +131,8 @@ export const parseTags = (diffWF: FileDiffWithCode): FileDiffWithCodeAndTags => 
 
       const file =
         R.pipe(
-          R.map(R.path(["content"])),
-          R.join("\n")
+          R.map((x: Diff.LineDiff) => { return x.content }),
+          AnalysisUtil.mergeFromLines
         )(diffWF.alteredLines)
 
 

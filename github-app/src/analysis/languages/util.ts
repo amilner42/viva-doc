@@ -3,6 +3,7 @@
 import R from "ramda"
 import { DefaultErrorStrategy } from 'antlr4ts/DefaultErrorStrategy';
 
+import * as AnalysisUtil from "../util"
 import * as Lang from "./index"
 import * as Tag from "../tag-parser"
 import * as F from "../../functional-types"
@@ -84,7 +85,7 @@ export const matchSingleVdTagAnnotation =
   // Matched a single tag
   if (hasMatchedTag) {
     const [ , whiteSpaceBeforeAnnotation, owner, tagType ] = matchTagAnnotation as [ string, string, string, Tag.VdTagType ]
-    const tagAnnotationLineOffset = whiteSpaceBeforeAnnotation.split("\n").length - 1
+    const tagAnnotationLineOffset = AnalysisUtil.splitIntoLines(whiteSpaceBeforeAnnotation).length - 1
 
     return F.branch3({ owner, tagType, tagAnnotationLineOffset })
   }
@@ -151,7 +152,7 @@ export const reduceFileAst = (fileAst: Lang.FileAst): Lang.ReducedFileAst => {
   Noteable exceptions are languages like python which can have comments under the function declarations instead of
   before.
  */
-export const standardTagsFromReducedFileAst = (reducedFileAst: Lang.ReducedFileAst): Tag.VdTag[] => {
+export const standardTagsFromReducedFileAst = (reducedFileAst: Lang.ReducedFileAst, fileContent: string): Tag.VdTag[] => {
 
   const vdTags: Tag.VdTag[] = []
 
@@ -170,21 +171,27 @@ export const standardTagsFromReducedFileAst = (reducedFileAst: Lang.ReducedFileA
             vdTags.push({
               tagType: "file",
               owner: reducedCommentNode.data.owner,
-              tagAnnotationLine: reducedCommentNode.data.tagAnnotationLine
+              tagAnnotationLine: reducedCommentNode.data.tagAnnotationLine,
+              content: AnalysisUtil.splitIntoLines(fileContent)
             })
             continue
 
-          case "line":
+          case "line": {
+            const startLine = reducedCommentNode.startLine
+            const endLine = reducedCommentNode.endLine + 1 // + 1 because it owns a single line
+
             vdTags.push({
               tagType: "line",
               owner: reducedCommentNode.data.owner,
-              startLine: reducedCommentNode.startLine,
-              endLine: reducedCommentNode.endLine + 1,
-              tagAnnotationLine: reducedCommentNode.data.tagAnnotationLine
+              startLine,
+              endLine,
+              tagAnnotationLine: reducedCommentNode.data.tagAnnotationLine,
+              content: getContentByLineNumbers(fileContent, startLine, endLine)
             })
             continue
+          }
 
-          case "function":
+          case "function": {
             const functionNodes = reducedFileAst.functions[reducedCommentNode.endLine + 1]
 
             // No function
@@ -198,17 +205,21 @@ export const standardTagsFromReducedFileAst = (reducedFileAst: Lang.ReducedFileA
             }
 
             const functionNode = functionNodes[0]
+            const startLine = reducedCommentNode.startLine
+            const endLine = functionNode.endLine
 
             vdTags.push({
               tagType: "function",
-              startLine: reducedCommentNode.startLine,
-              endLine: functionNode.endLine,
+              startLine,
+              endLine,
               owner: reducedCommentNode.data.owner,
-              tagAnnotationLine: reducedCommentNode.data.tagAnnotationLine
+              tagAnnotationLine: reducedCommentNode.data.tagAnnotationLine,
+              content: getContentByLineNumbers(fileContent, startLine, endLine)
             })
             continue
+          }
 
-          case "block":
+          case "block": {
 
             const commentLineNumbers = R.pipe(
               R.map(parseInt),
@@ -230,13 +241,17 @@ export const standardTagsFromReducedFileAst = (reducedFileAst: Lang.ReducedFileA
                   throw new Error("TODO")
                 }
 
+                const startLine = reducedCommentNode.startLine
+                const endLine = reducedFileAst.comments[commentLineNumber].endLine
+
                 currentCommentNode.data.seen = true
                 vdTags.push({
                   tagType: "block",
-                  startLine: reducedCommentNode.startLine,
-                  endLine: reducedFileAst.comments[commentLineNumber].endLine,
+                  startLine,
+                  endLine,
                   owner: reducedCommentNode.data.owner,
-                  tagAnnotationLine: reducedCommentNode.data.tagAnnotationLine
+                  tagAnnotationLine: reducedCommentNode.data.tagAnnotationLine,
+                  content: getContentByLineNumbers(fileContent, startLine, endLine)
                 })
                 continue loopAnalyzeComments
               }
@@ -244,6 +259,8 @@ export const standardTagsFromReducedFileAst = (reducedFileAst: Lang.ReducedFileA
 
             // Otherwise we have no ending block?
             throw new Error("TODO")
+          }
+
         } // end inner switch
 
     } // end switch
@@ -251,4 +268,17 @@ export const standardTagsFromReducedFileAst = (reducedFileAst: Lang.ReducedFileA
   } // end for loop
 
   return vdTags
+}
+
+/** Retrieve the content of a tag from a file given the start line and end line. */
+const getContentByLineNumbers = (fileContent: string, startLine: number, endLine: number): string[] => {
+
+  const fileSplitByLines = AnalysisUtil.splitIntoLines(fileContent)
+  const tagContent = []
+
+  for (let lineIndex = startLine; lineIndex <= endLine; lineIndex++) {
+    tagContent.push(fileSplitByLines[lineIndex - 1])
+  }
+
+  return tagContent;
 }

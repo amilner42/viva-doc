@@ -8,6 +8,6 @@ export const parse = (fileContent: string): Lang.FileAst => {
   throw new Error("NOT IMPLEMENTED")
 }
 
-export const astToTags = (fileAst: Lang.ReducedFileAst): Tag.VdTag[] => {
+export const astToTags = (fileAst: Lang.ReducedFileAst, fileContent: string): Tag.VdTag[] => {
   throw new Error("NOT IMPLEMENTED")
 }

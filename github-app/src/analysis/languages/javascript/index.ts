@@ -1,5 +1,6 @@
 // Module for javascript-specific parsing functionality
 
+import * as AnalysisUtil from "../../util"
 import * as LangUtil from "../util"
 import * as Lang from "../index"
 
@@ -49,14 +50,9 @@ class ExtractCommentsAndFunctionsListener implements JavascriptParserListener {
       {
         content,
         startLine: ctx._start.line,
-        endLine: ctx._start.line + this.getLines(content)
+        endLine: ctx._start.line + AnalysisUtil.splitIntoLines(content).length - 1
       }
     )
-  }
-
-  // TODO BUG line might not be split by \n??
-  private getLines(content: string): number {
-    return content.split("\n").length - 1
   }
 }
 
