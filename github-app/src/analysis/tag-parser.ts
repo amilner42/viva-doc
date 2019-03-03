@@ -112,26 +112,14 @@ export const parseTags = (diffWF: FileDiffWithCode): FileDiffWithCodeAndTags => 
 
     case "new": {
 
-      const file =
-        R.pipe(
-          R.map((x: Diff.AlteredLine) => { return x.content }),
-          AnalysisUtil.mergeLinesIntoFileContent
-        )(diffWF.alteredLines)
+      const file = AnalysisUtil.mergeLinesIntoFileContent(diffWF.lines);
 
-      return R.merge(
-        diffWF,
-        { currentFileTags: getFileTags(file) }
-      )
+      return R.merge(diffWF, { currentFileTags: getFileTags(file) })
     }
 
     case "deleted": {
 
-      const file =
-        R.pipe(
-          R.map((x: Diff.AlteredLine) => { return x.content }),
-          AnalysisUtil.mergeLinesIntoFileContent
-        )(diffWF.alteredLines)
-
+      const file = AnalysisUtil.mergeLinesIntoFileContent(diffWF.lines);
 
       return R.merge(diffWF, { currentFileTags: getFileTags(file) })
     }

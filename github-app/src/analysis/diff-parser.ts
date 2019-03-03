@@ -22,10 +22,15 @@ export interface HasAlteredLines {
   alteredLines: AlteredLine[];
 }
 
+export interface HasLines {
+  lines: string[];
+}
+
 /** A single [green/red] line from a git diff.
 
   Includes both the line number in the current version of the file and the line number from the previous version
-  of the file.
+  of the file - should only be used for modified files where the line numbers across files are relevant, for new/delted
+  files you should `&` the more accurate type `HasLines`.
  */
 export interface AlteredLine {
   type: "added" | "deleted";
@@ -38,8 +43,12 @@ export type DiffType = "new" | "modified" | "renamed" | "deleted"
 
 export type FileDiff = NewFileDiff | ModifiedFileDiff | RenamedFileDiff | DeletedFileDiff
 
-export type NewFileDiff = HasCurrentFilePath & HasAlteredLines & {
+export type NewFileDiff = HasCurrentFilePath & HasLines & {
   diffType: "new";
+}
+
+export type DeletedFileDiff = HasCurrentFilePath & HasLines & {
+  diffType: "deleted";
 }
 
 export type ModifiedFileDiff = HasCurrentFilePath & HasAlteredLines & {
@@ -48,10 +57,6 @@ export type ModifiedFileDiff = HasCurrentFilePath & HasAlteredLines & {
 
 export type RenamedFileDiff = HasCurrentFilePath & HasPreviousFilePath & HasAlteredLines & {
   diffType: "renamed";
-}
-
-export type DeletedFileDiff = HasCurrentFilePath & HasAlteredLines & {
-  diffType: "deleted",
 }
 
 // All errors from this module
@@ -105,10 +110,11 @@ const getSingleFileDiff = (diffByLines: string[]): [string[], FileDiff] => {
   let diffType: F.Maybe<DiffType> = null;
   let skip = 0;
   let deletedFile: F.Maybe<DeletedFileDiff> = null;
+  let deletedFilePassedHunk = false;
   let newFile: F.Maybe<NewFileDiff> = null;
+  let newFilePassedHunk = false;
   let modifiedFile: F.Maybe<ModifiedFileDiff | RenamedFileDiff> = null;
-   // Keeps track of the diff line number for added/removed lines, will start at 1 on deleted/added files,
-   // otherwise reads where in the file we are from the hunk.
+   // Keeps track of the diff line number for added/removed lines in modified files.
   let lineNumbers: F.Maybe<{ currentLineNumber: number, previousLineNumber: number }> = null;
 
   for (let line of diffByLines) {
@@ -123,21 +129,14 @@ const getSingleFileDiff = (diffByLines: string[]): [string[], FileDiff] => {
     if (deletedFile !== null) {
       if (!line.startsWith(FILE_DIFF_FIRST_LINE)) {
 
-        // Once we pass the hunk we set lineNumbers to 1 to track remaining deleted lines
         if (line.startsWith(HUNK_PREFIX)) {
-          lineNumbers = { currentLineNumber: 1, previousLineNumber: 1 }
+          deletedFilePassedHunk = true
           continue;
         }
 
         // If we've passed the hunk then we record lines as deleted
-        if (line.startsWith(MODIFIED_DELETED_LINE_PREFIX) && lineNumbers !== null) {
-          deletedFile.alteredLines.push({
-            type: "deleted",
-            content: line.substr(MODIFIED_DELETED_LINE_PREFIX.length),
-            currentLineNumber: 1,
-            previousLineNumber: lineNumbers.previousLineNumber
-          })
-          lineNumbers.previousLineNumber++
+        if (line.startsWith(MODIFIED_DELETED_LINE_PREFIX) && deletedFilePassedHunk) {
+          deletedFile.lines.push(line.substr(MODIFIED_DELETED_LINE_PREFIX.length))
         }
         continue;
       }
@@ -149,21 +148,14 @@ const getSingleFileDiff = (diffByLines: string[]): [string[], FileDiff] => {
     if (newFile !== null) {
       if (!line.startsWith(FILE_DIFF_FIRST_LINE)) {
 
-        // Once we pass the hunk we set lineNumbers to 1 to track remaining added lines
         if (line.startsWith(HUNK_PREFIX)) {
-          lineNumbers = { previousLineNumber: 1, currentLineNumber: 1 }
+          newFilePassedHunk = true
           continue;
         }
 
         // If we've passed the hunk then we record lines as added
-        if (line.startsWith(MODIFIED_ADDED_LINE_PREFIX) && lineNumbers !== null) {
-          newFile.alteredLines.push({
-            type: "added",
-            content: line.substr(MODIFIED_ADDED_LINE_PREFIX.length),
-            previousLineNumber: 1,
-            currentLineNumber: lineNumbers.currentLineNumber
-          })
-          lineNumbers.currentLineNumber++
+        if (line.startsWith(MODIFIED_ADDED_LINE_PREFIX) && newFilePassedHunk) {
+          newFile.lines.push(line.substr(MODIFIED_ADDED_LINE_PREFIX.length))
         }
         continue;
       }
@@ -247,13 +239,13 @@ const getSingleFileDiff = (diffByLines: string[]): [string[], FileDiff] => {
 
         // Deleted file
         if (line.startsWith(DELETED_FILE_PREFIX)) {
-          deletedFile = { diffType: "deleted", currentFilePath, alteredLines: [] }
+          deletedFile = { diffType: "deleted", currentFilePath, lines: [] }
           break;
         }
 
         // New file
         if (line.startsWith(NEW_FILE_PREFIX)) {
-          newFile = { diffType: "new", currentFilePath, alteredLines: [] }
+          newFile = { diffType: "new", currentFilePath, lines: [] }
           break;
         }
 
