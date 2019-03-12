@@ -16,6 +16,16 @@ similarity index 100%
 rename from test.js
 rename to a/test.js`
 
+const PURE_RENAME_TRICKY_NAME = `diff --git a/new.js b/new.js b/new.js
+similarity index 100%
+rename from new.js
+rename to new.js b/new.js`
+
+const PURE_RENAME_TRICKY_NAME_REVERSE = `diff --git a/new.js b/new.js b/new.js
+similarity index 100%
+rename from new.js b/new.js
+rename to new.js`
+
 const RENAME_FILE_TESTS: TestTable[] = [
   [
     "Pure rename",
@@ -26,6 +36,16 @@ const RENAME_FILE_TESTS: TestTable[] = [
     "Pure rename across folders",
     PURE_RENAME_ACROSS_FOLDERS_TEXT,
     [ { diffType: "renamed", previousFilePath: "test.js", currentFilePath: "a/test.js", alteredLines: [] } ]
+  ],
+  [
+    "Renaming with unrealistic tricky folder naming that makes the summary-line ambiguous",
+    PURE_RENAME_TRICKY_NAME,
+    [ { diffType: "renamed", previousFilePath: "new.js", currentFilePath: "new.js b/new.js", alteredLines: [] } ]
+  ],
+  [
+    "Renaming with unrealistic tricky folder naming that makes the summary-line ambiguous - reverse",
+    PURE_RENAME_TRICKY_NAME_REVERSE,
+    [ { diffType: "renamed", previousFilePath: "new.js b/new.js", currentFilePath: "new.js", alteredLines: [] } ]
   ]
 ]
 

@@ -167,7 +167,6 @@ const getSingleFileDiff = (diffByLines: string[]): [string[], FileDiff] => {
 
       // The very start of the git diff
       case "line-1":
-        // TODO bug fix: this parse system could produce error if the 2nd file that contains  " b/"
         const fileAPrefix = " a/"
         const fileBPrefix = " b/"
         let remainingLine = line
