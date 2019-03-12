@@ -52,6 +52,12 @@ const VALID_JAVASCRIPT_TESTS: TestTable = [
     []
   ],
   [
+    "VD tag with no space shouldn't trigger",
+    "Javascript",
+    "//@VD amilner42 line",
+    []
+  ],
+  [
     "Javascript file with many tags",
     "Javascript",
     JAVASCRIPT_MANY_TAGS_TEXT,
