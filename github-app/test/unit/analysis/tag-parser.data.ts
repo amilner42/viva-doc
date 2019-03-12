@@ -175,6 +175,35 @@ const JAVASCRIPT_FUNCTION_TAG_WITH_NO_FUNCTION_TEXT = `const a = 5;
 const j = 10
 `
 
+const JAVASCRIPT_FUNCTION_NOT_ON_NEXT_LINE = `// @VD somegithubusername function
+
+const a = () => {
+  booooop
+}
+`
+
+const JAVASCRIPT_BLOCKS_END_IN_SAME_END_BLOCK_TEXT = `// @VD amilner42 block
+some code
+
+// @VD amilner42 block
+
+some code
+
+// @VD end-block
+`
+
+const JAVASCRIPT_OVERLAPPING_BLOCK_TAGS_TEXT =`// @VD amilner42 block
+some code
+
+// @VD amilner42 block
+
+some code
+
+// @VD end-block
+
+// @VD end-block
+`
+
 const INVALID_JAVASCRIPT_TESTS: TestTable = [
   [
     "Invalid JS with unclosed parens",
@@ -215,9 +244,27 @@ const INVALID_JAVASCRIPT_TESTS: TestTable = [
     null
   ],
   [
+    "Invalid - function must be defined on the next line",
+    "Javascript",
+    JAVASCRIPT_FUNCTION_NOT_ON_NEXT_LINE,
+    null
+  ],
+  [
     "Invalid @VD line annotation on the last line",
     "Javascript",
     "/* @VD amilner42 line */",
+    null
+  ],
+  [
+    "Invalid - multiple block tags with same ending block annotation",
+    "Javascript",
+    JAVASCRIPT_BLOCKS_END_IN_SAME_END_BLOCK_TEXT,
+    null
+  ],
+  [
+    "Invalid - ambiguous block tag endings (feature not supported yet)",
+    "Javascript",
+    JAVASCRIPT_OVERLAPPING_BLOCK_TAGS_TEXT,
     null
   ]
 ]
