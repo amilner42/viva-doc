@@ -97,16 +97,13 @@ export type VdLineTag = BaseTag & {
 
 /** EXTERNAL FUNCTIONS */
 
-// Parses the tags based on the langauge of the file
+/** Attach tags to a `FileDiffWithCode` object.
+
+Note: This does not mutate the object you pass in, it creates a new object.
+*/
 export const parseTags = (diffWF: FileDiffWithCode): FileDiffWithCodeAndTags => {
 
-  // TODO what about the case where the language changes on a "rename"?
-  const language = Lang.extractFileType(diffWF.currentFilePath)
-
-  const getFileTags = (fileContent: string): VdTag[] => {
-    const fileAst = Lang.parse(language, fileContent)
-    return Lang.astToTags(language, fileAst, fileContent)
-  }
+  const currentLanguage = Lang.extractFileType(diffWF.currentFilePath)
 
   switch (diffWF.diffType) {
 
@@ -114,22 +111,24 @@ export const parseTags = (diffWF: FileDiffWithCode): FileDiffWithCodeAndTags => 
 
       const file = AnalysisUtil.mergeLinesIntoFileContent(diffWF.lines);
 
-      return R.merge(diffWF, { currentFileTags: getFileTags(file) })
+      return R.merge(diffWF, { currentFileTags: getFileTags(currentLanguage, file) })
     }
 
     case "deleted": {
 
       const file = AnalysisUtil.mergeLinesIntoFileContent(diffWF.lines);
 
-      return R.merge(diffWF, { currentFileTags: getFileTags(file) })
+      return R.merge(diffWF, { currentFileTags: getFileTags(currentLanguage, file) })
     }
 
     case "renamed":
+      const previousLanguage = Lang.extractFileType(diffWF.previousFilePath)
+
       return R.merge(
         diffWF,
         {
-          currentFileTags: getFileTags(diffWF.currentFileContent),
-          previousFileTags: getFileTags(diffWF.previousFileContent),
+          currentFileTags: getFileTags(currentLanguage, diffWF.currentFileContent),
+          previousFileTags: getFileTags(previousLanguage, diffWF.previousFileContent),
         }
       )
 
@@ -137,12 +136,18 @@ export const parseTags = (diffWF: FileDiffWithCode): FileDiffWithCodeAndTags => 
       return R.merge(
         diffWF,
         {
-          currentFileTags: getFileTags(diffWF.currentFileContent),
-          previousFileTags: getFileTags(diffWF.previousFileContent)
+          currentFileTags: getFileTags(currentLanguage, diffWF.currentFileContent),
+          previousFileTags: getFileTags(currentLanguage, diffWF.previousFileContent)
         }
       )
 
   } // end switch
+}
+
+/** Get all the tags for a given file of a specific programming language. */
+export const getFileTags = (language: Lang.Language, fileContent: string): VdTag[] => {
+  const fileAst = Lang.parse(language, fileContent)
+  return Lang.astToTags(language, fileAst, fileContent)
 }
 
 /** Retrieve the index tag from a list of tags based on the tag annotation line number.

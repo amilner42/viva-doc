@@ -1,8 +1,8 @@
 import * as Diff from "../../../src/analysis/diff-parser"
 
-type DescribeTable = [ string, TestTable[] ]
+type DescribeTable = [ string, TestTable ][]
 
-type TestTable = [ string, string, Diff.FileDiff[] ]
+type TestTable = [ string, string, Diff.FileDiff[] ][]
 
 /** Rename file tests */
 
@@ -26,7 +26,7 @@ similarity index 100%
 rename from new.js b/new.js
 rename to new.js`
 
-const RENAME_FILE_TESTS: TestTable[] = [
+const RENAME_FILE_TESTS: TestTable = [
   [
     "Pure rename",
     PURE_RENAME_TEXT,
@@ -68,7 +68,7 @@ index 0000000..4f7b968
 +5
 +`
 
-const NEW_FILE_TESTS: TestTable[] = [
+const NEW_FILE_TESTS: TestTable = [
   [
     "Blank new file",
     BLANK_NEW_FILE_TEXT,
@@ -107,7 +107,7 @@ index 8d6a11d..30a2334 100644
 +a
 `
 
-const MODIFIED_FILE_TESTS: TestTable[] = [
+const MODIFIED_FILE_TESTS: TestTable = [
   [
     "Modified file with additions and deletions",
     MODIFIED_FILE_TEXT,
@@ -188,7 +188,7 @@ index 30a2334..0000000
 -}
 -a`
 
-const DELETED_FILE_TESTS: TestTable[] = [
+const DELETED_FILE_TESTS: TestTable = [
   [
     "Delete file with content",
     DELETED_FILE_TEXT,
@@ -292,7 +292,7 @@ index 30a2334..0000000
 -a
 `
 
-const MULTIPLE_FILE_TESTS: TestTable[] = [
+const MULTIPLE_FILE_TESTS: TestTable = [
   [
     "Delete multiple files",
     DELETE_MULTIPLE_FILES_TEXT,
@@ -396,11 +396,8 @@ const MULTIPLE_FILE_TESTS: TestTable[] = [
   ]
 ]
 
-/** The describe table needed to generate a bunch of tests.
-
-Do not export anything but this, there is no need.
-*/
-export const TESTS: DescribeTable[] = [
+/** The describe table needed to generate a bunch of tests. */
+export const TESTS: DescribeTable = [
   [
     "Rename File",
     RENAME_FILE_TESTS
