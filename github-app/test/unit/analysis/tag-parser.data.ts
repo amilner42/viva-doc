@@ -23,6 +23,27 @@ export const func = () => {
 }
 `
 
+const JAVASCRIPT_MANY_MULTILINE_COMMENT_TAGS_TEXT = `/*
+ @VD amilner42 line
+*/
+const a = 5;
+
+/* @VD amilner42 function
+*/
+export const func = () => {
+  ...
+  ...
+  /*
+  @VD amilner42 block
+  */
+  a = 2
+  b = 3
+  /* @VD end-block
+   */
+  ...
+}
+`
+
 const VALID_JAVASCRIPT_TESTS: TestTable = [
   [
     "Blank file",
@@ -76,6 +97,65 @@ const VALID_JAVASCRIPT_TESTS: TestTable = [
         "owner": "amilner42",
         "startLine": 8,
         "tagAnnotationLine": 8,
+        "tagType": "block"
+      }
+    ]
+  ],
+  [
+    "Javascript many tags with annotations in multiline comments",
+    "Javascript",
+    JAVASCRIPT_MANY_MULTILINE_COMMENT_TAGS_TEXT,
+    [
+      {
+        "content": [
+          "/*",
+          " @VD amilner42 line",
+          "*/",
+          "const a = 5;"
+        ],
+        "endLine": 4,
+        "owner": "amilner42",
+        "startLine": 1,
+        "tagAnnotationLine": 2,
+        "tagType": "line"
+      },
+      {
+        "content": [
+          "/* @VD amilner42 function",
+          "*/",
+          "export const func = () => {",
+          "  ...",
+          "  ...",
+          "  /*",
+          "  @VD amilner42 block",
+          "  */",
+          "  a = 2",
+          "  b = 3",
+          "  /* @VD end-block",
+          "   */",
+          "  ...",
+          "}"
+        ],
+        "endLine": 19,
+        "owner": "amilner42",
+        "startLine": 6,
+        "tagAnnotationLine": 6,
+        "tagType": "function"
+      },
+      {
+        "content": [
+          "  /*",
+          "  @VD amilner42 block",
+          "  */",
+          "  a = 2",
+          "  b = 3",
+          "  /* @VD end-block",
+          "   */"
+        ],
+        "endLine": 17,
+        "owner": "amilner42",
+        "startLine": 11,
+        "tagAnnotationLine": 12,
         "tagType": "block"
       }
     ]
