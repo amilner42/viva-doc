@@ -272,11 +272,19 @@ export const standardTagsFromReducedFileAst = (reducedFileAst: Lang.ReducedFileA
   return vdTags
 }
 
-/** Retrieve the content of a tag from a file given the start line and end line. */
+/** Retrieve the content of a tag from a file given the start line and end line.
+
+@THROWS a TODO error if the `startLine` is < 1 OR `endLine` > number of lines in the file
+*/
 const getContentByLineNumbers = (fileContent: string, startLine: number, endLine: number): string[] => {
 
   const fileSplitByLines = AnalysisUtil.splitFileContentIntoLines(fileContent)
   const tagContent = []
+  
+  // Attempting to get content outside the file...
+  if (startLine < 1 || endLine > fileSplitByLines.length) {
+    throw new Error("TODO")
+  }
 
   for (let lineIndex = startLine; lineIndex <= endLine; lineIndex++) {
     tagContent.push(fileSplitByLines[lineIndex - 1])
