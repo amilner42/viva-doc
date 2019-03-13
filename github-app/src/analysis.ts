@@ -2,7 +2,7 @@
 
 import R from "ramda"
 
-import * as Diff from "./diff-parser"
+import * as Diff from "./diff"
 import * as Tag from "./tag-parser"
 import * as Review from "./review"
 import * as Lang from "./languages/index"

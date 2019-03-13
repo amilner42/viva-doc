@@ -1,5 +1,5 @@
-import * as Diff from "../../src/diff-parser"
-import * as DiffData from "./diff-parser.data"
+import * as Diff from "../../src/diff"
+import * as DiffData from "./diff.data"
 
 describe.each(DiffData.TESTS)(
   "%s",

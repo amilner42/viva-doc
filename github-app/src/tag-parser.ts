@@ -3,7 +3,7 @@
 import R from "ramda"
 
 import * as File from "./file"
-import * as Diff from "./diff-parser"
+import * as Diff from "./diff"
 import * as F from "./functional-types"
 import * as Lang from "./languages/index"
 
