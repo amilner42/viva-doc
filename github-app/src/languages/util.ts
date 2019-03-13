@@ -7,7 +7,7 @@ import * as File from "../file"
 import * as SH from "../string-helpers"
 import * as Lang from "./index"
 import * as Tag from "../tag-parser"
-import * as F from "../../functional-types"
+import * as F from "../functional-types"
 
 
 /** All VD information must have this prefix

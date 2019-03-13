@@ -3,7 +3,7 @@
 import * as Probot from 'probot' // eslint-disable-line no-unused-vars
 import R from "ramda"
 
-import * as Analysis from "./analysis/index"
+import * as Analysis from "./analysis"
 
 const VIVA_DOC_STATUS_NAME = "continuous-documentation/viva-doc"
 const VIVA_DOC_STATUS_CONTEXT = "Documentation Analysis";

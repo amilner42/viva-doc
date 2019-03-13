@@ -1,4 +1,4 @@
-import * as SH from "../../../src/analysis/string-helpers"
+import * as SH from "../../src/string-helpers"
 import * as SHData from "./string-helpers.data"
 
 describe("getNumberOfLines", () => {

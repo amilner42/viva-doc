@@ -1,4 +1,4 @@
-import * as Diff from "../../../src/analysis/diff-parser"
+import * as Diff from "../../src/diff-parser"
 
 type DescribeTable = [ string, TestTable ][]
 

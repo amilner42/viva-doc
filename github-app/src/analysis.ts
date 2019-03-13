@@ -6,7 +6,7 @@ import * as Diff from "./diff-parser"
 import * as Tag from "./tag-parser"
 import * as Review from "./review"
 import * as Lang from "./languages/index"
-import * as AppError from "../error"
+import * as AppError from "./error"
 
 /** EXTERNAL FUNCTIONS */
 

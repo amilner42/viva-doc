@@ -3,7 +3,7 @@
 import R from "ramda"
 
 import * as LangUtil from "./util"
-import * as AppError from "../../error"
+import * as AppError from "../error"
 import * as Tag from "../tag-parser"
 
 // Language parsing imports

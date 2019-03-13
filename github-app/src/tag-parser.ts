@@ -4,7 +4,7 @@ import R from "ramda"
 
 import * as File from "./file"
 import * as Diff from "./diff-parser"
-import * as F from "../functional-types"
+import * as F from "./functional-types"
 import * as Lang from "./languages/index"
 
 /** EXTERNAL TYPES */

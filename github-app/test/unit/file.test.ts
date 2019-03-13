@@ -1,4 +1,4 @@
-import * as File from "../../../src/analysis/file"
+import * as File from "../../src/file"
 import * as FileData from "./file.data"
 
 describe("splitFileContentIntoLines", () => {
