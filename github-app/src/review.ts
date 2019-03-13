@@ -5,69 +5,94 @@ import R from "ramda"
 import * as LangUtil from "./languages/util"
 import * as Diff from "./diff"
 import * as Tag from "./tag"
-import * as F from "./functional"
 
-/** EXTERNAL TYPES */
 
-/** TODO DOC  */
-export type FileReview = NewFileReview | DeletedFileReview | RenamedFileReview | ModifiedFileReview
+/** EXTERNAL */
 
-/** TODO DOC */
-export interface BaseFileReview {
-  fileReviewType: "new-file" | "deleted-file" | "renamed-file" | "modified-file";
+/** COMPOSITION TYPES */
+
+export interface HasTags {
+  tags: Tag.VdTag[];
+}
+
+export interface HasReviews {
   reviews: Review[];
 }
 
-/** TODO DOC */
-export type NewFileReview = BaseFileReview & Diff.HasCurrentFilePath & {
+/** The review needed for every file. */
+export type FileReview = NewFileReview | DeletedFileReview | RenamedFileReview | ModifiedFileReview
+
+export interface BaseFileReview {
+  fileReviewType: "new-file" | "deleted-file" | "renamed-file" | "modified-file";
+}
+
+/** A new file review contains a list of tags because all tags in a new file are entirely new. */
+export type NewFileReview = BaseFileReview & HasTags & Diff.HasCurrentFilePath & {
   fileReviewType: "new-file";
-  reviews: ReviewNew[];
 }
 
-/** TODO DOC */
-export type DeletedFileReview = BaseFileReview & Diff.HasCurrentFilePath & {
+/** A deleted file review contains a list of tags because all tags in a deleted file are entirely deleted. */
+export type DeletedFileReview = BaseFileReview & HasTags & Diff.HasCurrentFilePath & {
   fileReviewType: "deleted-file";
-  reviews: ReviewDeleted[];
 }
 
-/** TODO DOC */
-export type RenamedFileReview = BaseFileReview & Diff.HasPreviousFilePath & Diff.HasCurrentFilePath & {
+/** A renamed file `HasReviews` to specify exactly what needs review due to what changes. */
+export type RenamedFileReview =
+  BaseFileReview
+  & Diff.HasPreviousFilePath
+  & Diff.HasCurrentFilePath
+  & HasReviews
+  & {
   fileReviewType: "renamed-file";
 }
 
-/** TODO DOC */
-export type ModifiedFileReview = BaseFileReview & Diff.HasCurrentFilePath & {
+/** A modified file `HasReviews` to specify exactly what needs review due to what changes. */
+export type ModifiedFileReview =
+  BaseFileReview
+  & Diff.HasCurrentFilePath
+  & HasReviews
+  & {
   fileReviewType: "modified-file";
 }
 
 // A review indicates that a certain `VdTag` must be reviewed.
-export type Review = ReviewNew | ReviewDeleted | ReviewModified
+export type Review = ReviewNewTag | ReviewDeletedTag | ReviewModifiedTag
 
 // A tag can be new, deleted, or modified in some way.
 export type ReviewType = "new" | "deleted" | "modified"
 
 // All Reviews should have these properties.
-export interface BaseReview {
+export type BaseReview = {
   reviewType: ReviewType;
   tag: Tag.VdTag;
 }
 
-/** A review for a new tag. */
-export type ReviewNew = BaseReview & {
+/** A `ReviewNew` is pointing to a newly created tag.
+
+  The tag annotation would be a green line in the git diff.
+  Because it's a new tag we don't include altered lines.
+  */
+export type ReviewNewTag = BaseReview & {
   reviewType: "new";
 }
 
-/** A review for a deleted tag. */
-export type ReviewDeleted = BaseReview & {
+/** A `ReviewDeleted` is pointing to a deleted tag.
+
+  The tag annotation would be a red line in the git diff.
+  Because it's a deleted tag we don't include the altered lines.
+ */
+export type ReviewDeletedTag = BaseReview & {
   reviewType: "deleted";
 }
 
-/** A review for a modified tag. */
-export type ReviewModified = BaseReview & {
+/** A `ReviewModified` is pointing to a modified tag.
+
+  The tag annotation would not be red or green in the git diff, only the code/comment changed.
+  We include all altered lines that reflect the modification.
+*/
+export type ReviewModifiedTag = BaseReview & Diff.HasAlteredLines & {
   reviewType: "modified";
 }
-
-/** EXTERNAL FUNCTIONS */
 
 // Get reviews from all the parsed information
 export const getReviews = (diffWCAT: Tag.FileDiffWithCodeAndTags): FileReview => {
@@ -79,7 +104,7 @@ export const getReviews = (diffWCAT: Tag.FileDiffWithCodeAndTags): FileReview =>
       return {
         fileReviewType: "new-file",
         currentFilePath: diffWCAT.currentFilePath,
-        reviews: mapTagsToNewReviews(diffWCAT.currentFileTags)
+        tags: diffWCAT.currentFileTags
       }
 
     case "deleted":
@@ -87,7 +112,7 @@ export const getReviews = (diffWCAT: Tag.FileDiffWithCodeAndTags): FileReview =>
       return {
         fileReviewType: "deleted-file",
         currentFilePath: diffWCAT.currentFilePath,
-        reviews: mapTagsToDeletedReviews(diffWCAT.currentFileTags)
+        tags: diffWCAT.currentFileTags
       }
 
     case "renamed":
@@ -96,13 +121,11 @@ export const getReviews = (diffWCAT: Tag.FileDiffWithCodeAndTags): FileReview =>
         fileReviewType: "renamed-file",
         currentFilePath: diffWCAT.currentFilePath,
         previousFilePath: diffWCAT.previousFilePath,
-        reviews: calculateReviewsFromModification({
-          previousTags: diffWCAT.previousFileTags,
-          currentTags: diffWCAT.currentFileTags,
-          previousFileContent: diffWCAT.previousFileContent,
-          currentFileContent: diffWCAT.currentFileContent,
-          alteredLines: diffWCAT.alteredLines
-        })
+        reviews: calculateReviewsFromModification(
+          diffWCAT.previousFileTags,
+          diffWCAT.currentFileTags,
+          diffWCAT.alteredLines
+        )
       }
 
     case "modified":
@@ -110,94 +133,56 @@ export const getReviews = (diffWCAT: Tag.FileDiffWithCodeAndTags): FileReview =>
       return {
         fileReviewType: "modified-file",
         currentFilePath: diffWCAT.currentFilePath,
-        reviews: calculateReviewsFromModification({
-          previousTags: diffWCAT.previousFileTags,
-          currentTags: diffWCAT.currentFileTags,
-          previousFileContent: diffWCAT.previousFileContent,
-          currentFileContent: diffWCAT.currentFileContent,
-          alteredLines: diffWCAT.alteredLines
-        })
+        reviews: calculateReviewsFromModification(
+          diffWCAT.previousFileTags,
+          diffWCAT.currentFileTags,
+          diffWCAT.alteredLines
+        )
       }
 
   } // end switch
 }
 
-/** INTERNAL */
-
-interface CalculateModificationReviewParams {
-  previousTags: Tag.VdTag[],
-  currentTags: Tag.VdTag[],
-  previousFileContent: string,
-  currentFileContent: string,
-  alteredLines: Diff.AlteredLine[]
-}
-
 /** Calculates the reviews for some file modification given all helpful information.
 
-  This is the crux of the app. Commit.
+  This is the core functionality of the app.
  */
-const calculateReviewsFromModification = (params: CalculateModificationReviewParams): Review[] => {
+export const calculateReviewsFromModification =
+    ( previousTags: Tag.VdTag[]
+    , currentTags: Tag.VdTag[]
+    , alteredLines: Diff.AlteredLine[]
+    ): Review[] => {
 
-  /** Simple case: no old/new tags */
-  if (params.previousTags.length === 0 && params.currentTags.length === 0) {
-    return []
-  }
+  if (previousTags.length === 0 && currentTags.length === 0) { return [] }
 
-  /** Simple case: no old tags, some new tags */
-  if (params.previousTags.length === 0) {
-    return mapTagsToNewReviews(params.currentTags)
-  }
-
-  /** Simple case: old tags, no new tags */
-  if (params.currentTags.length === 0) {
-    return mapTagsToDeletedReviews(params.previousTags)
-  }
-
-  /** Complex case: there are old/new tags, diff must be analyzed
-
-    NOTE: The complex case is the common case.
-  */
-  const tagMap: TagMap = getTagMap(params.previousTags, params.currentTags, params.alteredLines)
-
-  throw new Error("NOT IMPLEMENTED")
+  const tagMap: TagMap = getTagMap(previousTags, currentTags, alteredLines)
+  return reviewsFromTagMapAndAlteredLines(tagMap, alteredLines)
 }
 
-/** Create some `ReviewNew`s from some tags. */
-const mapTagsToNewReviews = (tags: Tag.VdTag[]): ReviewNew[] => {
-  return R.map<Tag.VdTag, ReviewNew>((tag) => {
-    return { reviewType: "new", tag }
-  }, tags)
-}
-
-/** Create some `ReviewDeleted`s from some tags. */
-const mapTagsToDeletedReviews = (tags: Tag.VdTag[]): ReviewDeleted[] => {
-  return R.map<Tag.VdTag, ReviewDeleted>((tag) => {
-    return { reviewType: "deleted", tag }
-  }, tags)
-}
-
-/** Helper for creating types with the TagMap structure. */
-interface AbstractTagMap<A> {
-  oldTagsToNewTags: A[];
-  newTagsToOldTags: A[];
-}
+/** INTERNAL */
 
 /** A map between old and new tags across a diff.
-
-  `null` on `oldTagsToNewTags` represents that the old tag was deleted.
-  `null` on `newTagsToOldTags` represents that the tag is new and doesn't match an old tag.
 */
-type TagMap = AbstractTagMap<F.Maybe<number>>
+type TagMap = {
+  deletedTags: Tag.VdTag[],
+  newTags: Tag.VdTag[],
+  tagPairs: R.KeyValuePair<Tag.VdTag, Tag.VdTag>[]
+}
 
 /** Used while creating a tag map.
 
-  The `undefined` is used during creation to represent a placeholder for some number, while `null` has the same meaning
-  as in the `TagMap`. A `PartialTagMap` can be coverted to a `TagMap` by simply pairing all the `undefined` in one
-  list with the `undefined` in the other list  [@refer `tagMapFromPartial`].
+  - null in `oldTagsToNewTags` means that the tag was deleted.
+  - null in `newTagsToOldTags` means the tag is new.
+  - undefined means the tag wasn't deleted/added. It is partial because this data structure doesn't keep which tags map
+  to each other, although it is simple to get that from this data structure by just zipping up the undefined in each
+  list.
 
   NOTE: A `TagMapPartial` should have the same amount of `undefined` in each list.
 */
-type TagMapPartial = AbstractTagMap<undefined | null>
+type TagMapPartial = {
+  oldTagsToNewTags: (undefined | null)[];
+  newTagsToOldTags: (undefined | null)[];
+}
 
 /** Creates a map between the old tags and the new tags given the line diffs. */
 const getTagMap = (oldTags: Tag.VdTag[], newTags: Tag.VdTag[], alteredLines: Diff.AlteredLine[]): TagMap => {
@@ -253,47 +238,112 @@ const getTagMap = (oldTags: Tag.VdTag[], newTags: Tag.VdTag[], alteredLines: Dif
     } // end switch
   } // end for
 
-  return tagMapFromPartial(partialTagMap)
+  return tagMapFromPartial(partialTagMap, oldTags, newTags)
 }
 
 /** Converts a `PartialTagMap` to a full `TagMap`
 
   Will throw an error if the `partialTagMap` is invalid.
-    1. There must be the same amount of `undefined` tags in the `oldTagsToNewTags` as in `newTagsToOldTags`.
 */
-const tagMapFromPartial = (partialTagMap: TagMapPartial): TagMap => {
-
-  // Init all to `null`, will switch all `undefined` with the actual numbers.
+const tagMapFromPartial =
+    ( partialTagMap: TagMapPartial
+    , previousTags: Tag.VdTag[]
+    , currentTags: Tag.VdTag[]
+    ): TagMap => {
+    
   const tagMap: TagMap = {
-    oldTagsToNewTags: R.repeat(null, partialTagMap.oldTagsToNewTags.length),
-    newTagsToOldTags: R.repeat(null, partialTagMap.newTagsToOldTags.length)
+    deletedTags: [],
+    newTags: [],
+    tagPairs: []
   }
 
   const countUndefined = (list: any[]) => {
     return R.filter(R.equals(undefined), list).length
   }
 
-  // Breaks rule 1
+  // Invalid partial tag map
   if(countUndefined(partialTagMap.newTagsToOldTags) !== countUndefined(partialTagMap.oldTagsToNewTags)) {
     throw new Error("TODO")
   }
 
-  let newTagIndex = 0
-
-  // Otherwise we zip up matching tags
-  for (let oldTagIndex = 0; oldTagIndex < partialTagMap.oldTagsToNewTags.length; oldTagIndex++) {
-
-    // Already assigned value, go to next oldTagIndex
-    if (partialTagMap.oldTagsToNewTags[oldTagIndex] !== undefined) { continue; }
-
-    // Get the next newTagIndex pointing to an `undefined`
-    while (partialTagMap.newTagsToOldTags[newTagIndex] !== undefined) { newTagIndex++ }
-
-    // Add them to the map and move the `newTagIndex` forward
-    tagMap.oldTagsToNewTags[oldTagIndex] = newTagIndex
-    tagMap.newTagsToOldTags[newTagIndex] = oldTagIndex
-    newTagIndex++;
+  // Add deleted tags to tag map
+  for (let i = 0; i < previousTags.length; i++) {
+    if (partialTagMap.oldTagsToNewTags[i] === null) {
+      tagMap.deletedTags.push(previousTags[i])
+    }
   }
+  
+  // Add new tags to tag map
+  for (let i = 0; i < currentTags.length; i++) {
+    if (partialTagMap.newTagsToOldTags[i] === null) {
+      tagMap.newTags.push(currentTags[i])
+    }
+  }
+  
+  const getTagsThatPair = (partialTagMapPointers: (null | undefined)[], tags: Tag.VdTag[]): Tag.VdTag[] => {
+    const zipped = R.zip(partialTagMapPointers, tags)
+    const filterZipped = R.filter(([x, y]) => {
+      return x === undefined
+    }, zipped)
+    return R.map(([x, y]) => y, filterZipped)
+  }
+  
+  tagMap.tagPairs = R.zip(
+    getTagsThatPair(partialTagMap.oldTagsToNewTags, previousTags),
+    getTagsThatPair(partialTagMap.newTagsToOldTags, currentTags)
+  )
 
   return tagMap
 }
+
+/** TODO DOC */
+const reviewsFromTagMapAndAlteredLines = (tagMap: TagMap, alteredLines: Diff.AlteredLine[]): Review[] => {
+  
+  const reviewDeletedTags: ReviewDeletedTag[] = R.map<Tag.VdTag, ReviewDeletedTag>((tag) => {
+    return {
+      reviewType: "deleted",
+      tag
+    }
+  }, tagMap.deletedTags)
+  
+  const reviewNewTags: ReviewNewTag[] = R.map<Tag.VdTag, ReviewNewTag>((tag) => {
+    return {
+      reviewType: "new",
+      tag
+    }
+  }, tagMap.newTags)
+  
+  const tagPairsMaybeNeedingReview: ReviewModifiedTag[] = R.map((tagPair) => {
+    return {
+      reviewType: "modified",
+      tag: tagPair[1],
+      alteredLines: R.filter(alteredLineInTagPairOwnership(tagPair), alteredLines)
+    } as ReviewModifiedTag
+  }, tagMap.tagPairs)
+  
+  // Only keep tag pairs that have actually been modified
+  const reviewModifiedTags = R.filter((reviewModifiedTag) => {
+    return reviewModifiedTag.alteredLines.length > 0
+  }, tagPairsMaybeNeedingReview)
+  
+  return ([] as Review[]).concat(reviewDeletedTags, reviewNewTags, reviewModifiedTags)
+}
+
+const alteredLineInTagPairOwnership = R.curry(
+  ([previousTag, currentTag]: R.KeyValuePair<Tag.VdTag, Tag.VdTag>, alteredLine: Diff.AlteredLine): boolean => {
+    
+    switch (alteredLine.type) {
+      
+      case "added":
+        return lineNumberInTagOwnership(currentTag, alteredLine.currentLineNumber)
+      
+      case "deleted":
+        return lineNumberInTagOwnership(previousTag, alteredLine.previousLineNumber)
+    }
+  }
+)
+
+const lineNumberInTagOwnership = (tag: Tag.VdTag, lineNumber: number) => {
+  return (lineNumber >= tag.startLine) && (lineNumber <= tag.endLine)
+}
+  
