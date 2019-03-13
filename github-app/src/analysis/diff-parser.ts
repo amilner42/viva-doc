@@ -2,7 +2,7 @@
 
 import R from "ramda"
 
-import * as AnalysisUtil from "./util"
+import * as File from "./file"
 import * as F from "../functional-types"
 import * as AppError from "../error"
 
@@ -83,7 +83,7 @@ const HUNK_PREVIOUS_RANGE_PREFIX = "-"
 
 // Main function of the module, will parse the git diff into a series of file diffs.
 export const parseDiff = (diffAsStr: string): FileDiff[] => {
-  let remainingLines = AnalysisUtil.splitFileContentIntoLines(diffAsStr)
+  let remainingLines = File.splitFileContentIntoLines(diffAsStr)
   const fileDiffs: FileDiff[] = []
 
   while(remainingLines.length !== 0) {

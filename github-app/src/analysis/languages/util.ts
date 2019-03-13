@@ -3,7 +3,7 @@
 import R from "ramda"
 import { DefaultErrorStrategy } from 'antlr4ts/DefaultErrorStrategy';
 
-import * as AnalysisUtil from "../util"
+import * as File from "../file"
 import * as Lang from "./index"
 import * as Tag from "../tag-parser"
 import * as F from "../../functional-types"
@@ -85,7 +85,7 @@ export const matchSingleVdTagAnnotation =
   // Matched a single tag
   if (hasMatchedTag) {
     const [ , whiteSpaceBeforeAnnotation, owner, tagType ] = matchTagAnnotation as [ string, string, string, Tag.VdTagType ]
-    const tagAnnotationLineOffset = AnalysisUtil.getNumberOfLinesForContent(whiteSpaceBeforeAnnotation) - 1
+    const tagAnnotationLineOffset = File.getNumberOfLinesForContent(whiteSpaceBeforeAnnotation) - 1
 
     return F.branch3({ owner, tagType, tagAnnotationLineOffset })
   }
@@ -172,9 +172,9 @@ export const standardTagsFromReducedFileAst = (reducedFileAst: Lang.ReducedFileA
               tagType: "file",
               owner: reducedCommentNode.data.owner,
               tagAnnotationLine: reducedCommentNode.data.tagAnnotationLine,
-              content: AnalysisUtil.splitFileContentIntoLines(fileContent),
+              content: File.splitFileContentIntoLines(fileContent),
               startLine: 1,
-              endLine: AnalysisUtil.getNumberOfLinesForFile(fileContent)
+              endLine: File.getNumberOfLinesForFile(fileContent)
             })
             continue
 
@@ -278,7 +278,7 @@ export const standardTagsFromReducedFileAst = (reducedFileAst: Lang.ReducedFileA
 */
 const getContentByLineNumbers = (fileContent: string, startLine: number, endLine: number): string[] => {
 
-  const fileSplitByLines = AnalysisUtil.splitFileContentIntoLines(fileContent)
+  const fileSplitByLines = File.splitFileContentIntoLines(fileContent)
   const tagContent = []
   
   // Attempting to get content outside the file...

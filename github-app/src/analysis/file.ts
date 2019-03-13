@@ -1,12 +1,12 @@
-// Module for utility-functions for general analysis tasks.
+// Module for functions relating to working with a file
 
-import * as R from "ramda"
+import R from "ramda"
 
 const REGEX_MATCH_NEWLINE = /\r\n|\r|\n/g
 
 /** Split the content of a file by line seperators.
 
-  TODO BUG: Is this something that is language-specific?
+  TODO CHECK: Is this something that is language-specific?
     - It seems it might not be: https://stackoverflow.com/questions/7833689/java-string-new-line
 
   NOTE: Using the albeit simple regex from this SO post:

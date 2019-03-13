@@ -2,7 +2,7 @@
 
 import R from "ramda"
 
-import * as AnalysisUtil from "./util"
+import * as File from "./file"
 import * as Diff from "./diff-parser"
 import * as F from "../functional-types"
 import * as Lang from "./languages/index"
@@ -109,14 +109,14 @@ export const parseTags = (diffWF: FileDiffWithCode): FileDiffWithCodeAndTags => 
 
     case "new": {
 
-      const file = AnalysisUtil.mergeLinesIntoFileContent(diffWF.lines);
+      const file = File.mergeLinesIntoFileContent(diffWF.lines);
 
       return R.merge(diffWF, { currentFileTags: getFileTags(currentLanguage, file) })
     }
 
     case "deleted": {
 
-      const file = AnalysisUtil.mergeLinesIntoFileContent(diffWF.lines);
+      const file = File.mergeLinesIntoFileContent(diffWF.lines);
 
       return R.merge(diffWF, { currentFileTags: getFileTags(currentLanguage, file) })
     }
