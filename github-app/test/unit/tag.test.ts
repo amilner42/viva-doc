@@ -1,5 +1,5 @@
-import * as TagData from "./tag-parser.data"
-import * as Tag from "../../src/tag-parser"
+import * as TagData from "./tag.data"
+import * as Tag from "../../src/tag"
 
 // Currently just `Tags.getFileTags` is tested as that is the core functionality.
 describe.each(TagData.TESTS)(

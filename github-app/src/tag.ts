@@ -1,4 +1,4 @@
-// Module for handling parsing VD tags from files.
+// Module for handling tag related tasks
 
 import R from "ramda"
 

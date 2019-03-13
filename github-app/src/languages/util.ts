@@ -6,7 +6,7 @@ import { DefaultErrorStrategy } from 'antlr4ts/DefaultErrorStrategy';
 import * as File from "../file"
 import * as SH from "../string-helpers"
 import * as Lang from "./index"
-import * as Tag from "../tag-parser"
+import * as Tag from "../tag"
 import * as F from "../functional"
 
 

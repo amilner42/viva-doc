@@ -1,4 +1,4 @@
-// Module for handling parsing git diffs.
+// Module for working with git diffs.
 
 import R from "ramda"
 

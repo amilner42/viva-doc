@@ -1,7 +1,7 @@
 // Module for python-specific parsing functionality
 
 import * as Lang from "../index"
-import * as Tag from "../../tag-parser"
+import * as Tag from "../../tag"
 
 /** Parse the FileAst from the given file content. */
 export const parse = (fileContent: string): Lang.FileAst => {

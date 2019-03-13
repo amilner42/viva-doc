@@ -4,7 +4,7 @@ import R from "ramda"
 
 import * as LangUtil from "./util"
 import * as AppError from "../error"
-import * as Tag from "../tag-parser"
+import * as Tag from "../tag"
 
 // Language parsing imports
 import * as cpp from "./cplusplus/index"

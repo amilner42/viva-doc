@@ -1,5 +1,5 @@
 import * as Lang from "../../src/languages"
-import * as Tag from "../../src/tag-parser"
+import * as Tag from "../../src/tag"
 
 type DescribeTable = [ string, TestTable ][]
 
