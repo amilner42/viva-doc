@@ -2,6 +2,11 @@ export const SPLIT_FILE_CONTENT_INTO_LINES_TESTS: [ string, string, string[] ][]
   [
     "Blank file",
     "",
+    [ ]
+  ],
+  [
+    "Single empty line",
+    "\n",
     [ "" ]
   ],
   [
@@ -30,6 +35,11 @@ export const MERGE_LINES_INTO_FILE_CONTENT_TESTS: [ string, string[], string ][]
   [
     "Blank file",
     [ ],
+    ""
+  ],
+  [
+    "Single empty line",
+    [ "" ],
     "\n"
   ],
   [
@@ -63,7 +73,7 @@ export const GET_NUMBER_OF_LINES_FOR_FILE_CONTENT_TESTS: [string, string | strin
   [
     "String: blank string",
     "",
-    1
+    0
   ],
   [
     "String: blank string with newline-terminator",

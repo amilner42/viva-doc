@@ -1,6 +1,6 @@
 // Module for javascript-specific parsing functionality
 
-import * as File from "../../file"
+import * as SH from "../../string-helpers"
 import * as LangUtil from "../util"
 import * as Lang from "../index"
 
@@ -50,7 +50,7 @@ class ExtractCommentsAndFunctionsListener implements JavascriptParserListener {
       {
         content,
         startLine: ctx._start.line,
-        endLine: ctx._start.line + File.getNumberOfLinesForContent(content) - 1
+        endLine: ctx._start.line + SH.getNumberOfLines(content) - 1
       }
     )
   }

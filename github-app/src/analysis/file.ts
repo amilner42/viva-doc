@@ -2,27 +2,20 @@
 
 import R from "ramda"
 
-const REGEX_MATCH_NEWLINE = /\r\n|\r|\n/g
+import * as SH from "./string-helpers"
+
 
 /** Split the content of a file by line seperators.
-
-  TODO CHECK: Is this something that is language-specific?
-    - It seems it might not be: https://stackoverflow.com/questions/7833689/java-string-new-line
-
-  NOTE: Using the albeit simple regex from this SO post:
-    - https://stackoverflow.com/questions/1155678/javascript-string-newline-character
 
   For the reverse function, check out `mergeLinesIntoFileContent`.
 */
 export const splitFileContentIntoLines = (fileContent: string): string[] => {
-  const fileContentLines = fileContent.split(REGEX_MATCH_NEWLINE)
+  if (fileContent === "") { return [] }
 
-  // TODO CHECK
-  // Files usually end with an EOF which is the "newline" character which is really a line terminator and not a
-  // new line character which is the way it is sometimes mis-interpreted.
-  if (fileContent.endsWith("\n") || fileContent.endsWith("\r")) {
-    return R.dropLast(1, fileContentLines)
-  }
+  const fileContentLines = fileContent.split(SH.REGEX_MATCH_NEWLINE)
+
+  // The last line ended in a line seperator as it SHOULD (unfortunately it might not always...)
+  if (R.last(fileContentLines) === "") { return R.dropLast(1, fileContentLines) }
 
   return fileContentLines
 }
@@ -34,6 +27,8 @@ export const splitFileContentIntoLines = (fileContent: string): string[] => {
   For the reverse function, check out `splitFileContentIntoLines`.
 */
 export const mergeLinesIntoFileContent = (fileContentLines: string[]): string => {
+  if (fileContentLines.length === 0) { return "" }
+  
   return fileContentLines.join("\n").concat("\n")
 }
 
@@ -47,12 +42,4 @@ export const getNumberOfLinesForFile = (fileContent: string | string[]) => {
   }
 
   return splitFileContentIntoLines(fileContent).length
-}
-
-/** Gets the number of lines for some content that is not a file.
-
-  This assumes that the content does not end by defualt in an EOF token.
-*/
-export const getNumberOfLinesForContent = (content: string): number => {
-  return content.split(REGEX_MATCH_NEWLINE).length
 }

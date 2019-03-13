@@ -4,6 +4,7 @@ import R from "ramda"
 import { DefaultErrorStrategy } from 'antlr4ts/DefaultErrorStrategy';
 
 import * as File from "../file"
+import * as SH from "../string-helpers"
 import * as Lang from "./index"
 import * as Tag from "../tag-parser"
 import * as F from "../../functional-types"
@@ -85,7 +86,7 @@ export const matchSingleVdTagAnnotation =
   // Matched a single tag
   if (hasMatchedTag) {
     const [ , whiteSpaceBeforeAnnotation, owner, tagType ] = matchTagAnnotation as [ string, string, string, Tag.VdTagType ]
-    const tagAnnotationLineOffset = File.getNumberOfLinesForContent(whiteSpaceBeforeAnnotation) - 1
+    const tagAnnotationLineOffset = SH.getNumberOfNewLineTerminators(whiteSpaceBeforeAnnotation)
 
     return F.branch3({ owner, tagType, tagAnnotationLineOffset })
   }
