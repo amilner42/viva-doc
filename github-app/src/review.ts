@@ -5,7 +5,7 @@ import R from "ramda"
 import * as LangUtil from "./languages/util"
 import * as Diff from "./diff"
 import * as Tag from "./tag-parser"
-import * as F from "./functional-types"
+import * as F from "./functional"
 
 /** EXTERNAL TYPES */
 

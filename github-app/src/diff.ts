@@ -3,7 +3,7 @@
 import R from "ramda"
 
 import * as File from "./file"
-import * as F from "./functional-types"
+import * as F from "./functional"
 import * as AppError from "./error"
 
 /** EXTERNAL TYPES */
