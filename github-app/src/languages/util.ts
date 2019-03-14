@@ -16,7 +16,7 @@ import * as F from "../functional"
 
   Does a global purposefully search to see if comment [illegaly] contains more than a single "@VD"
 */
-const MATCH_VD_COMMENT_PREFIX_REGEX = /(?<=\s)@VD(?=\s|$)/g
+const MATCH_VD_COMMENT_PREFIX_REGEX = /(?<=^|\s)@VD(?=\s|$)/g
 
 /** Matching a new tag annotation
 
@@ -25,7 +25,7 @@ const MATCH_VD_COMMENT_PREFIX_REGEX = /(?<=\s)@VD(?=\s|$)/g
     - The username
     - The type of tag annotation
 */
-const MATCH_VD_COMMENT_TAG_ANNOTATION_REGEX = /(\s+)@VD ([a-zA-Z0-9-]*) (function|block|file|line)(?=\s|$)/
+const MATCH_VD_COMMENT_TAG_ANNOTATION_REGEX = /(^|\s+)@VD ([a-zA-Z0-9-]*) (function|block|file|line)(?=\s|$)/
 /** The end of a block tag */
 const MATCH_VD_COMMENT_END_BLOCK_ANNOTATION_REGEX = /\s@VD end-block(?=\s|$)/
 
