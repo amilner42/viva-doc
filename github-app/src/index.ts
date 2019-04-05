@@ -6,7 +6,6 @@ import R from "ramda"
 import * as Analysis from "./analysis"
 
 const VIVA_DOC_STATUS_NAME = "continuous-documentation/viva-doc"
-const VIVA_DOC_STATUS_CONTEXT = "Documentation Analysis";
 
 export = (app: Probot.Application) => {
 
@@ -58,7 +57,7 @@ export = (app: Probot.Application) => {
         repo,
         sha: currentCommitId,
         state: "pending",
-        context: VIVA_DOC_STATUS_CONTEXT
+        context: VIVA_DOC_STATUS_NAME
       });
 
       // Second: run analysis
@@ -104,7 +103,7 @@ export = (app: Probot.Application) => {
           owner,
           repo,
           sha: currentCommitId,
-          context: VIVA_DOC_STATUS_CONTEXT,
+          context: VIVA_DOC_STATUS_NAME,
           state: statusState
         }).then(R.path(["data"]))
       }
