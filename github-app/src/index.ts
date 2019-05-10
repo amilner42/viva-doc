@@ -44,81 +44,75 @@ export = (app: Probot.Application) => {
   app.on("push", async (context) => {
     const pushPayload = context.payload
     const commits = pushPayload.commits
+    const numberOfCommits = commits.length
     const { owner, repo } = context.repo()
     const baseCommitId = pushPayload.before
-
-    for (let i = 0; i < commits.length; i++) {
-      const previousCommitId = (i === 0) ? baseCommitId : commits[i - 1]
-      const currentCommitId = commits[0].id
-
-      // First: set status to pending for each commit
-      context.github.repos.createStatus({
+    
+    const lastCommitId = commits[numberOfCommits - 1].id
+    const previousCommitId = (numberOfCommits === 1) ? baseCommitId : commits[numberOfCommits - 2].id
+    
+    const retrieveDiff = async (): Promise<any> => {
+      // Need the correct accept header to get the diff:
+      // Refer: https://developer.github.com/v3/media/#commits-commit-comparison-and-pull-requests
+      const diffAcceptHeader = { accept: "application/vnd.github.v3.diff"}
+      // Unfortunetly the typings are wrong, and they don't include `headers` even though octokit (which this wraps)
+      // has that field, and of course we need to pass the correct header to get the correct media type. This is
+      // why I have a `as any` at the end here, it is only because the typings are wrong.
+      // TODO: Currently assumes base branch is "master", it needs to find the branch
+      return context.github.repos.compareCommits({
+        headers: diffAcceptHeader,
         owner,
         repo,
-        sha: currentCommitId,
-        state: "pending",
-        context: VIVA_DOC_STATUS_NAME
-      });
+        base: "master",
+        head: lastCommitId
+      } as any).then(R.path(["data"]))
+    }
+    
+    const retrieveFiles = async (previousFilePath: string, currentFilePath: string): Promise<[string, string]> => {
 
-      // Second: run analysis
-      const retrieveDiff = async (): Promise<any> => {
-        // Need the correct accept header to get the diff:
-        // Refer: https://developer.github.com/v3/media/#commits-commit-comparison-and-pull-requests
-        const diffAcceptHeader = { accept: "application/vnd.github.v3.diff"}
-        // Unfortunetly the typings are wrong, and they don't include `headers` even though octokit (which this wraps)
-        // has that field, and of course we need to pass the correct header to get the correct media type. This is
-        // why I have a `as any` at the end here, it is only because the typings are wrong.
-        return context.github.repos.getCommit({
-          headers: diffAcceptHeader,
+      const getFile = async (commitId: string, path: string): Promise<string> => {
+        return context.github.repos.getContents({
           owner,
           repo,
-          sha: currentCommitId
-        } as any).then(R.path(["data"]))
+          path,
+          ref: commitId
+        })
+        .then(R.path<any>(["data"]))
+        .then((data) => {
+          return (new Buffer(data.content, data.encoding)).toString("ascii")
+        })
       }
 
-      const retrieveFiles = async (previousFilePath: string, currentFilePath: string): Promise<[string, string]> => {
 
-        const getFile = async (commitId: string, path: string): Promise<string> => {
-          return context.github.repos.getContents({
-            owner,
-            repo,
-            path,
-            ref: commitId
-          })
-          .then(R.path<any>(["data"]))
-          .then((data) => {
-            return (new Buffer(data.content, data.encoding)).toString("ascii")
-          })
-        }
+      const previousFile = await getFile(previousCommitId, previousFilePath)
+      const currentFile = await getFile(lastCommitId, currentFilePath)
 
+      return [ previousFile, currentFile ]
+    }
 
-        const previousFile = await getFile(previousCommitId, previousFilePath)
-        const currentFile = await getFile(currentCommitId, currentFilePath)
+    const setStatus = async (statusState: "success" | "failure" | "pending") => {
+      return context.github.repos.createStatus({
+        owner,
+        repo,
+        sha: lastCommitId,
+        context: VIVA_DOC_STATUS_NAME,
+        state: statusState
+      }).then(R.path(["data"]))
+    }
+    
+    setStatus("pending")
 
-        return [ previousFile, currentFile ]
-      }
-
-      const setStatus = async (statusState: "success" | "failure") => {
-        return context.github.repos.createStatus({
-          owner,
-          repo,
-          sha: currentCommitId,
-          context: VIVA_DOC_STATUS_NAME,
-          state: statusState
-        }).then(R.path(["data"]))
-      }
-
-      try {
-        Analysis.analyzeCommitDiffAndSubmitStatus(
-          retrieveDiff,
-          retrieveFiles,
-          setStatus
-        )
-      } catch (err) {
-        // @PROD handle error
-        console.log(`ERROR: ${err} --- ${JSON.stringify(err)}`)
-      }
-    } // for loop each commit
+    try {
+      Analysis.analyzeCommitDiffAndSubmitStatus(
+        retrieveDiff,
+        retrieveFiles,
+        setStatus
+      )
+    } catch (err) {
+      // @PROD handle error
+      console.log(`ERROR: ${err} --- ${JSON.stringify(err)}`)
+    }
+    
    })
 
 }
