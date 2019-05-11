@@ -47,10 +47,10 @@ export = (app: Probot.Application) => {
     const numberOfCommits = commits.length
     const { owner, repo } = context.repo()
     const baseCommitId = pushPayload.before
-    
+
     const lastCommitId = commits[numberOfCommits - 1].id
     const previousCommitId = (numberOfCommits === 1) ? baseCommitId : commits[numberOfCommits - 2].id
-    
+
     const retrieveDiff = async (): Promise<any> => {
       // Need the correct accept header to get the diff:
       // Refer: https://developer.github.com/v3/media/#commits-commit-comparison-and-pull-requests
@@ -67,7 +67,7 @@ export = (app: Probot.Application) => {
         head: lastCommitId
       } as any).then(R.path(["data"]))
     }
-    
+
     const retrieveFiles = async (previousFilePath: string, currentFilePath: string): Promise<[string, string]> => {
 
       const getFile = async (commitId: string, path: string): Promise<string> => {
@@ -90,29 +90,23 @@ export = (app: Probot.Application) => {
       return [ previousFile, currentFile ]
     }
 
-    const setStatus = async (statusState: "success" | "failure" | "pending") => {
+    const setStatus = async (statusState: "success" | "failure" | "pending", description: string) => {
       return context.github.repos.createStatus({
         owner,
         repo,
         sha: lastCommitId,
         context: VIVA_DOC_STATUS_NAME,
-        state: statusState
+        state: statusState,
+        description
       }).then(R.path(["data"]))
     }
-    
-    setStatus("pending")
 
-    try {
-      Analysis.analyzeCommitDiffAndSubmitStatus(
-        retrieveDiff,
-        retrieveFiles,
-        setStatus
-      )
-    } catch (err) {
-      // @PROD handle error
-      console.log(`ERROR: ${err} --- ${JSON.stringify(err)}`)
-    }
-    
+
+    Analysis.pipeline(retrieveDiff, retrieveFiles, setStatus)
+    .catch((err) => {
+      console.log(`Analysis Pipeline Error: ${err} --- ${JSON.stringify(err)}`)
+    })
+
    })
 
 }

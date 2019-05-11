@@ -143,6 +143,25 @@ export const getReviews = (diffWCAT: Tag.FileDiffWithCodeAndTags): FileReview =>
   } // end switch
 }
 
+export const fileReviewNeedsApproval = (fileReview: FileReview): boolean => {
+  switch (fileReview.fileReviewType) {
+
+    case "new-file":
+      return fileReview.tags.length > 0
+
+    case "deleted-file":
+      return fileReview.tags.length > 0
+
+    case "modified-file":
+    case "renamed-file":
+      return fileReview.reviews.length > 0
+  }
+}
+
+export const fileReviewsNeedingApproval = (fileReviews: FileReview[]): FileReview[] => {
+  return R.filter(fileReviewNeedsApproval, fileReviews)
+}
+
 /** Calculates the reviews for some file modification given all helpful information.
 
   This is the core functionality of the app.
@@ -250,7 +269,7 @@ const tagMapFromPartial =
     , previousTags: Tag.VdTag[]
     , currentTags: Tag.VdTag[]
     ): TagMap => {
-    
+
   const tagMap: TagMap = {
     deletedTags: [],
     newTags: [],
@@ -272,14 +291,14 @@ const tagMapFromPartial =
       tagMap.deletedTags.push(previousTags[i])
     }
   }
-  
+
   // Add new tags to tag map
   for (let i = 0; i < currentTags.length; i++) {
     if (partialTagMap.newTagsToOldTags[i] === null) {
       tagMap.newTags.push(currentTags[i])
     }
   }
-  
+
   const getTagsThatPair = (partialTagMapPointers: (null | undefined)[], tags: Tag.VdTag[]): Tag.VdTag[] => {
     const zipped = R.zip(partialTagMapPointers, tags)
     const filterZipped = R.filter(([x, y]) => {
@@ -287,7 +306,7 @@ const tagMapFromPartial =
     }, zipped)
     return R.map(([x, y]) => y, filterZipped)
   }
-  
+
   tagMap.tagPairs = R.zip(
     getTagsThatPair(partialTagMap.oldTagsToNewTags, previousTags),
     getTagsThatPair(partialTagMap.newTagsToOldTags, currentTags)
@@ -298,21 +317,21 @@ const tagMapFromPartial =
 
 /** TODO DOC */
 const reviewsFromTagMapAndAlteredLines = (tagMap: TagMap, alteredLines: Diff.AlteredLine[]): Review[] => {
-  
+
   const reviewDeletedTags: ReviewDeletedTag[] = R.map<Tag.VdTag, ReviewDeletedTag>((tag) => {
     return {
       reviewType: "deleted",
       tag
     }
   }, tagMap.deletedTags)
-  
+
   const reviewNewTags: ReviewNewTag[] = R.map<Tag.VdTag, ReviewNewTag>((tag) => {
     return {
       reviewType: "new",
       tag
     }
   }, tagMap.newTags)
-  
+
   const tagPairsMaybeNeedingReview: ReviewModifiedTag[] = R.map((tagPair) => {
     return {
       reviewType: "modified",
@@ -320,23 +339,23 @@ const reviewsFromTagMapAndAlteredLines = (tagMap: TagMap, alteredLines: Diff.Alt
       alteredLines: R.filter(alteredLineInTagPairOwnership(tagPair), alteredLines)
     } as ReviewModifiedTag
   }, tagMap.tagPairs)
-  
+
   // Only keep tag pairs that have actually been modified
   const reviewModifiedTags = R.filter((reviewModifiedTag) => {
     return reviewModifiedTag.alteredLines.length > 0
   }, tagPairsMaybeNeedingReview)
-  
+
   return ([] as Review[]).concat(reviewDeletedTags, reviewNewTags, reviewModifiedTags)
 }
 
 const alteredLineInTagPairOwnership = R.curry(
   ([previousTag, currentTag]: R.KeyValuePair<Tag.VdTag, Tag.VdTag>, alteredLine: Diff.AlteredLine): boolean => {
-    
+
     switch (alteredLine.type) {
-      
+
       case "added":
         return lineNumberInTagOwnership(currentTag, alteredLine.currentLineNumber)
-      
+
       case "deleted":
         return lineNumberInTagOwnership(previousTag, alteredLine.previousLineNumber)
     }
@@ -346,4 +365,3 @@ const alteredLineInTagPairOwnership = R.curry(
 const lineNumberInTagOwnership = (tag: Tag.VdTag, lineNumber: number) => {
   return (lineNumber >= tag.startLine) && (lineNumber <= tag.endLine)
 }
-  

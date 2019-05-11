@@ -1,4 +1,4 @@
-// Top level module for all analysis.
+// Top level module for the analysis pipeline.
 
 import R from "ramda"
 
@@ -10,13 +10,30 @@ import * as AppError from "./error"
 
 /** EXTERNAL FUNCTIONS */
 
-// TODO DOC
-// @THROWS TODO
-export const analyzeCommitDiffAndSubmitStatus = async (
+export const pipeline = async (
   retrieveDiff: () => Promise<any>,
   retrieveFiles: (previousFilePath: string, currentFilePath: string) => Promise<[string, string]>,
-  setStatus: (statusState: "success" | "failure") => Promise<any>
-): Promise<void> => {
+  setStatus: (statusState: "success" | "failure" | "pending", description: string) => Promise<any>
+) => {
+
+  // TODO "base branch" should be the name of the base branch.
+  await setStatus("pending", "Analyzing documentation against base branch...")
+
+  const fileReviewsNeedingApproval = await getFileReviewsNeedingApproval(retrieveDiff, retrieveFiles)
+
+  if (fileReviewsNeedingApproval.length === 0) {
+    await setStatus("success", "No tags require approval")
+    return
+  }
+
+  // TODO Save reviews to DB associated with repo and commit hash
+  await setStatus("failure", "Tags require approval!")
+}
+
+export const getFileReviewsNeedingApproval = async (
+  retrieveDiff: () => Promise<any>,
+  retrieveFiles: (previousFilePath: string, currentFilePath: string) => Promise<[string, string]>
+): Promise<Review.FileReview[]> => {
 
   const fileDiffs: Diff.FileDiff[] = Diff.parseDiff(await retrieveDiff())
 
@@ -51,8 +68,7 @@ export const analyzeCommitDiffAndSubmitStatus = async (
 
   // No files to analyze
   if (filesDiffsToAnalyze.length === 0) {
-    setStatus("success")
-    return
+    return []
   }
 
   let fileDiffsWithCode: Tag.FileDiffWithCode[];
@@ -93,7 +109,5 @@ export const analyzeCommitDiffAndSubmitStatus = async (
     R.map(Review.getReviews)
   )(fileDiffsWithCode)
 
-  console.log(`${JSON.stringify(fileReviews)}`)
-
-  return
+  return Review.fileReviewsNeedingApproval(fileReviews)
 }
