@@ -8,9 +8,16 @@ import * as Review from "./review"
 import * as Lang from "./languages/index"
 import * as AppError from "./error"
 
+import mongoose from "mongoose"
+const BranchReview = mongoose.model('BranchReview')
+
 /** EXTERNAL FUNCTIONS */
 
 export const pipeline = async (
+  repoId: string,
+  repoFullName: string,
+  branchName: string,
+  finalCommitId: string,
   retrieveDiff: () => Promise<any>,
   retrieveFiles: (previousFilePath: string, currentFilePath: string) => Promise<[string, string]>,
   setStatus: (statusState: "success" | "failure" | "pending", description: string) => Promise<any>
@@ -26,7 +33,15 @@ export const pipeline = async (
     return
   }
 
-  // TODO Save reviews to DB associated with repo and commit hash
+  // TODO for prod handle errors
+  const branchReview = new BranchReview({
+    repoId,
+    repoFullName,
+    branchName,
+    commitId: finalCommitId,
+    fileReviews: fileReviewsNeedingApproval
+  })
+  await branchReview.save()
   await setStatus("failure", "Tags require approval!")
 }
 

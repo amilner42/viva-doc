@@ -2,10 +2,25 @@
 
 import * as Probot from 'probot' // eslint-disable-line no-unused-vars
 import R from "ramda"
-
-import * as Analysis from "./analysis"
+import mongoose = require("mongoose")
 
 const VIVA_DOC_STATUS_NAME = "continuous-documentation/viva-doc"
+
+// TODO add prod env for mongo uri
+mongoose.connect('mongodb://localhost/viva-doc-dev', { useNewUrlParser: true }, (err) => {
+  if (err) {
+   console.log(err.message);
+   console.log(err);
+  }
+  else {
+    console.log('Connected to MongoDb');
+  }
+})
+
+require("./models/BranchReview")
+
+// All imports to internal modules should be here so that all mongoose schemas have loaded first
+import * as Analysis from "./analysis"
 
 export = (app: Probot.Application) => {
 
@@ -44,9 +59,13 @@ export = (app: Probot.Application) => {
   app.on("push", async (context) => {
     const pushPayload = context.payload
     const commits = pushPayload.commits
+    const repoId: string = (pushPayload.repository as any).id
+    const repoFullName: string = (pushPayload.repository as any).full_name
+    const branchName: string = pushPayload.ref
     const numberOfCommits = commits.length
     const { owner, repo } = context.repo()
-    const baseCommitId = pushPayload.before
+    const baseCommitId: string = pushPayload.before
+    const finalCommitId: string = pushPayload.after
 
     const lastCommitId = commits[numberOfCommits - 1].id
     const previousCommitId = (numberOfCommits === 1) ? baseCommitId : commits[numberOfCommits - 2].id
@@ -102,7 +121,7 @@ export = (app: Probot.Application) => {
     }
 
 
-    Analysis.pipeline(retrieveDiff, retrieveFiles, setStatus)
+    Analysis.pipeline(repoId, repoFullName, branchName, finalCommitId, retrieveDiff, retrieveFiles, setStatus)
     .catch((err) => {
       console.log(`Analysis Pipeline Error: ${err} --- ${JSON.stringify(err)}`)
     })
