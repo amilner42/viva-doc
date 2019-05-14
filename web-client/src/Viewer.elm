@@ -35,6 +35,6 @@ getUsername (Viewer username _) =
     Core.getUsername username
 
 
-getRepos : Viewer -> List String
+getRepos : Viewer -> List Core.Repo
 getRepos (Viewer _ repos) =
     Core.getRepos repos

@@ -11,7 +11,8 @@ const getBasicUserData = async function(username, token) {
     const userGhApi = ghApi.getUser();
 
     const repoResponse = await userGhApi.listRepos();
-    const repos = R.map((repo) => { return repo.name }, repoResponse.data);
+
+    const repos = R.map(R.pickAll(["id", "full_name", "private"]), repoResponse.data);
 
     return { username: username, repos: repos };
 }

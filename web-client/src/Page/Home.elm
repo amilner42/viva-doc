@@ -3,6 +3,7 @@ module Page.Home exposing (Model, Msg, init, subscriptions, toSession, update, v
 {-| The homepage.
 -}
 
+import Api.Core as Core
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
@@ -53,7 +54,7 @@ view model =
                                     [ text <| Viewer.getUsername viewer ]
                                 ]
                                     ++ List.map
-                                        (\repoName -> p [] [ text repoName ])
+                                        (\repo -> p [] [ text <| Core.getRepoFullName repo ])
                                         (Viewer.getRepos viewer)
                         )
                     ]

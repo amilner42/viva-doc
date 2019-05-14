@@ -1,4 +1,4 @@
-module Api.Core exposing (FormError(..), HttpError(..), Repos, Username, delete, expectJson, expectJsonWithUserAndRepos, get, getFormErrors, getRepos, getUsername, post, put)
+module Api.Core exposing (FormError(..), HttpError(..), Repo, Repos, Username, delete, expectJson, expectJsonWithUserAndRepos, get, getFormErrors, getRepoFullName, getRepoId, getRepoPrivateStatus, getRepos, getUsername, post, put)
 
 {-| This module provides a few core API-related responsibilities:
 
@@ -35,7 +35,13 @@ type Username
 {-| Keep this private so the only way to create this is on an HttpRequest.
 -}
 type Repos
-    = Repos (List String)
+    = Repos (List Repo)
+
+
+{-| Keep this private so the only way to create this is on an HttpRequest.
+-}
+type Repo
+    = Repo Int String Bool -- id, full_name, is_private
 
 
 getUsername : Username -> String
@@ -43,9 +49,24 @@ getUsername (Username username) =
     username
 
 
-getRepos : Repos -> List String
+getRepos : Repos -> List Repo
 getRepos (Repos repos) =
     repos
+
+
+getRepoFullName : Repo -> String
+getRepoFullName (Repo _ fullName _) =
+    fullName
+
+
+getRepoId : Repo -> Int
+getRepoId (Repo repoId _ _) =
+    repoId
+
+
+getRepoPrivateStatus : Repo -> Bool
+getRepoPrivateStatus (Repo _ _ isPrivate) =
+    isPrivate
 
 
 {-| Keep this private so the only way to get `Username` and `Repos` is through the http request.
@@ -58,13 +79,21 @@ decodeUsernameReposAnd decoder =
                 |> Decode.map Username
 
         decodeRepos =
-            Decode.field "repos" (Decode.list Decode.string)
+            Decode.field "repos" (Decode.list decodeRepo)
                 |> Decode.map Repos
     in
     Decode.map3 (\fromUsernameAndRepos username repos -> fromUsernameAndRepos username repos)
         decoder
         decodeUsername
         decodeRepos
+
+
+decodeRepo : Decode.Decoder Repo
+decodeRepo =
+    Decode.map3 Repo
+        (Decode.field "id" Decode.int)
+        (Decode.field "full_name" Decode.string)
+        (Decode.field "private" Decode.bool)
 
 
 
