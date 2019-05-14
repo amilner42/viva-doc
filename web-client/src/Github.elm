@@ -1,4 +1,4 @@
-module Github exposing (oAuthSignInLink)
+module Github exposing (oAuthSignInLink, oauthClientId)
 
 {-| A module for all things relating to Github.
 -}
@@ -18,6 +18,10 @@ oAuthSignInLink clientID =
         [ "login", "oauth", "authorize" ]
         [ UB.string "client_id" clientID, UB.string "scope" "repo" ]
 
+
+oauthClientId : String
+oauthClientId =
+    "d887c8b5dea7b99a76af"
 
 
 -- INTERNAL

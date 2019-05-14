@@ -7,7 +7,7 @@
     "scripts": {
         "test": "elm-test",
         "start": "npm run dev",
-        "dev": "webpack-dev-server --hot --colors --port 3000",
+        "dev": "webpack-dev-server --hot --colors --port 8080",
         "build": "webpack",
         "prod": "webpack -p"
     },

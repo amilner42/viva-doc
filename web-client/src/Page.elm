@@ -68,7 +68,7 @@ viewNavbar { mobileNavbarOpen, toggleMobileNavbar, logout } maybeViewer =
                     Nothing ->
                         [ a
                             [ class "navbar-item"
-                            , href <| Github.oAuthSignInLink "__WEBPACK_CONSTANT_GITHUB_CLIENT_ID__"
+                            , href <| Github.oAuthSignInLink Github.oauthClientId
                             ]
                             [ text "Sign in with Github" ]
                         ]

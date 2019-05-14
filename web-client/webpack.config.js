@@ -173,12 +173,6 @@ if (MODE === "production") {
                                 replacement: function (match, p1, offset, string) {
                                    return "http://34.222.123.18:3001/api";
                                 }
-                           },
-                           {
-                               pattern: /__WEBPACK_CONSTANT_GITHUB_CLIENT_ID__/g,
-                               replacement: function(match, p1, offset, string) {
-                                   return "d887c8b5dea7b99a76af";
-                               }
                            }
                        ]
                    })
