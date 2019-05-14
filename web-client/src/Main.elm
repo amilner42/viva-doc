@@ -14,6 +14,7 @@ import Http exposing (Error(..))
 import Json.Decode as Decode
 import Page
 import Page.Blank as Blank
+import Page.BranchReview as BranchReview
 import Page.Home as Home
 import Page.NotFound as NotFound
 import Page.OAuthRedirect as OAuthRedirect
@@ -38,6 +39,7 @@ type PageModel
     | NotFound Session
     | Home Home.Model
     | OAuthRedirect OAuthRedirect.Model
+    | BranchReview BranchReview.Model
 
 
 {-| On init we have 2 cases:
@@ -56,11 +58,11 @@ init flags url navKey =
                 { mobileNavbarOpen = False, pageModel = Redirect <| Session.Guest navKey }
 
         -- Otherwise we've hit the website and should try to get the user
-        _ ->
+        maybeRoute ->
             ( { mobileNavbarOpen = False
               , pageModel = Redirect <| Session.Guest navKey
               }
-            , Api.getUser CompletedGetUser
+            , Api.getUser (CompletedGetUser maybeRoute)
             )
 
 
@@ -94,11 +96,14 @@ view model =
         NotFound _ ->
             viewPage (\_ -> Ignored) NotFound.view
 
-        Home home ->
-            viewPage GotHomeMsg (Home.view home)
+        Home homeModel ->
+            viewPage GotHomeMsg (Home.view homeModel)
 
         OAuthRedirect oauthRedirect ->
             viewPage GotOAuthRedirectMsg (OAuthRedirect.view oauthRedirect)
+
+        BranchReview branchReviewModel ->
+            viewPage GotBranchReviewMsg (BranchReview.view branchReviewModel)
 
 
 
@@ -110,10 +115,11 @@ type Msg
     | ChangedUrl Url
     | ClickedLink Browser.UrlRequest
     | ToggledMobileNavbar
-    | CompletedGetUser (Result (Core.HttpError ()) Viewer.Viewer)
+    | CompletedGetUser (Maybe Route.Route) (Result (Core.HttpError ()) Viewer.Viewer)
     | Logout
     | CompletedLogout (Result (Core.HttpError ()) ())
     | GotHomeMsg Home.Msg
+    | GotBranchReviewMsg BranchReview.Msg
     | GotOAuthRedirectMsg OAuthRedirect.Msg
 
 
@@ -126,11 +132,14 @@ toSession { pageModel } =
         NotFound session ->
             session
 
-        Home home ->
-            Home.toSession home
+        Home homeModel ->
+            Home.toSession homeModel
 
         OAuthRedirect oauthRedirect ->
             OAuthRedirect.toSession oauthRedirect
+
+        BranchReview branchReviewModel ->
+            BranchReview.toSession branchReviewModel
 
 
 changeRouteTo : Maybe Route -> Model -> ( Model, Cmd Msg )
@@ -163,6 +172,10 @@ changeRouteTo maybeRoute model =
         Just (Route.OAuthRedirect maybeCode) ->
             OAuthRedirect.init session maybeCode
                 |> updatePageModel OAuthRedirect GotOAuthRedirectMsg model
+
+        Just (Route.BranchReview _ _ _) ->
+            BranchReview.init session
+                |> updatePageModel BranchReview GotBranchReviewMsg model
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -198,16 +211,20 @@ update msg model =
             , Cmd.none
             )
 
-        ( CompletedGetUser (Ok viewer), _ ) ->
+        ( CompletedGetUser maybeRoute (Ok viewer), _ ) ->
+            let
+                goToRoute =
+                    Maybe.withDefault Route.Home maybeRoute
+            in
             ( { model
                 | mobileNavbarOpen = False
                 , pageModel = Redirect <| Session.LoggedIn currentNavKey viewer
               }
-            , Route.replaceUrl currentNavKey Route.Home
+            , Route.replaceUrl currentNavKey goToRoute
             )
 
         -- TODO handle error better (eg. network error)
-        ( CompletedGetUser (Err err), _ ) ->
+        ( CompletedGetUser _ (Err err), _ ) ->
             changeRouteTo (Just Route.Home) model
 
         ( Logout, _ ) ->
@@ -222,9 +239,13 @@ update msg model =
         ( CompletedLogout (Err _), _ ) ->
             ( model, Cmd.none )
 
-        ( GotHomeMsg pageMsg, Home home ) ->
-            Home.update pageMsg home
+        ( GotHomeMsg pageMsg, Home homeModel ) ->
+            Home.update pageMsg homeModel
                 |> updatePageModel Home GotHomeMsg model
+
+        ( GotBranchReviewMsg pageMsg, BranchReview branchReviewModel ) ->
+            BranchReview.update pageMsg branchReviewModel
+                |> updatePageModel BranchReview GotBranchReviewMsg model
 
         ( GotOAuthRedirectMsg pageMsg, OAuthRedirect oauthRedirect ) ->
             OAuthRedirect.update pageMsg oauthRedirect
@@ -268,11 +289,14 @@ subscriptions model =
         Redirect _ ->
             Sub.none
 
-        Home home ->
-            Sub.map GotHomeMsg <| Home.subscriptions home
+        Home homeModel ->
+            Sub.map GotHomeMsg <| Home.subscriptions homeModel
 
         OAuthRedirect oauthRedirect ->
             Sub.map GotOAuthRedirectMsg <| OAuthRedirect.subscriptions oauthRedirect
+
+        BranchReview branchReviewModel ->
+            Sub.map GotBranchReviewMsg <| BranchReview.subscriptions branchReviewModel
 
 
 

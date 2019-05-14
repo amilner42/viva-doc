@@ -7,7 +7,7 @@ import Browser.Navigation as Nav
 import Html exposing (..)
 import Html.Attributes as Attr
 import Url exposing (Url)
-import Url.Parser as Parser exposing ((</>), (<?>), Parser, oneOf, s, string)
+import Url.Parser as Parser exposing ((</>), (<?>), Parser, int, oneOf, s, string)
 import Url.Parser.Query as Query
 
 
@@ -25,6 +25,8 @@ type Route
     | Home
       -- Maybe string is code from github redirect
     | OAuthRedirect (Maybe String)
+      -- Repo number / branch name / commit hash
+    | BranchReview Int String String
 
 
 parser : Parser (Route -> a) a
@@ -32,6 +34,7 @@ parser =
     oneOf
         [ Parser.map Home Parser.top
         , Parser.map OAuthRedirect (s "oauth_redirect" <?> Query.string "code")
+        , Parser.map BranchReview (s "review" </> s "repo" </> int </> s "branch" </> string </> s "commit" </> string)
         ]
 
 
@@ -72,6 +75,9 @@ routeToString page =
 
                 Root ->
                     []
+
+                BranchReview repoId branchName commitHash ->
+                    [ "review", "repo", String.fromInt repoId, "branch", branchName, "commit", commitHash ]
 
                 -- Certain routes shouldn't be accessed directly
                 _ ->
