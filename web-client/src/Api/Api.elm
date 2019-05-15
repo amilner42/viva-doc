@@ -1,4 +1,4 @@
-module Api.Api exposing (GithubLoginBody, getLogout, getUser, githubLoginFromCode)
+module Api.Api exposing (GithubLoginBody, getBranchReview, getLogout, getUser, githubLoginFromCode)
 
 {-| This module strictly contains the routes to the API and their respective errors.
 
@@ -37,6 +37,20 @@ getUser : (Result.Result (Core.HttpError ()) Viewer.Viewer -> msg) -> Cmd.Cmd ms
 getUser handleResult =
     Core.get
         Endpoint.user
+        (Just (seconds 10))
+        Nothing
+        (Core.expectJsonWithUserAndRepos handleResult Viewer.decodeViewer (Decode.succeed ()))
+
+
+getBranchReview :
+    Int
+    -> String
+    -> String
+    -> (Result.Result (Core.HttpError ()) Viewer.Viewer -> msg)
+    -> Cmd.Cmd msg
+getBranchReview repoId branchName commitHash handleResult =
+    Core.get
+        (Endpoint.branchReview repoId branchName commitHash)
         (Just (seconds 10))
         Nothing
         (Core.expectJsonWithUserAndRepos handleResult Viewer.decodeViewer (Decode.succeed ()))

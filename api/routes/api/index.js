@@ -1,6 +1,7 @@
 const router = require('express').Router();
 
 router.use('/', require('./users'));
+router.use('/', require('./reviews'));
 
 // Return Mongoose validation errors to the client.
 router.use(function(err, req, res, next){

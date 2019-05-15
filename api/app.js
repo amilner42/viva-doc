@@ -44,6 +44,7 @@ if (!isProduction) {
 }
 
 require('./models/User');
+require('./models/BranchReview');
 require('./config/passport');
 
 app.use(require('./routes'));

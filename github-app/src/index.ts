@@ -61,7 +61,7 @@ export = (app: Probot.Application) => {
     const commits = pushPayload.commits
     const repoId: string = (pushPayload.repository as any).id
     const repoFullName: string = (pushPayload.repository as any).full_name
-    const branchName: string = pushPayload.ref
+    const branchName: string = (R.last(pushPayload.ref.split("/")) as any) // TODO errors?
     const numberOfCommits = commits.length
     const { owner, repo } = context.repo()
     const baseCommitId: string = pushPayload.before
