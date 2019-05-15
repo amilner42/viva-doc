@@ -24,7 +24,7 @@ class ExtractCommentsAndFunctionsListener implements JavascriptParserListener {
 
   enterFunctionDeclaration(ctx: FunctionDeclarationContext) {
     if (ctx._stop === undefined) {
-        throw new Error("TODO")
+        throw new Error("TODO - Function Declaration Context Undefined")
     }
 
     Lang.addFunctionToAst(this.fileAst, { startLine: ctx._start.line, endLine: ctx._stop.line })
@@ -32,7 +32,7 @@ class ExtractCommentsAndFunctionsListener implements JavascriptParserListener {
 
   enterSingleLineComment(ctx: SingleLineCommentContext) {
     if (ctx._start.text === undefined) {
-        throw new Error("TODO")
+        throw new Error("TODO - Single Line Comment Context Undefined")
     }
 
     const content = ctx._start.text
@@ -41,7 +41,7 @@ class ExtractCommentsAndFunctionsListener implements JavascriptParserListener {
 
   enterMultiLineComment(ctx: MultiLineCommentContext) {
     if (ctx._start.text === undefined) {
-      throw new Error("TODO")
+      throw new Error("TODO - Multiline Comment Context Undefined")
     }
 
     const content = ctx._start.text
@@ -68,7 +68,7 @@ export const parse = (fileContent: string): Lang.FileAst => {
   const listener = new ExtractCommentsAndFunctionsListener();
 
   if((parser.errorHandler as LangUtil.ErrorHappenedStrategy).hasError) {
-    throw new Error("TODO")
+    throw new Error("TODO - Parser error handler?")
   }
 
   // Visit the parse tree

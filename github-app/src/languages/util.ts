@@ -65,7 +65,7 @@ export const matchSingleVdTagAnnotation =
 
   // Breaks rule 1
   if (matchVdTagAnnotationPrefix.length > 1) {
-    throw new Error("TODO")
+    throw new Error("TODO - Breaks rule 1")
   }
 
   const matchTagAnnotation = str.match(MATCH_VD_COMMENT_TAG_ANNOTATION_REGEX)
@@ -75,12 +75,12 @@ export const matchSingleVdTagAnnotation =
 
   // Breaks rule 2
   if(!hasMatchedEndBlock && !hasMatchedTag) {
-    throw new Error("TODO")
+    throw new Error("TODO - Breaks rule 2")
   }
 
   // Breaks rule 3
   if(hasMatchedEndBlock && hasMatchedTag) {
-    throw new Error("TODO")
+    throw new Error("TODO - Breaks rule 3")
   }
 
   // Matched a single tag
@@ -199,12 +199,12 @@ export const standardTagsFromReducedFileAst = (reducedFileAst: Lang.ReducedFileA
 
             // No function
             if (functionNodes === undefined) {
-              throw new Error("TODO")
+              throw new Error("TODO - No function")
             }
 
             // More than one function on that line, how to handle?
             if (functionNodes.length > 1) {
-              throw new Error("TODO")
+              throw new Error("TODO - Multiple functions on one line?")
             }
 
             const functionNode = functionNodes[0]
@@ -241,7 +241,7 @@ export const standardTagsFromReducedFileAst = (reducedFileAst: Lang.ReducedFileA
 
                 // Can't use the same end-block twice
                 if (currentCommentNode.data.seen) {
-                  throw new Error("TODO")
+                  throw new Error("TODO - End block already used")
                 }
 
                 const startLine = reducedCommentNode.startLine
@@ -281,7 +281,7 @@ const getContentByLineNumbers = (fileContent: string, startLine: number, endLine
 
   const fileSplitByLines = File.splitFileContentIntoLines(fileContent)
   const tagContent = []
-  
+
   // Attempting to get content outside the file...
   if (startLine < 1 || endLine > fileSplitByLines.length) {
     throw new Error("TODO")

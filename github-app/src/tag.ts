@@ -168,7 +168,7 @@ export const getTagIndexFromAnnotationLine = (tags: VdTag[], tagAnnotationLine: 
       }
 
       // Second match
-      throw new Error("TODO")
+      throw new Error("TODO: More than one match")
     }
   }
 
