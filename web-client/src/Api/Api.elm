@@ -1,4 +1,4 @@
-module Api.Api exposing (GithubLoginBody, getBranchReview, getLogout, getUser, githubLoginFromCode)
+module Api.Api exposing (GetBranchReviewResponse(..), GithubLoginBody, getBranchReview, getLogout, getUser, githubLoginFromCode)
 
 {-| This module strictly contains the routes to the API and their respective errors.
 
@@ -9,6 +9,7 @@ likely be put in `Api.Core`.
 
 import Api.Core as Core
 import Api.Endpoint as Endpoint
+import BranchReview
 import Http
 import Json.Decode as Decode
 import Json.Decode.Pipeline exposing (optional)
@@ -42,18 +43,26 @@ getUser handleResult =
         (Core.expectJsonWithUserAndRepos handleResult Viewer.decodeViewer (Decode.succeed ()))
 
 
+type GetBranchReviewResponse
+    = GetBranchReviewResponse BranchReview.BranchReview Core.Username Core.Repos
+
+
 getBranchReview :
     Int
     -> String
     -> String
-    -> (Result.Result (Core.HttpError ()) Viewer.Viewer -> msg)
+    -> (Result.Result (Core.HttpError ()) GetBranchReviewResponse -> msg)
     -> Cmd.Cmd msg
 getBranchReview repoId branchName commitHash handleResult =
     Core.get
         (Endpoint.branchReview repoId branchName commitHash)
         (Just (seconds 10))
         Nothing
-        (Core.expectJsonWithUserAndRepos handleResult Viewer.decodeViewer (Decode.succeed ()))
+        (Core.expectJsonWithUserAndRepos
+            handleResult
+            (BranchReview.decodeBranchReview |> Decode.map GetBranchReviewResponse)
+            (Decode.succeed ())
+        )
 
 
 {-| TODO care about the results beyond success/error (aka unit types).

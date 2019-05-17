@@ -22,14 +22,18 @@ router.get('/review/repo/:repoId/branch/:branchName/commit/:commitId'
     return res.json({});
   }
 
-  const branchReview = await BranchReview.findOne({ repoId, branchName, commitId });
+  const branchReview = (await BranchReview.findOne({ repoId, branchName, commitId })).toObject();
 
   // TODO
   if (branchReview === null) {
     return res.json({});
   }
 
-  return res.json(branchReview.fileReviews);
+  // Add username/repos to the obj
+  branchReview.username = basicUserData.username
+  branchReview.repos = basicUserData.repos
+
+  return res.json(branchReview);
 });
 
 module.exports = router;

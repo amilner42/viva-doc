@@ -62,13 +62,13 @@ view model =
 
 
 type Msg
-    = CompletedGetBranchReview (Result.Result (Core.HttpError ()) Viewer.Viewer)
+    = CompletedGetBranchReview (Result.Result (Core.HttpError ()) Api.GetBranchReviewResponse)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        CompletedGetBranchReview (Result.Ok viewer) ->
+        CompletedGetBranchReview (Result.Ok (Api.GetBranchReviewResponse branchReview user repos)) ->
             ( model, Cmd.none )
 
         -- TODO handle error
