@@ -110,7 +110,7 @@ export const reduceFileAst = (fileAst: Lang.FileAst): Lang.ReducedFileAst => {
 
     // TODO More than one commment ending on the same line? Support use-case?
     if(commentNodes.length > 1) {
-      throw Error("TODO")
+      throw Error("TODO3")
     }
 
     const commentNode = commentNodes[0]
@@ -261,7 +261,7 @@ export const standardTagsFromReducedFileAst = (reducedFileAst: Lang.ReducedFileA
             }
 
             // Otherwise we have no ending block?
-            throw new Error("TODO")
+            throw new Error("TODO4")
           }
 
         } // end inner switch
@@ -284,7 +284,7 @@ const getContentByLineNumbers = (fileContent: string, startLine: number, endLine
 
   // Attempting to get content outside the file...
   if (startLine < 1 || endLine > fileSplitByLines.length) {
-    throw new Error("TODO")
+    throw new Error("TODO5")
   }
 
   for (let lineIndex = startLine; lineIndex <= endLine; lineIndex++) {

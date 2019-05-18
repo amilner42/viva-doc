@@ -18,3 +18,29 @@ export type DeepRequiredFields< T, K extends keyof any > =
         { [P2 in keyof Pick<T, Exclude<keyof T, K>>]: DeepRequiredFields<T[P2], K> })
     :
         T
+
+/**
+ * Omit specific properties.
+ */
+export type Omit<T, K extends keyof T> = Pick<T, Exclude<keyof T, K>>
+
+/**
+ * Replace some fields with some new ones with a given type.
+ */
+export type Replace<T, K extends keyof T, X extends keyof any, NewType> =
+    Pick<T, Exclude<keyof T, K>> & { [P1 in X]: NewType }
+
+/**
+ * Replace the type of field(s) on the type.
+ */
+export type ReplaceType<T, K extends keyof T, NewType> =
+    ReplaceTypeIfExsits<T, K, NewType>
+
+
+/**
+ * Similar to `ReplaceType` but does not enforce types being replaced exist on object.
+ *
+ * Useful when replacing fields on a union where each branch of the union does not have that field.
+ */
+export type ReplaceTypeIfExsits<T, K extends keyof any, NewType> =
+    { [ P1 in keyof T]: P1 extends K ? NewType : T[P1] }

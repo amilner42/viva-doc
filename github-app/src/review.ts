@@ -5,6 +5,7 @@ import R from "ramda"
 import * as LangUtil from "./languages/util"
 import * as Diff from "./diff"
 import * as Tag from "./tag"
+import * as T from "./types"
 
 
 /** EXTERNAL */
@@ -18,6 +19,18 @@ export interface HasTags {
 export interface HasReviews {
   reviews: Review[];
 }
+
+/**
+ * The review for every file paired with all metadata related to the user.
+ *
+ * Currently all tags are updated to be of type `TagWithMetadata`.
+ */
+export type FileReviewWithMetadata =
+  T.ReplaceTypeIfExsits<
+    T.ReplaceTypeIfExsits<FileReview, "tags", TagWithMetadata[]>,
+    "reviews",
+    ReviewWithMetadata[]
+  >
 
 /** The review needed for every file. */
 export type FileReview = NewFileReview | DeletedFileReview | RenamedFileReview | ModifiedFileReview
@@ -158,8 +171,24 @@ export const fileReviewNeedsApproval = (fileReview: FileReview): boolean => {
   }
 }
 
-export const fileReviewsNeedingApproval = (fileReviews: FileReview[]): FileReview[] => {
-  return R.filter(fileReviewNeedsApproval, fileReviews)
+export const initFileReviewMetadata = (fileReview: FileReview): FileReviewWithMetadata => {
+  switch (fileReview.fileReviewType) {
+    case "renamed-file":
+    case "modified-file":
+      return {
+        ...fileReview,
+        reviews: R.map((review) => {
+          return { ...review, tag: addMetadataToTag(review.tag, false) }
+        }, fileReview.reviews)
+      }
+
+    case "deleted-file":
+    case "new-file":
+      return {
+        ...fileReview,
+        tags: R.map((tag => addMetadataToTag(tag, false)), fileReview.tags)
+      }
+  }
 }
 
 /** Calculates the reviews for some file modification given all helpful information.
@@ -179,6 +208,10 @@ export const calculateReviewsFromModification =
 }
 
 /** INTERNAL */
+
+type TagWithMetadata = Tag.VdTag & { approved: boolean; }
+
+type ReviewWithMetadata = T.ReplaceType<Review, "tag", TagWithMetadata>
 
 /** A map between old and new tags across a diff.
 */
@@ -201,6 +234,10 @@ type TagMap = {
 type TagMapPartial = {
   oldTagsToNewTags: (undefined | null)[];
   newTagsToOldTags: (undefined | null)[];
+}
+
+const addMetadataToTag = (tag: Tag.VdTag, approved: boolean): TagWithMetadata => {
+  return { ...tag, approved }
 }
 
 /** Creates a map between the old tags and the new tags given the line diffs. */

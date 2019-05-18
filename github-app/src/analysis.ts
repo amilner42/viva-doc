@@ -26,7 +26,7 @@ export const pipeline = async (
   // TODO "base branch" should be the name of the base branch.
   await setStatus("pending", "Analyzing documentation against base branch...")
 
-  const fileReviewsNeedingApproval = await getFileReviewsNeedingApproval(retrieveDiff, retrieveFiles)
+  const fileReviewsNeedingApproval = await getFileReviewsWithMetadataNeedingApproval(retrieveDiff, retrieveFiles)
 
   if (fileReviewsNeedingApproval.length === 0) {
     await setStatus("success", "No tags require approval")
@@ -45,10 +45,10 @@ export const pipeline = async (
   await setStatus("failure", "Tags require approval!")
 }
 
-export const getFileReviewsNeedingApproval = async (
+export const getFileReviewsWithMetadataNeedingApproval = async (
   retrieveDiff: () => Promise<any>,
   retrieveFiles: (previousFilePath: string, currentFilePath: string) => Promise<[string, string]>
-): Promise<Review.FileReview[]> => {
+): Promise<Review.FileReviewWithMetadata[]> => {
 
   const fileDiffs: Diff.FileDiff[] = Diff.parseDiff(await retrieveDiff())
 
@@ -119,10 +119,19 @@ export const getFileReviewsNeedingApproval = async (
   }
 
   // An array of reviews for each file.
-  const fileReviews = R.pipe(
-    R.map(Tag.parseTags),
-    R.map(Review.getReviews)
-  )(fileDiffsWithCode)
+  const fileReviews: Review.FileReviewWithMetadata[] =
+    R.pipe<
+      Tag.FileDiffWithCode[],
+      Tag.FileDiffWithCodeAndTags[],
+      Review.FileReview[],
+      Review.FileReview[],
+      Review.FileReviewWithMetadata[]
+    >(
+      R.map(Tag.parseTags),
+      R.map(Review.getReviews),
+      R.filter(Review.fileReviewNeedsApproval),
+      R.map(Review.initFileReviewMetadata)
+    )(fileDiffsWithCode)
 
-  return Review.fileReviewsNeedingApproval(fileReviews)
+  return fileReviews;
 }
