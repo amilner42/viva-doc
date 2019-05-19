@@ -17,7 +17,7 @@ type alias Model =
 
 
 init : Session -> Int -> String -> String -> ( Model, Cmd Msg )
-init session repoId branchName commitHash =
+init session repoId branchName commitId =
     case session of
         -- TODO
         Session.Guest _ ->
@@ -33,7 +33,7 @@ init session repoId branchName commitHash =
             in
             if userHasAccessToThisRepo then
                 ( { session = session }
-                , Api.getBranchReview repoId branchName commitHash CompletedGetBranchReview
+                , Api.getBranchReview repoId branchName commitId CompletedGetBranchReview
                 )
 
             else

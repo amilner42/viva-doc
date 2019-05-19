@@ -53,9 +53,9 @@ getBranchReview :
     -> String
     -> (Result.Result (Core.HttpError ()) GetBranchReviewResponse -> msg)
     -> Cmd.Cmd msg
-getBranchReview repoId branchName commitHash handleResult =
+getBranchReview repoId branchName commitId handleResult =
     Core.get
-        (Endpoint.branchReview repoId branchName commitHash)
+        (Endpoint.branchReview repoId branchName commitId)
         (Just (seconds 10))
         Nothing
         (Core.expectJsonWithUserAndRepos

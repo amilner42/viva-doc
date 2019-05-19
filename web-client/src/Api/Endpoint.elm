@@ -100,5 +100,5 @@ user =
 
 
 branchReview : Int -> String -> String -> Endpoint
-branchReview repoId branchName commitHash =
-    url [ "review", "repo", String.fromInt repoId, "branch", branchName, "commit", commitHash ] []
+branchReview repoId branchName commitId =
+    url [ "review", "repo", String.fromInt repoId, "branch", branchName, "commit", commitId ] []

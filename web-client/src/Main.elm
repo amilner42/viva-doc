@@ -173,8 +173,8 @@ changeRouteTo maybeRoute model =
             OAuthRedirect.init session maybeCode
                 |> updatePageModel OAuthRedirect GotOAuthRedirectMsg model
 
-        Just (Route.BranchReview repoId branchName commitHash) ->
-            BranchReview.init session repoId branchName commitHash
+        Just (Route.BranchReview repoId branchName commitId) ->
+            BranchReview.init session repoId branchName commitId
                 |> updatePageModel BranchReview GotBranchReviewMsg model
 
 

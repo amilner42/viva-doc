@@ -76,8 +76,8 @@ routeToString page =
                 Root ->
                     []
 
-                BranchReview repoId branchName commitHash ->
-                    [ "review", "repo", String.fromInt repoId, "branch", branchName, "commit", commitHash ]
+                BranchReview repoId branchName commitId ->
+                    [ "review", "repo", String.fromInt repoId, "branch", branchName, "commit", commitId ]
 
                 -- Certain routes shouldn't be accessed directly
                 _ ->
