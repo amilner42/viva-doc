@@ -1,4 +1,4 @@
-module BranchReview exposing (BranchReview, decodeBranchReview)
+module BranchReview exposing (BranchReview, FileReview, decodeBranchReview)
 
 import Json.Decode as Decode
 
@@ -12,11 +12,17 @@ type alias BranchReview =
     }
 
 
-type FileReview
-    = ModifiedFileReview String (List Review)
-    | RenamedFileReview String String (List Review)
-    | DeletedFileReview String (List Tag)
-    | NewFileReview String (List Tag)
+type alias FileReview =
+    { fileReviewType : FileReviewType
+    , currentFilePath : String
+    }
+
+
+type FileReviewType
+    = ModifiedFileReview (List Review)
+    | RenamedFileReview String (List Review)
+    | DeletedFileReview (List Tag)
+    | NewFileReview (List Tag)
 
 
 type alias Review =
@@ -73,6 +79,13 @@ decodeBranchReview =
 
 decodeFileReview : Decode.Decoder FileReview
 decodeFileReview =
+    Decode.map2 FileReview
+        decodeFileReviewType
+        (Decode.field "currentFilePath" Decode.string)
+
+
+decodeFileReviewType : Decode.Decoder FileReviewType
+decodeFileReviewType =
     Decode.field "fileReviewType" Decode.string
         |> Decode.andThen
             (\reviewType ->
@@ -94,32 +107,28 @@ decodeFileReview =
             )
 
 
-decodeModifiedfileReview : Decode.Decoder FileReview
+decodeModifiedfileReview : Decode.Decoder FileReviewType
 decodeModifiedfileReview =
-    Decode.map2 ModifiedFileReview
-        (Decode.field "currentFilePath" Decode.string)
+    Decode.map ModifiedFileReview
         (Decode.field "reviews" (Decode.list decodeReview))
 
 
-decodeRenamedFileReview : Decode.Decoder FileReview
+decodeRenamedFileReview : Decode.Decoder FileReviewType
 decodeRenamedFileReview =
-    Decode.map3 RenamedFileReview
-        (Decode.field "currentFilePath" Decode.string)
+    Decode.map2 RenamedFileReview
         (Decode.field "previousFilePath" Decode.string)
         (Decode.field "reviews" (Decode.list decodeReview))
 
 
-decodeNewFileReview : Decode.Decoder FileReview
+decodeNewFileReview : Decode.Decoder FileReviewType
 decodeNewFileReview =
-    Decode.map2 NewFileReview
-        (Decode.field "currentFilePath" Decode.string)
+    Decode.map NewFileReview
         (Decode.field "tags" (Decode.list decodeTag))
 
 
-decodeDeletedFileReview : Decode.Decoder FileReview
+decodeDeletedFileReview : Decode.Decoder FileReviewType
 decodeDeletedFileReview =
-    Decode.map2 DeletedFileReview
-        (Decode.field "currentFilePath" Decode.string)
+    Decode.map DeletedFileReview
         (Decode.field "tags" (Decode.list decodeTag))
 
 

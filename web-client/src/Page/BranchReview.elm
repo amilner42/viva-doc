@@ -2,7 +2,9 @@ module Page.BranchReview exposing (Model, Msg, init, subscriptions, toSession, u
 
 import Api.Api as Api
 import Api.Core as Core
+import BranchReview
 import Html exposing (Html, div, text)
+import RemoteData
 import Session exposing (Session)
 import Viewer
 
@@ -16,6 +18,7 @@ type alias Model =
     , repoId : Int
     , branchName : String
     , commitId : String
+    , branchReview : RemoteData.RemoteData () BranchReview.BranchReview
     }
 
 
@@ -23,7 +26,12 @@ init : Session -> Int -> String -> String -> ( Model, Cmd Msg )
 init session repoId branchName commitId =
     let
         model =
-            { session = session, repoId = repoId, branchName = branchName, commitId = commitId }
+            { session = session
+            , repoId = repoId
+            , branchName = branchName
+            , commitId = commitId
+            , branchReview = RemoteData.NotAsked
+            }
     in
     case session of
         -- TODO
@@ -38,13 +46,13 @@ init session repoId branchName commitId =
                 userHasAccessToThisRepo =
                     True
             in
-            ( model
-            , if userHasAccessToThisRepo then
-                Api.getBranchReview repoId branchName commitId CompletedGetBranchReview
+            if userHasAccessToThisRepo then
+                ( { model | branchReview = RemoteData.Loading }
+                , Api.getBranchReview repoId branchName commitId CompletedGetBranchReview
+                )
 
-              else
-                Cmd.none
-            )
+            else
+                ( model, Cmd.none )
 
 
 
@@ -60,8 +68,26 @@ view model =
                 div [] [ text "You need to be logged in to view this page..." ]
 
             Session.LoggedIn _ viewer ->
-                div [] [ text "Logged in " ]
+                case model.branchReview of
+                    RemoteData.NotAsked ->
+                        div [] [ text "Logged in... " ]
+
+                    RemoteData.Loading ->
+                        div [] [ text "Loading review..." ]
+
+                    RemoteData.Failure _ ->
+                        div [] [ text "Uh oh" ]
+
+                    RemoteData.Success branchReview ->
+                        div [] <| List.map renderFileReview branchReview.fileReviews
     }
+
+
+renderFileReview : BranchReview.FileReview -> Html.Html Msg
+renderFileReview fileReview =
+    div
+        []
+        [ text <| "File name: " ++ fileReview.currentFilePath ]
 
 
 
@@ -76,11 +102,11 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         CompletedGetBranchReview (Result.Ok (Api.GetBranchReviewResponse branchReview user repos)) ->
-            ( model, Cmd.none )
+            ( { model | branchReview = RemoteData.Success branchReview }, Cmd.none )
 
         -- TODO handle error
         CompletedGetBranchReview (Result.Err err) ->
-            ( model, Cmd.none )
+            ( { model | branchReview = RemoteData.Failure () }, Cmd.none )
 
 
 
