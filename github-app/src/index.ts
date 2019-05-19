@@ -6,6 +6,11 @@ import mongoose = require("mongoose")
 
 const VIVA_DOC_STATUS_NAME = "continuous-documentation/viva-doc"
 
+// TODO add env for prod
+const getBranchReviewUrl = (repoId: string, branchName: string, commitId: string): string => {
+  return `http://localhost:8080/review/repo/${repoId}/branch/${branchName}/commit/${commitId}`
+}
+
 // TODO add prod env for mongo uri
 mongoose.connect('mongodb://localhost/viva-doc-dev', { useNewUrlParser: true }, (err) => {
   if (err) {
@@ -75,6 +80,7 @@ export = (app: Probot.Application) => {
       repoFullName,
       branchName,
       headCommitId,
+      () => getBranchReviewUrl(repoId, branchName, headCommitId),
       () => retrieveDiff(context, owner, repoName, baseBranchName, branchName),
       retrieveFiles(context, owner, repoName, baseBranchId, headCommitId),
       setStatus(context, owner, repoName, headCommitId)
@@ -170,15 +176,18 @@ const setStatus = R.curry(
   , repo: string
   , commitId: string
   , statusState: "success" | "failure" | "pending"
-  , description: string
+  , optional?: { description?: string, target_url?: string }
   ) => {
 
-  return context.github.repos.createStatus({
+  const requiredSettings = {
     owner,
     repo,
     sha: commitId,
     context: VIVA_DOC_STATUS_NAME,
-    state: statusState,
-    description
-  }).then(R.path(["data"]))
+    state: statusState
+  }
+
+  const settings = optional ? { ...requiredSettings, ...optional } : requiredSettings
+
+  return context.github.repos.createStatus(settings).then(R.path(["data"]))
 })

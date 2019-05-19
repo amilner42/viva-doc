@@ -18,18 +18,19 @@ export const pipeline = async (
   repoFullName: string,
   branchName: string,
   finalCommitId: string,
+  getBranchReviewUrl: () => string,
   retrieveDiff: () => Promise<any>,
   retrieveFiles: (previousFilePath: string, currentFilePath: string) => Promise<[string, string]>,
-  setStatus: (statusState: "success" | "failure" | "pending", description: string) => Promise<any>
+  setStatus: (statusState: "success" | "failure" | "pending", optional?: { description?: string, target_url?: string }) => Promise<any>
 ) => {
 
   // TODO "base branch" should be the name of the base branch.
-  await setStatus("pending", "Analyzing documentation against base branch...")
+  await setStatus("pending", { description: "Analyzing documentation against base branch..." })
 
   const fileReviewsNeedingApproval = await getFileReviewsWithMetadataNeedingApproval(retrieveDiff, retrieveFiles)
 
   if (fileReviewsNeedingApproval.length === 0) {
-    await setStatus("success", "No tags require approval")
+    await setStatus("success", { description: "No tags require approval" })
     return
   }
 
@@ -42,7 +43,7 @@ export const pipeline = async (
     fileReviews: fileReviewsNeedingApproval
   })
   await branchReview.save()
-  await setStatus("failure", "Tags require approval!")
+  await setStatus("failure", { description: "Tags require approval", target_url: getBranchReviewUrl() })
 }
 
 export const getFileReviewsWithMetadataNeedingApproval = async (
