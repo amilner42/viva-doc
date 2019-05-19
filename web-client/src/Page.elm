@@ -17,7 +17,7 @@ import Viewer exposing (Viewer)
 {-| Take a page's Html and frames it with a navbar.
 -}
 view :
-    { mobileNavbarOpen : Bool, toggleMobileNavbar : msg, logout : msg }
+    { mobileNavbarOpen : Bool, toggleMobileNavbar : msg, logout : msg, loginWithGithub : msg }
     -> Maybe Viewer
     -> { title : String, content : Html pageMsg }
     -> (pageMsg -> msg)
@@ -35,8 +35,8 @@ view navConfig maybeViewer { title, content } toMsg =
 Will have log-in/sign-up or logout buttons according to whether there is a `Viewer`.
 
 -}
-viewNavbar : { mobileNavbarOpen : Bool, toggleMobileNavbar : msg, logout : msg } -> Maybe Viewer -> Html msg
-viewNavbar { mobileNavbarOpen, toggleMobileNavbar, logout } maybeViewer =
+viewNavbar : { mobileNavbarOpen : Bool, toggleMobileNavbar : msg, logout : msg, loginWithGithub : msg } -> Maybe Viewer -> Html msg
+viewNavbar { mobileNavbarOpen, toggleMobileNavbar, logout, loginWithGithub } maybeViewer =
     nav [ class "navbar is-light" ]
         [ div
             [ class "navbar-brand" ]
@@ -68,7 +68,7 @@ viewNavbar { mobileNavbarOpen, toggleMobileNavbar, logout } maybeViewer =
                     Nothing ->
                         [ a
                             [ class "navbar-item"
-                            , href <| Github.oAuthSignInLink Github.oauthClientId
+                            , onClick loginWithGithub
                             ]
                             [ text "Sign in with Github" ]
                         ]

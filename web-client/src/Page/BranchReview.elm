@@ -13,15 +13,22 @@ import Viewer
 
 type alias Model =
     { session : Session.Session
+    , repoId : Int
+    , branchName : String
+    , commitId : String
     }
 
 
 init : Session -> Int -> String -> String -> ( Model, Cmd Msg )
 init session repoId branchName commitId =
+    let
+        model =
+            { session = session, repoId = repoId, branchName = branchName, commitId = commitId }
+    in
     case session of
         -- TODO
         Session.Guest _ ->
-            ( { session = session }, Cmd.none )
+            ( model, Cmd.none )
 
         Session.LoggedIn _ viewer ->
             let
@@ -31,13 +38,13 @@ init session repoId branchName commitId =
                 userHasAccessToThisRepo =
                     True
             in
-            if userHasAccessToThisRepo then
-                ( { session = session }
-                , Api.getBranchReview repoId branchName commitId CompletedGetBranchReview
-                )
+            ( model
+            , if userHasAccessToThisRepo then
+                Api.getBranchReview repoId branchName commitId CompletedGetBranchReview
 
-            else
-                ( { session = session }, Cmd.none )
+              else
+                Cmd.none
+            )
 
 
 

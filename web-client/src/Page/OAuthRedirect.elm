@@ -3,6 +3,7 @@ module Page.OAuthRedirect exposing (Model, Msg, init, subscriptions, toSession, 
 import Api.Api as Api
 import Api.Core as Core
 import Html exposing (..)
+import LocalStorage
 import Route
 import Session exposing (Session)
 import Viewer exposing (Viewer)
@@ -84,7 +85,7 @@ update msg model =
                         (Just viewer)
             in
             ( { model | session = newSession }
-            , Route.replaceUrl (Session.getNavKey newSession) Route.Home
+            , LocalStorage.loadModel ()
             )
 
         CompletedGithubLogin (Err err) ->

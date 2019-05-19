@@ -1,4 +1,4 @@
-module Route exposing (Route(..), fromUrl, href, replaceUrl)
+module Route exposing (Route(..), fromUrl, href, replaceUrl, routeToString)
 
 {-| A type to represent possible routes with helper functions.
 -}
@@ -59,10 +59,6 @@ replaceUrl key route =
 fromUrl : Url -> Maybe Route
 fromUrl =
     Parser.parse parser
-
-
-
--- INTERNAL
 
 
 routeToString : Route -> String

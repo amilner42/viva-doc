@@ -7,17 +7,20 @@ import Api.Api as Api
 import Api.Core as Core
 import Browser exposing (Document)
 import Browser.Navigation as Nav
+import Github
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import Http exposing (Error(..))
 import Json.Decode as Decode
+import LocalStorage
 import Page
 import Page.Blank as Blank
 import Page.BranchReview as BranchReview
 import Page.Home as Home
 import Page.NotFound as NotFound
 import Page.OAuthRedirect as OAuthRedirect
+import Ports
 import Route exposing (Route)
 import Session exposing (Session)
 import Url exposing (Url)
@@ -80,6 +83,7 @@ view model =
                         { mobileNavbarOpen = model.mobileNavbarOpen
                         , toggleMobileNavbar = ToggledMobileNavbar
                         , logout = Logout
+                        , loginWithGithub = OnClickLoginWithGithub
                         }
                         (Session.getViewer (toSession model))
                         pageView
@@ -112,8 +116,10 @@ view model =
 
 type Msg
     = Ignored
+    | OnLoadLocalStorage String
     | ChangedUrl Url
     | ClickedLink Browser.UrlRequest
+    | OnClickLoginWithGithub
     | ToggledMobileNavbar
     | CompletedGetUser (Maybe Route.Route) (Result (Core.HttpError ()) Viewer.Viewer)
     | Logout
@@ -191,6 +197,20 @@ update msg model =
         ( Ignored, _ ) ->
             ( model, Cmd.none )
 
+        -- NOTE: Currently local storage is strictly for temporarily saving a url
+        ( OnLoadLocalStorage str, _ ) ->
+            ( model
+            , case Decode.decodeString LocalStorage.decodeLocalStorage str of
+                Ok { relativeUrl } ->
+                    Cmd.batch
+                        [ Nav.pushUrl currentNavKey relativeUrl
+                        , LocalStorage.clearModel
+                        ]
+
+                Err err ->
+                    Route.replaceUrl currentNavKey Route.Home
+            )
+
         ( ClickedLink urlRequest, _ ) ->
             case urlRequest of
                 Browser.Internal url ->
@@ -205,6 +225,33 @@ update msg model =
 
         ( ChangedUrl url, _ ) ->
             changeRouteTo (Route.fromUrl url) model
+
+        ( OnClickLoginWithGithub, _ ) ->
+            ( model
+            , Cmd.batch
+                [ -- Save a url to jump back to after auth if needed
+                  case model.pageModel of
+                    BranchReview { repoId, branchName, commitId } ->
+                        LocalStorage.saveModel
+                            { relativeUrl =
+                                Route.BranchReview repoId branchName commitId
+                                    |> Route.routeToString
+                            }
+
+                    Redirect _ ->
+                        Cmd.none
+
+                    NotFound _ ->
+                        Cmd.none
+
+                    Home _ ->
+                        Cmd.none
+
+                    OAuthRedirect _ ->
+                        Cmd.none
+                , Nav.load <| Github.oAuthSignInLink Github.oauthClientId
+                ]
+            )
 
         ( ToggledMobileNavbar, _ ) ->
             ( { model | mobileNavbarOpen = not model.mobileNavbarOpen }
@@ -224,8 +271,8 @@ update msg model =
             )
 
         -- TODO handle error better (eg. network error)
-        ( CompletedGetUser _ (Err err), _ ) ->
-            changeRouteTo (Just Route.Home) model
+        ( CompletedGetUser maybeRoute (Err err), _ ) ->
+            changeRouteTo maybeRoute model
 
         ( Logout, _ ) ->
             ( model, Api.getLogout CompletedLogout )
@@ -282,21 +329,24 @@ updatePageModel toPageModel toMsg model ( pageModel, pageCmd ) =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    case model.pageModel of
-        NotFound _ ->
-            Sub.none
+    Sub.batch
+        [ Ports.onLoadFromLocalStorage OnLoadLocalStorage
+        , case model.pageModel of
+            NotFound _ ->
+                Sub.none
 
-        Redirect _ ->
-            Sub.none
+            Redirect _ ->
+                Sub.none
 
-        Home homeModel ->
-            Sub.map GotHomeMsg <| Home.subscriptions homeModel
+            Home homeModel ->
+                Sub.map GotHomeMsg <| Home.subscriptions homeModel
 
-        OAuthRedirect oauthRedirect ->
-            Sub.map GotOAuthRedirectMsg <| OAuthRedirect.subscriptions oauthRedirect
+            OAuthRedirect oauthRedirect ->
+                Sub.map GotOAuthRedirectMsg <| OAuthRedirect.subscriptions oauthRedirect
 
-        BranchReview branchReviewModel ->
-            Sub.map GotBranchReviewMsg <| BranchReview.subscriptions branchReviewModel
+            BranchReview branchReviewModel ->
+                Sub.map GotBranchReviewMsg <| BranchReview.subscriptions branchReviewModel
+        ]
 
 
 
