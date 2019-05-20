@@ -45,6 +45,7 @@ if (!isProduction) {
 
 require('./models/User');
 require('./models/BranchReview');
+require('./models/BranchReviewMetadata');
 require('./config/passport');
 
 app.use(require('./routes'));

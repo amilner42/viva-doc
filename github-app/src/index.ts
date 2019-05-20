@@ -23,6 +23,7 @@ mongoose.connect('mongodb://localhost/viva-doc-dev', { useNewUrlParser: true }, 
 })
 
 require("./models/BranchReview")
+require("./models/BranchReviewMetadata")
 
 // All imports to internal modules should be here so that all mongoose schemas have loaded first
 import * as Analysis from "./analysis"

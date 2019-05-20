@@ -10,6 +10,7 @@ import * as AppError from "./error"
 
 import mongoose from "mongoose"
 const BranchReview = mongoose.model('BranchReview')
+const BranchReviewMetadata = mongoose.model('BranchReviewMetadata')
 
 /** EXTERNAL FUNCTIONS */
 
@@ -42,7 +43,16 @@ export const pipeline = async (
     commitId: finalCommitId,
     fileReviews: fileReviewsNeedingApproval
   })
+
+  const branchReviewMetadata = new BranchReviewMetadata({
+    repoId,
+    branchName,
+    commitId: finalCommitId,
+    approvedTags: [ ]
+  })
+
   await branchReview.save()
+  await branchReviewMetadata.save()
   await setStatus("failure", { description: "Tags require approval", target_url: getBranchReviewUrl() })
 }
 
