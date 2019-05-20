@@ -57,6 +57,7 @@ type alias Tag =
     , endLine : Int
     , tagAnnotationLine : Int
     , content : List String
+    , tagId : String
     }
 
 
@@ -180,7 +181,7 @@ decodeAlteredLine =
 
 decodeTag : Decode.Decoder Tag
 decodeTag =
-    Decode.map6 Tag
+    Decode.map7 Tag
         (Decode.field "tagType" Decode.string
             |> Decode.andThen
                 (\tagType ->
@@ -206,3 +207,4 @@ decodeTag =
         (Decode.field "endLine" Decode.int)
         (Decode.field "tagAnnotationLine" Decode.int)
         (Decode.field "content" (Decode.list Decode.string))
+        (Decode.field "tagId" Decode.string)

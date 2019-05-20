@@ -1,6 +1,7 @@
 // Module for handling the generation of reviews.
 
 import R from "ramda"
+import mongoose from "mongoose"
 
 import * as LangUtil from "./languages/util"
 import * as Diff from "./diff"
@@ -178,7 +179,7 @@ export const initFileReviewMetadata = (fileReview: FileReview): FileReviewWithMe
       return {
         ...fileReview,
         reviews: R.map((review) => {
-          return { ...review, tag: addMetadataToTag(review.tag, false) }
+          return { ...review, tag: addMetadataToTag(review.tag) }
         }, fileReview.reviews)
       }
 
@@ -186,7 +187,7 @@ export const initFileReviewMetadata = (fileReview: FileReview): FileReviewWithMe
     case "new-file":
       return {
         ...fileReview,
-        tags: R.map((tag => addMetadataToTag(tag, false)), fileReview.tags)
+        tags: R.map((tag => addMetadataToTag(tag)), fileReview.tags)
       }
   }
 }
@@ -209,7 +210,8 @@ export const calculateReviewsFromModification =
 
 /** INTERNAL */
 
-type TagWithMetadata = Tag.VdTag & { approved: boolean; }
+// An ID for a reference
+type TagWithMetadata = Tag.VdTag & { tagId: mongoose.Types.ObjectId; }
 
 type ReviewWithMetadata = T.ReplaceType<Review, "tag", TagWithMetadata>
 
@@ -236,8 +238,8 @@ type TagMapPartial = {
   newTagsToOldTags: (undefined | null)[];
 }
 
-const addMetadataToTag = (tag: Tag.VdTag, approved: boolean): TagWithMetadata => {
-  return { ...tag, approved }
+const addMetadataToTag = (tag: Tag.VdTag): TagWithMetadata => {
+  return { ...tag, tagId: mongoose.Types.ObjectId() }
 }
 
 /** Creates a map between the old tags and the new tags given the line diffs. */
