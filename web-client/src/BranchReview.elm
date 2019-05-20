@@ -9,6 +9,7 @@ type alias BranchReview =
     , branchName : String
     , commitId : String
     , fileReviews : List FileReview
+    , approvedTags : List String
     }
 
 
@@ -70,12 +71,13 @@ type TagType
 
 decodeBranchReview : Decode.Decoder BranchReview
 decodeBranchReview =
-    Decode.map5 BranchReview
+    Decode.map6 BranchReview
         (Decode.field "repoId" Decode.string)
         (Decode.field "repoFullName" Decode.string)
         (Decode.field "branchName" Decode.string)
         (Decode.field "commitId" Decode.string)
         (Decode.field "fileReviews" (Decode.list decodeFileReview))
+        (Decode.field "approvedTags" (Decode.list Decode.string))
 
 
 decodeFileReview : Decode.Decoder FileReview
