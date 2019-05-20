@@ -16,6 +16,8 @@ const getBasicUserData = async function(username, token) {
     return { username: username, repos: repos };
 }
 
+// TODO Move `hasAccessToRepos` and `isOwnerOfTag` functions elsewhere
+
 /** Check if a list of repos contain a repo with a specific ID.
 
     repoId can be a string or an int
@@ -28,7 +30,30 @@ const hasAccessToRepo = (repos, repoId) => {
     return R.any(R.pipe(R.path(["id"]), R.equals(repoId)), repos)
 }
 
+const isOwnerOfTag = (branchReview, tagId, username) => {
+
+    const ownsTag = R.curry((tagId, username, tag) => {
+        return (tag.tagId.equals(tagId)) && (username === tag.owner)
+    });
+
+    return R.any((fileReview) => {
+        switch (fileReview.fileReviewType) {
+
+            case "modified-file":
+            case "renamed-file":
+                const tags = R.map(R.path(["tag"]), fileReview.reviews)
+                return R.any(ownsTag(tagId, username), tags)
+
+            case "deleted-file":
+            case "new-file":
+                return R.any(ownsTag(tagId, username), fileReview.tags)
+
+        }
+    }, branchReview.fileReviews);
+}
+
 module.exports = {
     getBasicUserData,
-    hasAccessToRepo
+    hasAccessToRepo,
+    isOwnerOfTag
 }
