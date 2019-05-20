@@ -21,13 +21,21 @@ type alias GithubLoginBody =
     { code : String }
 
 
+standardTimeout =
+    Just (seconds 10)
+
+
+longTimeout =
+    Just (seconds 10)
+
+
 {-| TODO handle errors
 -}
 githubLoginFromCode : GithubLoginBody -> (Result.Result (Core.HttpError ()) Viewer.Viewer -> msg) -> Cmd.Cmd msg
 githubLoginFromCode { code } handleResult =
     Core.get
         (Endpoint.githubLoginFromCode code)
-        (Just (seconds 20))
+        standardTimeout
         Nothing
         (Core.expectJsonWithUserAndRepos handleResult Viewer.decodeViewer (Decode.succeed ()))
 
@@ -38,7 +46,7 @@ getUser : (Result.Result (Core.HttpError ()) Viewer.Viewer -> msg) -> Cmd.Cmd ms
 getUser handleResult =
     Core.get
         Endpoint.user
-        (Just (seconds 10))
+        standardTimeout
         Nothing
         (Core.expectJsonWithUserAndRepos handleResult Viewer.decodeViewer (Decode.succeed ()))
 
@@ -56,13 +64,33 @@ getBranchReview :
 getBranchReview repoId branchName commitId handleResult =
     Core.get
         (Endpoint.branchReview repoId branchName commitId)
-        (Just (seconds 10))
+        standardTimeout
         Nothing
         (Core.expectJsonWithUserAndRepos
             handleResult
             (BranchReview.decodeBranchReview |> Decode.map GetBranchReviewResponse)
             (Decode.succeed ())
         )
+
+
+postApproveTags :
+    Int
+    -> String
+    -> String
+    -> List String
+    -> (Result.Result (Core.HttpError ()) () -> msg)
+    -> Cmd.Cmd msg
+postApproveTags repoId branchName commitId tags handleResult =
+    let
+        encodedTags =
+            Encode.object [ ( "approveTags", Encode.list Encode.string tags ) ]
+    in
+    Core.post
+        (Endpoint.branchReviewTags repoId branchName commitId)
+        standardTimeout
+        Nothing
+        (Http.jsonBody encodedTags)
+        (Core.expectJson handleResult (Decode.succeed ()) (Decode.succeed ()))
 
 
 {-| TODO care about the results beyond success/error (aka unit types).

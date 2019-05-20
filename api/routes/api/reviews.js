@@ -3,6 +3,7 @@ const router = require('express').Router();
 const mongoose = require('mongoose');
 
 const github = require("../../github");
+const errorMessages = require("../error-messages");
 const BranchReview = mongoose.model('BranchReview');
 const BranchReviewMetadata = mongoose.model('BranchReviewMetadata');
 
@@ -12,17 +13,13 @@ router.get('/review/repo/:repoId/branch/:branchName/commit/:commitId'
 
   const user = req.user;
 
-  // TODO
-  if(!user) { return res.json({}); }
+  if(!user) { return res.status(401).send({ message: errorMessages.notLoggedInError }); }
 
   const basicUserData = await github.getBasicUserData(user.username, user.accessToken);
   const { repoId, branchName, commitId } = req.params;
   const hasAccessToRepo = github.hasAccessToRepo(basicUserData.repos, repoId)
 
-  // TODO
-  if (!hasAccessToRepo) {
-    return res.json({});
-  }
+  if (!hasAccessToRepo) { return res.status(401).send({ message: errorMessages.noAccessToRepoError }); }
 
   // TODO handle not finding it
   const branchReview = (await BranchReview.findOne({ repoId, branchName, commitId })).toObject();
@@ -48,19 +45,20 @@ router.post('/review/repo/:repoId/branch/:branchName/commit/:commitId/tags'
   const { repoId, branchName, commitId } = req.params;
   const tagsToApprove = req.body.approveTags; // TODO Validate this?
 
-  // TODO Check access to repo? or becuase we verify tag ownership it doesn't matter?
+  if(!user) { return res.status(401).send({ message: errorMessages.notLoggedInError }); }
 
-  // TODO handle unauth
-  if(!user) { return res.json({}); }
+  const basicUserData = await github.getBasicUserData(user.username, user.accessToken);
+  const hasAccessToRepo = github.hasAccessToRepo(basicUserData.repos, repoId)
+
+  if (!hasAccessToRepo) { return res.status(401).send({ message: errorMessages.noAccessToRepoError }); }
 
   const username = user.username;
 
   // TODO handle not finding it
   const branchReview = (await BranchReview.findOne({ repoId, branchName, commitId })).toObject();
 
-  // TODO handle not being owner of all tags being updated
   if (!R.all((tagId) => github.isOwnerOfTag(branchReview, tagId, username), tagsToApprove)) {
-    return res.json({});
+    return res.status(401).send({ message: errorMessages.noAccessToApproveTagsError });
   }
 
   // TODO handle errors

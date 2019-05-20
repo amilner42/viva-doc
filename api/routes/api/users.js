@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const passport = require('passport');
 const github = require("../../github");
+const errorMessages = require("../error-messages");
 
 
 router.get('/github/login/fromCode', passport.authenticate('github'),
@@ -15,10 +16,7 @@ router.get('/user',
 async function(req, res, next){
     const user = req.user;
 
-    // TODO
-    if(!user) {
-        return res.json({});
-    }
+    if(!user) { return res.status(401).send({ message: errorMessages.notLoggedInError }); }
 
     const basicUserData = await github.getBasicUserData(user.username, user.accessToken);
     res.json(basicUserData);
@@ -27,10 +25,8 @@ async function(req, res, next){
 router.get('/user/logout',
 async function(req, res, next) {
     req.session.destroy(function(err) {
-        // TODO
-        if(err) {
-            return res.json({});
-        }
+
+        if (err) { return res.status(500).send({ message: errorMessages.internalServorError }); }
 
         return res.json({});
     });
