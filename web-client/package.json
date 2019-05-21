@@ -44,7 +44,9 @@
         "webpack-dev-server": "^3.1.9",
         "webpack-merge": "^4.1.4"
     },
-    "dependencies": {},
+    "dependencies": {
+        "highlightjs": "^9.12.0"
+    },
     "prettier": {
         "tabWidth": 4
     }

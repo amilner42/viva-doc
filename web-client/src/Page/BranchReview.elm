@@ -4,6 +4,7 @@ import Api.Api as Api
 import Api.Core as Core
 import BranchReview
 import Html exposing (Html, div, text)
+import Markdown
 import RemoteData
 import Session exposing (Session)
 import Viewer
@@ -79,15 +80,69 @@ view model =
                         div [] [ text "Uh oh" ]
 
                     RemoteData.Success branchReview ->
-                        div [] <| List.map renderFileReview branchReview.fileReviews
+                        renderBranchReview branchReview
     }
+
+
+renderBranchReview : BranchReview.BranchReview -> Html.Html Msg
+renderBranchReview branchReview =
+    div [] <|
+        renderBranchReviewHeader branchReview
+            :: List.map renderFileReview branchReview.fileReviews
+
+
+renderBranchReviewHeader : BranchReview.BranchReview -> Html.Html Msg
+renderBranchReviewHeader branchReview =
+    div [] [ text "navbar" ]
 
 
 renderFileReview : BranchReview.FileReview -> Html.Html Msg
 renderFileReview fileReview =
-    div
-        []
-        [ text <| "File name: " ++ fileReview.currentFilePath ]
+    div [] <|
+        [ renderFileReviewHeader fileReview
+        , case fileReview.fileReviewType of
+            BranchReview.NewFileReview tags ->
+                renderTags tags
+
+            BranchReview.DeletedFileReview tags ->
+                renderTags tags
+
+            BranchReview.ModifiedFileReview reviews ->
+                renderReviews reviews
+
+            BranchReview.RenamedFileReview _ reviews ->
+                renderReviews reviews
+        ]
+
+
+renderFileReviewHeader : BranchReview.FileReview -> Html.Html Msg
+renderFileReviewHeader fileReview =
+    div [] [ text fileReview.currentFilePath ]
+
+
+renderTags : List BranchReview.Tag -> Html.Html Msg
+renderTags tags =
+    div [] <| List.map renderTag tags
+
+
+renderReviews : List BranchReview.Review -> Html.Html Msg
+renderReviews reviews =
+    div [] <| List.map renderReview reviews
+
+
+renderTag : BranchReview.Tag -> Html.Html Msg
+renderTag theTag =
+    Markdown.toHtml [] <| contentToMarkdownCode theTag.content
+
+
+renderReview : BranchReview.Review -> Html.Html Msg
+renderReview review =
+    Markdown.toHtml [] <| contentToMarkdownCode review.tag.content
+
+
+contentToMarkdownCode : List String -> String
+contentToMarkdownCode content =
+    "```javascript\n" ++ String.join "\n" content ++ "\n```"
 
 
 

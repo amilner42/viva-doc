@@ -1,4 +1,4 @@
-module BranchReview exposing (BranchReview, FileReview, decodeBranchReview)
+module BranchReview exposing (BranchReview, FileReview, FileReviewType(..), Review, Tag, decodeBranchReview)
 
 import Json.Decode as Decode
 
