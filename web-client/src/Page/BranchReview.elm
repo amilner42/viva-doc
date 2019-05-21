@@ -3,8 +3,8 @@ module Page.BranchReview exposing (Model, Msg, init, subscriptions, toSession, u
 import Api.Api as Api
 import Api.Core as Core
 import BranchReview
-import Html exposing (Html, button, div, i, text)
-import Html.Attributes exposing (class)
+import Html exposing (Html, button, div, i, span, text)
+import Html.Attributes exposing (class, style)
 import Html.Events exposing (onClick)
 import Markdown
 import RemoteData
@@ -70,89 +70,105 @@ view : Model -> { title : String, content : Html Msg }
 view model =
     { title = "Review"
     , content =
-        case model.session of
-            Session.Guest _ ->
-                div [] [ text "You need to be logged in to view this page..." ]
+        div [ class "section" ] <|
+            case model.session of
+                Session.Guest _ ->
+                    [ text "You need to be logged in to view this page..." ]
 
-            Session.LoggedIn _ viewer ->
-                case model.branchReview of
-                    RemoteData.NotAsked ->
-                        div [] [ text "Logged in... " ]
+                Session.LoggedIn _ viewer ->
+                    case model.branchReview of
+                        RemoteData.NotAsked ->
+                            [ text "Logged in... " ]
 
-                    RemoteData.Loading ->
-                        div [] [ text "Loading review..." ]
+                        RemoteData.Loading ->
+                            [ text "Loading review..." ]
 
-                    RemoteData.Failure _ ->
-                        div [] [ text "Uh oh" ]
+                        RemoteData.Failure _ ->
+                            [ text "Uh oh" ]
 
-                    RemoteData.Success branchReview ->
-                        renderBranchReview
-                            (Viewer.getUsername viewer)
-                            model.displayOnlyUsersTags
-                            model.displayOnlyTagsNeedingApproval
-                            branchReview
+                        RemoteData.Success branchReview ->
+                            renderBranchReview
+                                (Viewer.getUsername viewer)
+                                model.displayOnlyUsersTags
+                                model.displayOnlyTagsNeedingApproval
+                                branchReview
     }
 
 
-renderBranchReview : String -> Bool -> Bool -> BranchReview.BranchReview -> Html.Html Msg
+renderBranchReview : String -> Bool -> Bool -> BranchReview.BranchReview -> List (Html.Html Msg)
 renderBranchReview username displayOnlyUsersTags displayOnlyTagsNeedingApproval branchReview =
-    div [] <|
-        renderBranchReviewHeader displayOnlyUsersTags displayOnlyTagsNeedingApproval branchReview
-            :: (List.map renderFileReview <|
-                    BranchReview.filterFileReviews
-                        { filterForUser =
-                            if displayOnlyUsersTags then
-                                Just username
+    renderBranchReviewHeader displayOnlyUsersTags displayOnlyTagsNeedingApproval branchReview
+        :: (List.map renderFileReview <|
+                BranchReview.filterFileReviews
+                    { filterForUser =
+                        if displayOnlyUsersTags then
+                            Just username
 
-                            else
-                                Nothing
-                        , filterApprovedTags =
-                            if displayOnlyTagsNeedingApproval then
-                                Just branchReview.approvedTags
+                        else
+                            Nothing
+                    , filterApprovedTags =
+                        if displayOnlyTagsNeedingApproval then
+                            Just branchReview.approvedTags
 
-                            else
-                                Nothing
-                        }
-                        branchReview.fileReviews
-               )
+                        else
+                            Nothing
+                    }
+                    branchReview.fileReviews
+           )
 
 
 renderBranchReviewHeader : Bool -> Bool -> BranchReview.BranchReview -> Html.Html Msg
 renderBranchReviewHeader displayOnlyUsersTags displayOnlyTagsNeedingApproval branchReview =
     div
-        []
-        [ button
-            [ onClick <| SetDisplayOnlyUsersTags (not displayOnlyUsersTags) ]
-            [ i
-                [ class "material-icons" ]
-                [ text <|
-                    if displayOnlyUsersTags then
-                        "check_box"
-
-                    else
-                        "check_box_outline_blank"
+        [ class "level is-mobile"
+        , style "margin-bottom" "0px"
+        ]
+        [ div
+            [ class "level-left" ]
+            [ div [ class "level-item title is-4" ] [ text "Filter Options" ] ]
+        , div [ class "buttons level-right" ]
+            [ button
+                [ class "button"
+                , onClick <| SetDisplayOnlyUsersTags (not displayOnlyUsersTags)
                 ]
-            , text "Display only your tags"
-            ]
-        , button
-            [ onClick <| SetDisplayOnlyTagsNeedingApproval (not displayOnlyTagsNeedingApproval) ]
-            [ i
-                [ class "material-icons" ]
-                [ text <|
-                    if displayOnlyTagsNeedingApproval then
-                        "check_box"
+                [ span [ class "icon is-small" ]
+                    [ i
+                        [ class "material-icons" ]
+                        [ text <|
+                            if displayOnlyUsersTags then
+                                "check_box"
 
-                    else
-                        "check_box_outline_blank"
+                            else
+                                "check_box_outline_blank"
+                        ]
+                    ]
+                , div [] [ text "Your Tags" ]
                 ]
-            , text "Display only tags that require approval"
+            , button
+                [ class "button"
+                , onClick <| SetDisplayOnlyTagsNeedingApproval (not displayOnlyTagsNeedingApproval)
+                ]
+                [ span
+                    [ class "icon is-small" ]
+                    [ i
+                        [ class "material-icons" ]
+                        [ text <|
+                            if displayOnlyTagsNeedingApproval then
+                                "check_box"
+
+                            else
+                                "check_box_outline_blank"
+                        ]
+                    ]
+                , div [] [ text "Require Approval" ]
+                ]
             ]
         ]
 
 
 renderFileReview : BranchReview.FileReview -> Html.Html Msg
 renderFileReview fileReview =
-    div [] <|
+    div [ class "section" ] <|
         [ renderFileReviewHeader fileReview
         , case fileReview.fileReviewType of
             BranchReview.NewFileReview tags ->
@@ -171,27 +187,31 @@ renderFileReview fileReview =
 
 renderFileReviewHeader : BranchReview.FileReview -> Html.Html Msg
 renderFileReviewHeader fileReview =
-    div [] [ text fileReview.currentFilePath ]
+    div [ class "title is-4 has-text-black-bis" ] [ text fileReview.currentFilePath ]
 
 
 renderTags : List BranchReview.Tag -> Html.Html Msg
 renderTags tags =
-    div [] <| List.map renderTag tags
+    div [ class "tile is-vertical" ] <| List.map renderTag tags
 
 
 renderReviews : List BranchReview.Review -> Html.Html Msg
 renderReviews reviews =
-    div [] <| List.map renderReview reviews
+    div [ class "tile is-vertical" ] <| List.map renderReview reviews
 
 
 renderTag : BranchReview.Tag -> Html.Html Msg
 renderTag theTag =
-    Markdown.toHtml [] <| contentToMarkdownCode theTag.content
+    div [ class "tile is-parent" ]
+        [ Markdown.toHtml [ class "tile is-child" ] (contentToMarkdownCode theTag.content)
+        ]
 
 
 renderReview : BranchReview.Review -> Html.Html Msg
 renderReview review =
-    Markdown.toHtml [] <| contentToMarkdownCode review.tag.content
+    div [ class "tile is-parent" ]
+        [ Markdown.toHtml [ class "tile is-child" ] (contentToMarkdownCode review.tag.content)
+        ]
 
 
 contentToMarkdownCode : List String -> String

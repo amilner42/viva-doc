@@ -37,7 +37,7 @@ Will have log-in/sign-up or logout buttons according to whether there is a `View
 -}
 viewNavbar : { mobileNavbarOpen : Bool, toggleMobileNavbar : msg, logout : msg, loginWithGithub : msg } -> Maybe Viewer -> Html msg
 viewNavbar { mobileNavbarOpen, toggleMobileNavbar, logout, loginWithGithub } maybeViewer =
-    nav [ class "navbar is-light" ]
+    nav [ class "navbar is-info" ]
         [ div
             [ class "navbar-brand" ]
             [ a
@@ -60,26 +60,32 @@ viewNavbar { mobileNavbarOpen, toggleMobileNavbar, logout, loginWithGithub } may
             ]
             [ div
                 [ class "navbar-start" ]
-                [ a [ class "navbar-item", Route.href Route.Home ] [ text "Home" ]
+                [ a
+                    [ class "navbar-item"
+                    , Route.href Route.Home
+                    ]
+                    [ text "Home" ]
                 ]
             , div
                 [ class "navbar-end" ]
-                (case maybeViewer of
-                    Nothing ->
-                        [ a
-                            [ class "navbar-item"
-                            , onClick loginWithGithub
+                [ div [ class "navbar-item" ]
+                    (case maybeViewer of
+                        Nothing ->
+                            [ a
+                                [ class "button is-link"
+                                , onClick loginWithGithub
+                                ]
+                                [ text "Sign in with Github" ]
                             ]
-                            [ text "Sign in with Github" ]
-                        ]
 
-                    Just viewer ->
-                        [ a
-                            [ class "navbar-item"
-                            , onClick logout
+                        Just viewer ->
+                            [ a
+                                [ class "button is-white"
+                                , onClick logout
+                                ]
+                                [ text "Log out" ]
                             ]
-                            [ text "Log out" ]
-                        ]
-                )
+                    )
+                ]
             ]
         ]
