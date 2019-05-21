@@ -1,7 +1,6 @@
 const path = require("path");
 const webpack = require("webpack");
 const merge = require("webpack-merge");
-const elmMinify = require("elm-minify");
 
 const CopyWebpackPlugin = require("copy-webpack-plugin");
 const HTMLWebpackPlugin = require("html-webpack-plugin");
@@ -140,8 +139,6 @@ if (MODE === "production") {
     console.log("Building for Production...");
     module.exports = merge(common, {
         plugins: [
-            // Minify elm code
-            new elmMinify.WebpackPlugin(),
             // Delete everything from /dist directory and report to user
             new CleanWebpackPlugin(["dist"], {
                 root: __dirname,
@@ -154,7 +151,9 @@ if (MODE === "production") {
                 {
                     from: "src/assets",
                     to: "assets/"
-                }
+                },
+               { from: 'node_modules/highlightjs/highlight.pack.min.js', to: 'highlightjs/' },
+               { from: 'node_modules/highlightjs/styles/github.css', to: 'highlightjs/'}
             ]),
             new MiniCssExtractPlugin({
                 // Options similar to the same options in webpackOptions.output
