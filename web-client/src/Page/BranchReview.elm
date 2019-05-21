@@ -3,7 +3,9 @@ module Page.BranchReview exposing (Model, Msg, init, subscriptions, toSession, u
 import Api.Api as Api
 import Api.Core as Core
 import BranchReview
-import Html exposing (Html, div, text)
+import Html exposing (Html, button, div, i, text)
+import Html.Attributes exposing (class)
+import Html.Events exposing (onClick)
 import Markdown
 import RemoteData
 import Session exposing (Session)
@@ -20,6 +22,8 @@ type alias Model =
     , branchName : String
     , commitId : String
     , branchReview : RemoteData.RemoteData () BranchReview.BranchReview
+    , displayOnlyUsersTags : Bool
+    , displayOnlyTagsNeedingApproval : Bool
     }
 
 
@@ -32,6 +36,8 @@ init session repoId branchName commitId =
             , branchName = branchName
             , commitId = commitId
             , branchReview = RemoteData.NotAsked
+            , displayOnlyUsersTags = False
+            , displayOnlyTagsNeedingApproval = False
             }
     in
     case session of
@@ -80,20 +86,68 @@ view model =
                         div [] [ text "Uh oh" ]
 
                     RemoteData.Success branchReview ->
-                        renderBranchReview branchReview
+                        renderBranchReview
+                            (Viewer.getUsername viewer)
+                            model.displayOnlyUsersTags
+                            model.displayOnlyTagsNeedingApproval
+                            branchReview
     }
 
 
-renderBranchReview : BranchReview.BranchReview -> Html.Html Msg
-renderBranchReview branchReview =
+renderBranchReview : String -> Bool -> Bool -> BranchReview.BranchReview -> Html.Html Msg
+renderBranchReview username displayOnlyUsersTags displayOnlyTagsNeedingApproval branchReview =
     div [] <|
-        renderBranchReviewHeader branchReview
-            :: List.map renderFileReview branchReview.fileReviews
+        renderBranchReviewHeader displayOnlyUsersTags displayOnlyTagsNeedingApproval branchReview
+            :: (List.map renderFileReview <|
+                    BranchReview.filterFileReviews
+                        { filterForUser =
+                            if displayOnlyUsersTags then
+                                Just username
+
+                            else
+                                Nothing
+                        , filterApprovedTags =
+                            if displayOnlyTagsNeedingApproval then
+                                Just branchReview.approvedTags
+
+                            else
+                                Nothing
+                        }
+                        branchReview.fileReviews
+               )
 
 
-renderBranchReviewHeader : BranchReview.BranchReview -> Html.Html Msg
-renderBranchReviewHeader branchReview =
-    div [] [ text "navbar" ]
+renderBranchReviewHeader : Bool -> Bool -> BranchReview.BranchReview -> Html.Html Msg
+renderBranchReviewHeader displayOnlyUsersTags displayOnlyTagsNeedingApproval branchReview =
+    div
+        []
+        [ button
+            [ onClick <| SetDisplayOnlyUsersTags (not displayOnlyUsersTags) ]
+            [ i
+                [ class "material-icons" ]
+                [ text <|
+                    if displayOnlyUsersTags then
+                        "check_box"
+
+                    else
+                        "check_box_outline_blank"
+                ]
+            , text "Display only your tags"
+            ]
+        , button
+            [ onClick <| SetDisplayOnlyTagsNeedingApproval (not displayOnlyTagsNeedingApproval) ]
+            [ i
+                [ class "material-icons" ]
+                [ text <|
+                    if displayOnlyTagsNeedingApproval then
+                        "check_box"
+
+                    else
+                        "check_box_outline_blank"
+                ]
+            , text "Display only tags that require approval"
+            ]
+        ]
 
 
 renderFileReview : BranchReview.FileReview -> Html.Html Msg
@@ -151,6 +205,8 @@ contentToMarkdownCode content =
 
 type Msg
     = CompletedGetBranchReview (Result.Result (Core.HttpError ()) Api.GetBranchReviewResponse)
+    | SetDisplayOnlyUsersTags Bool
+    | SetDisplayOnlyTagsNeedingApproval Bool
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -162,6 +218,12 @@ update msg model =
         -- TODO handle error
         CompletedGetBranchReview (Result.Err err) ->
             ( { model | branchReview = RemoteData.Failure () }, Cmd.none )
+
+        SetDisplayOnlyUsersTags displayOnlyUsersTags ->
+            ( { model | displayOnlyUsersTags = displayOnlyUsersTags }, Cmd.none )
+
+        SetDisplayOnlyTagsNeedingApproval displayOnlyTagsNeedingApproval ->
+            ( { model | displayOnlyTagsNeedingApproval = displayOnlyTagsNeedingApproval }, Cmd.none )
 
 
 

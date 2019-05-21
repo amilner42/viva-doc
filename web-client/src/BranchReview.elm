@@ -1,4 +1,4 @@
-module BranchReview exposing (BranchReview, FileReview, FileReviewType(..), Review, Tag, decodeBranchReview)
+module BranchReview exposing (BranchReview, FileReview, FileReviewType(..), Review, Tag, decodeBranchReview, filterFileReviews)
 
 import Json.Decode as Decode
 
@@ -67,6 +67,101 @@ type TagType
     | BlockTag
     | LineTag
     | FunctionTag
+
+
+filterFileReviews :
+    { filterForUser : Maybe String
+    , filterApprovedTags : Maybe (List String)
+    }
+    -> List FileReview
+    -> List FileReview
+filterFileReviews { filterForUser, filterApprovedTags } fileReviews =
+    fileReviews
+        |> (\fileReviewsIn ->
+                case filterForUser of
+                    Nothing ->
+                        fileReviewsIn
+
+                    Just username ->
+                        List.map (fileReviewFilterTagsForUser username) fileReviewsIn
+           )
+        |> (\fileReviewsIn ->
+                case filterApprovedTags of
+                    Nothing ->
+                        fileReviewsIn
+
+                    Just approvedTags ->
+                        List.map (fileReviewFilterTagsThatNeedApproval approvedTags) fileReviewsIn
+           )
+        |> List.filter fileReviewHasTagsOrReviews
+
+
+fileReviewFilterTagsForUser : String -> FileReview -> FileReview
+fileReviewFilterTagsForUser username fileReview =
+    let
+        filterTagsForUser =
+            List.filter (\tag -> tag.owner == username)
+
+        filterReviewsForUser =
+            List.filter (\review -> review.tag.owner == username)
+    in
+    { fileReview
+        | fileReviewType =
+            case fileReview.fileReviewType of
+                NewFileReview tags ->
+                    NewFileReview <| filterTagsForUser tags
+
+                DeletedFileReview tags ->
+                    DeletedFileReview <| filterTagsForUser tags
+
+                ModifiedFileReview reviews ->
+                    ModifiedFileReview <| filterReviewsForUser reviews
+
+                RenamedFileReview previousFilePath reviews ->
+                    RenamedFileReview previousFilePath <| filterReviewsForUser reviews
+    }
+
+
+fileReviewFilterTagsThatNeedApproval : List String -> FileReview -> FileReview
+fileReviewFilterTagsThatNeedApproval approvedTagIds fileReview =
+    let
+        filterTagsNeedingApproval =
+            List.filter (\{ tagId } -> not <| List.member tagId approvedTagIds)
+
+        filterReviewsNeedingApproval =
+            List.filter (\review -> not <| List.member review.tag.tagId approvedTagIds)
+    in
+    { fileReview
+        | fileReviewType =
+            case fileReview.fileReviewType of
+                NewFileReview tags ->
+                    NewFileReview <| filterTagsNeedingApproval tags
+
+                DeletedFileReview tags ->
+                    DeletedFileReview <| filterTagsNeedingApproval tags
+
+                ModifiedFileReview reviews ->
+                    ModifiedFileReview <| filterReviewsNeedingApproval reviews
+
+                RenamedFileReview previousFilePath reviews ->
+                    RenamedFileReview previousFilePath <| filterReviewsNeedingApproval reviews
+    }
+
+
+fileReviewHasTagsOrReviews : FileReview -> Bool
+fileReviewHasTagsOrReviews fileReview =
+    case fileReview.fileReviewType of
+        NewFileReview tags ->
+            List.length tags > 0
+
+        DeletedFileReview tags ->
+            List.length tags > 0
+
+        ModifiedFileReview reviews ->
+            List.length reviews > 0
+
+        RenamedFileReview _ reviews ->
+            List.length reviews > 0
 
 
 decodeBranchReview : Decode.Decoder BranchReview
