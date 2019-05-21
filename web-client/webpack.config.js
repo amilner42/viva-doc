@@ -10,6 +10,9 @@ const StringReplacePlugin = require("string-replace-webpack-plugin");
 // to extract the css as a separate file
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 
+// TODO update for prod
+const PROD_API_URL = "http://localhost:3001/api"
+
 var MODE =
     process.env.npm_lifecycle_event === "prod" ? "production" : "development";
 var filename = MODE == "production" ? "[name]-[hash].js" : "index.js";
@@ -170,7 +173,7 @@ if (MODE === "production") {
                             {
                                 pattern: /__WEBPACK_CONSTANT_API_BASE_URL__/g,
                                 replacement: function (match, p1, offset, string) {
-                                   return "http://34.222.123.18:3001/api";
+                                   return PROD_API_URL;
                                 }
                            }
                        ]
