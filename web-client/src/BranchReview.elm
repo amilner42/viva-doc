@@ -97,55 +97,17 @@ filterFileReviews { filterForUser, filterApprovedTags } fileReviews =
 
 
 fileReviewFilterTagsForUser : String -> FileReview -> FileReview
-fileReviewFilterTagsForUser username fileReview =
-    let
-        filterTagsForUser =
-            List.filter (\tag -> tag.owner == username)
-
-        filterReviewsForUser =
-            List.filter (\review -> review.tag.owner == username)
-    in
-    { fileReview
-        | fileReviewType =
-            case fileReview.fileReviewType of
-                NewFileReview tags ->
-                    NewFileReview <| filterTagsForUser tags
-
-                DeletedFileReview tags ->
-                    DeletedFileReview <| filterTagsForUser tags
-
-                ModifiedFileReview reviews ->
-                    ModifiedFileReview <| filterReviewsForUser reviews
-
-                RenamedFileReview previousFilePath reviews ->
-                    RenamedFileReview previousFilePath <| filterReviewsForUser reviews
-    }
+fileReviewFilterTagsForUser username =
+    filterFileReviewTagsAndReviews
+        (\tag -> tag.owner == username)
+        (\review -> review.tag.owner == username)
 
 
 fileReviewFilterTagsThatNeedApproval : List String -> FileReview -> FileReview
-fileReviewFilterTagsThatNeedApproval approvedTagIds fileReview =
-    let
-        filterTagsNeedingApproval =
-            List.filter (\{ tagId } -> not <| List.member tagId approvedTagIds)
-
-        filterReviewsNeedingApproval =
-            List.filter (\review -> not <| List.member review.tag.tagId approvedTagIds)
-    in
-    { fileReview
-        | fileReviewType =
-            case fileReview.fileReviewType of
-                NewFileReview tags ->
-                    NewFileReview <| filterTagsNeedingApproval tags
-
-                DeletedFileReview tags ->
-                    DeletedFileReview <| filterTagsNeedingApproval tags
-
-                ModifiedFileReview reviews ->
-                    ModifiedFileReview <| filterReviewsNeedingApproval reviews
-
-                RenamedFileReview previousFilePath reviews ->
-                    RenamedFileReview previousFilePath <| filterReviewsNeedingApproval reviews
-    }
+fileReviewFilterTagsThatNeedApproval approvedTagIds =
+    filterFileReviewTagsAndReviews
+        (\{ tagId } -> not <| List.member tagId approvedTagIds)
+        (\{ tag } -> not <| List.member tag.tagId approvedTagIds)
 
 
 fileReviewHasTagsOrReviews : FileReview -> Bool
@@ -162,6 +124,25 @@ fileReviewHasTagsOrReviews fileReview =
 
         RenamedFileReview _ reviews ->
             List.length reviews > 0
+
+
+filterFileReviewTagsAndReviews : (Tag -> Bool) -> (Review -> Bool) -> FileReview -> FileReview
+filterFileReviewTagsAndReviews keepTag keepReview fileReview =
+    { fileReview
+        | fileReviewType =
+            case fileReview.fileReviewType of
+                NewFileReview tags ->
+                    NewFileReview <| List.filter keepTag tags
+
+                DeletedFileReview tags ->
+                    DeletedFileReview <| List.filter keepTag tags
+
+                ModifiedFileReview reviews ->
+                    ModifiedFileReview <| List.filter keepReview reviews
+
+                RenamedFileReview previousFilePath reviews ->
+                    RenamedFileReview previousFilePath <| List.filter keepReview reviews
+    }
 
 
 decodeBranchReview : Decode.Decoder BranchReview
