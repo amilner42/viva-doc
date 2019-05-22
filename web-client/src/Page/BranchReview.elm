@@ -3,8 +3,8 @@ module Page.BranchReview exposing (Model, Msg, init, subscriptions, toSession, u
 import Api.Api as Api
 import Api.Core as Core
 import BranchReview
-import Html exposing (Html, button, div, i, span, text)
-import Html.Attributes exposing (class, style)
+import Html exposing (Html, button, div, dl, dt, i, p, span, text)
+import Html.Attributes exposing (class, classList, style)
 import Html.Events exposing (onClick)
 import Markdown
 import RemoteData
@@ -98,7 +98,7 @@ view model =
 renderBranchReview : String -> Bool -> Bool -> BranchReview.BranchReview -> List (Html.Html Msg)
 renderBranchReview username displayOnlyUsersTags displayOnlyTagsNeedingApproval branchReview =
     renderBranchReviewHeader displayOnlyUsersTags displayOnlyTagsNeedingApproval branchReview
-        :: (List.map renderFileReview <|
+        :: (List.map (renderFileReview username branchReview.approvedTags) <|
                 BranchReview.filterFileReviews
                     { filterForUser =
                         if displayOnlyUsersTags then
@@ -160,28 +160,28 @@ renderBranchReviewHeader displayOnlyUsersTags displayOnlyTagsNeedingApproval bra
                                 "check_box_outline_blank"
                         ]
                     ]
-                , div [] [ text "Require Approval" ]
+                , div [] [ text "Requires Approval" ]
                 ]
             ]
         ]
 
 
-renderFileReview : BranchReview.FileReview -> Html.Html Msg
-renderFileReview fileReview =
+renderFileReview : String -> List String -> BranchReview.FileReview -> Html.Html Msg
+renderFileReview username approvedTags fileReview =
     div [ class "section" ] <|
         [ renderFileReviewHeader fileReview
         , case fileReview.fileReviewType of
             BranchReview.NewFileReview tags ->
-                renderTags tags
+                renderTags username approvedTags tags
 
             BranchReview.DeletedFileReview tags ->
-                renderTags tags
+                renderTags username approvedTags tags
 
             BranchReview.ModifiedFileReview reviews ->
-                renderReviews reviews
+                renderReviews username approvedTags reviews
 
             BranchReview.RenamedFileReview _ reviews ->
-                renderReviews reviews
+                renderReviews username approvedTags reviews
         ]
 
 
@@ -190,27 +190,124 @@ renderFileReviewHeader fileReview =
     div [ class "title is-4 has-text-black-bis" ] [ text fileReview.currentFilePath ]
 
 
-renderTags : List BranchReview.Tag -> Html.Html Msg
-renderTags tags =
-    div [ class "tile is-vertical" ] <| List.map renderTag tags
+renderTags : String -> List String -> List BranchReview.Tag -> Html.Html Msg
+renderTags username approvedTags tags =
+    div [ class "tile is-ancestor is-vertical" ] <|
+        List.map
+            (renderTagOrReview
+                { alteredLines = Nothing
+                , username = username
+                , approvedTags = approvedTags
+                }
+            )
+            tags
 
 
-renderReviews : List BranchReview.Review -> Html.Html Msg
-renderReviews reviews =
-    div [ class "tile is-vertical" ] <| List.map renderReview reviews
+renderReviews : String -> List String -> List BranchReview.Review -> Html.Html Msg
+renderReviews username approvedTags reviews =
+    div [ class "tile is-ancestor is-vertical" ] <|
+        List.map
+            (\review ->
+                renderTagOrReview
+                    { alteredLines =
+                        case review.reviewType of
+                            BranchReview.ReviewNewTag ->
+                                Nothing
+
+                            BranchReview.ReviewDeletedTag ->
+                                Nothing
+
+                            BranchReview.ReviewModifiedTag alteredLines ->
+                                Just alteredLines
+                    , username = username
+                    , approvedTags = approvedTags
+                    }
+                    review.tag
+            )
+            reviews
 
 
-renderTag : BranchReview.Tag -> Html.Html Msg
-renderTag theTag =
+renderTagOrReview :
+    { alteredLines : Maybe (List BranchReview.AlteredLine)
+    , username : String
+    , approvedTags : List String
+    }
+    -> BranchReview.Tag
+    -> Html.Html Msg
+renderTagOrReview { alteredLines, username, approvedTags } tag =
+    let
+        isTagApproved =
+            List.member tag.tagId approvedTags
+    in
     div [ class "tile is-parent" ]
-        [ Markdown.toHtml [ class "tile is-child" ] (contentToMarkdownCode theTag.content)
-        ]
+        [ Markdown.toHtml
+            [ class "tile is-8 is-child" ]
+            (contentToMarkdownCode tag.content)
+        , div
+            [ class "tile is-4"
+            ]
+            [ div [ style "width" "100%" ]
+                [ div
+                    [ class "box is-light-grey"
+                    , style "margin-left" "10px"
+                    , style "width" "100%"
+                    , style "border-radius" "0"
+                    ]
+                    [ div
+                        [ class "content is-small" ]
+                        [ dl
+                            []
+                            [ dt
+                                []
+                                [ div [ class "level" ]
+                                    [ div [ class "level-left" ]
+                                        [ text <| "Owner: " ++ username ]
+                                    , div
+                                        [ classList
+                                            [ ( "level-right", True )
+                                            , ( "has-text-danger", not isTagApproved )
+                                            , ( "has-text-success", isTagApproved )
+                                            ]
+                                        ]
+                                        [ text <|
+                                            if isTagApproved then
+                                                "Approved"
 
+                                            else
+                                                "Requires Approval"
+                                        ]
+                                    ]
+                                ]
+                            , dt [] [ text <| "Tag type: " ++ BranchReview.readableTagType tag.tagType ]
+                            ]
+                        ]
+                    , div
+                        [ class "buttons" ]
+                        [ button
+                            [ classList
+                                [ ( "button is-info is-fullwidth", True )
+                                , ( "is-hidden"
+                                  , case alteredLines of
+                                        Nothing ->
+                                            True
 
-renderReview : BranchReview.Review -> Html.Html Msg
-renderReview review =
-    div [ class "tile is-parent" ]
-        [ Markdown.toHtml [ class "tile is-child" ] (contentToMarkdownCode review.tag.content)
+                                        Just _ ->
+                                            False
+                                  )
+                                ]
+                            ]
+                            [ text "Show Diff" ]
+                        , button
+                            [ classList
+                                [ ( "button is-success is-fullwidth", True )
+                                , ( "is-hidden", username /= tag.owner || isTagApproved )
+                                ]
+                            ]
+                            [ text "Approve" ]
+                        ]
+                    ]
+                ]
+            ]
         ]
 
 

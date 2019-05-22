@@ -1,4 +1,4 @@
-module BranchReview exposing (BranchReview, FileReview, FileReviewType(..), Review, Tag, decodeBranchReview, filterFileReviews)
+module BranchReview exposing (AlteredLine, BranchReview, FileReview, FileReviewType(..), Review, ReviewType(..), Tag, decodeBranchReview, filterFileReviews, readableTagType)
 
 import Json.Decode as Decode
 
@@ -143,6 +143,26 @@ filterFileReviewTagsAndReviews keepTag keepReview fileReview =
                 RenamedFileReview previousFilePath reviews ->
                     RenamedFileReview previousFilePath <| List.filter keepReview reviews
     }
+
+
+readableTagType : TagType -> String
+readableTagType tagType =
+    case tagType of
+        FileTag ->
+            "file"
+
+        LineTag ->
+            "line"
+
+        BlockTag ->
+            "block"
+
+        FunctionTag ->
+            "function"
+
+
+
+-- Encoders and decoders
 
 
 decodeBranchReview : Decode.Decoder BranchReview
