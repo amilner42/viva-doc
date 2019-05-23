@@ -27,6 +27,8 @@ type FileReviewType
     | NewFileReview (List Tag)
 
 
+{-| A review is just a tag with extra metadata such as the alteredLines.
+-}
 type alias Review =
     { reviewType : ReviewType
     , tag : Tag

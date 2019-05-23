@@ -33,6 +33,8 @@ import Viewer exposing (Viewer)
 
 type alias Model =
     { mobileNavbarOpen : Bool
+    , isLoggingIn : Bool
+    , isLoggingOut : Bool
     , pageModel : PageModel
     }
 
@@ -58,12 +60,18 @@ init flags url navKey =
         (Just (Route.OAuthRedirect _)) as oauthRedirectRoute ->
             changeRouteTo
                 oauthRedirectRoute
-                { mobileNavbarOpen = False, pageModel = Redirect <| Session.Guest navKey }
+                { mobileNavbarOpen = False
+                , pageModel = Redirect <| Session.Guest navKey
+                , isLoggingIn = True
+                , isLoggingOut = False
+                }
 
         -- Otherwise we've hit the website and should try to get the user
         maybeRoute ->
             ( { mobileNavbarOpen = False
               , pageModel = Redirect <| Session.Guest navKey
+              , isLoggingIn = True
+              , isLoggingOut = False
               }
             , Api.getUser (CompletedGetUser maybeRoute)
             )
@@ -84,6 +92,8 @@ view model =
                         , toggleMobileNavbar = ToggledMobileNavbar
                         , logout = Logout
                         , loginWithGithub = OnClickLoginWithGithub
+                        , isLoggingIn = model.isLoggingIn
+                        , isLoggingOut = model.isLoggingOut
                         }
                         (Session.getViewer (toSession model))
                         pageView
@@ -272,19 +282,22 @@ update msg model =
 
         -- TODO handle error better (eg. network error)
         ( CompletedGetUser maybeRoute (Err err), _ ) ->
-            changeRouteTo maybeRoute model
+            changeRouteTo maybeRoute { model | isLoggingIn = False }
 
         ( Logout, _ ) ->
-            ( model, Api.getLogout CompletedLogout )
+            ( { model | isLoggingOut = True }, Api.getLogout CompletedLogout )
 
         ( CompletedLogout (Ok _), _ ) ->
             changeRouteTo
                 (Just Route.Home)
-                { model | pageModel = Redirect <| Session.Guest currentNavKey }
+                { model
+                    | pageModel = Redirect <| Session.Guest currentNavKey
+                    , isLoggingOut = False
+                }
 
         -- TODO
         ( CompletedLogout (Err _), _ ) ->
-            ( model, Cmd.none )
+            ( { model | isLoggingOut = False }, Cmd.none )
 
         ( GotHomeMsg pageMsg, Home homeModel ) ->
             Home.update pageMsg homeModel
@@ -294,9 +307,16 @@ update msg model =
             BranchReview.update pageMsg branchReviewModel
                 |> updatePageModel BranchReview GotBranchReviewMsg model
 
-        ( GotOAuthRedirectMsg pageMsg, OAuthRedirect oauthRedirect ) ->
-            OAuthRedirect.update pageMsg oauthRedirect
-                |> updatePageModel OAuthRedirect GotOAuthRedirectMsg model
+        ( GotOAuthRedirectMsg pageMsg, OAuthRedirect oauthRedirectModel ) ->
+            let
+                ( newOauthRedirectModel, newOauthRedirectMsg ) =
+                    OAuthRedirect.update pageMsg oauthRedirectModel
+            in
+            updatePageModel
+                OAuthRedirect
+                GotOAuthRedirectMsg
+                { model | isLoggingIn = newOauthRedirectModel.isLoggingIn }
+                ( newOauthRedirectModel, newOauthRedirectMsg )
 
         ( _, _ ) ->
             -- Disregard messages that arrived for the wrong page.

@@ -17,7 +17,13 @@ import Viewer exposing (Viewer)
 {-| Take a page's Html and frames it with a navbar.
 -}
 view :
-    { mobileNavbarOpen : Bool, toggleMobileNavbar : msg, logout : msg, loginWithGithub : msg }
+    { mobileNavbarOpen : Bool
+    , toggleMobileNavbar : msg
+    , logout : msg
+    , loginWithGithub : msg
+    , isLoggingIn : Bool
+    , isLoggingOut : Bool
+    }
     -> Maybe Viewer
     -> { title : String, content : Html pageMsg }
     -> (pageMsg -> msg)
@@ -35,8 +41,17 @@ view navConfig maybeViewer { title, content } toMsg =
 Will have log-in/sign-up or logout buttons according to whether there is a `Viewer`.
 
 -}
-viewNavbar : { mobileNavbarOpen : Bool, toggleMobileNavbar : msg, logout : msg, loginWithGithub : msg } -> Maybe Viewer -> Html msg
-viewNavbar { mobileNavbarOpen, toggleMobileNavbar, logout, loginWithGithub } maybeViewer =
+viewNavbar :
+    { mobileNavbarOpen : Bool
+    , toggleMobileNavbar : msg
+    , logout : msg
+    , loginWithGithub : msg
+    , isLoggingIn : Bool
+    , isLoggingOut : Bool
+    }
+    -> Maybe Viewer
+    -> Html msg
+viewNavbar { mobileNavbarOpen, toggleMobileNavbar, logout, loginWithGithub, isLoggingIn, isLoggingOut } maybeViewer =
     nav [ class "navbar is-info" ]
         [ div
             [ class "navbar-brand" ]
@@ -72,7 +87,10 @@ viewNavbar { mobileNavbarOpen, toggleMobileNavbar, logout, loginWithGithub } may
                     (case maybeViewer of
                         Nothing ->
                             [ a
-                                [ class "button is-link"
+                                [ classList
+                                    [ ( "button is-link", True )
+                                    , ( "is-loading", isLoggingIn )
+                                    ]
                                 , onClick loginWithGithub
                                 ]
                                 [ text "Sign in with Github" ]
@@ -80,7 +98,10 @@ viewNavbar { mobileNavbarOpen, toggleMobileNavbar, logout, loginWithGithub } may
 
                         Just viewer ->
                             [ a
-                                [ class "button is-white"
+                                [ classList
+                                    [ ( "button is-white", True )
+                                    , ( "is-loading", isLoggingOut )
+                                    ]
                                 , onClick logout
                                 ]
                                 [ text "Log out" ]

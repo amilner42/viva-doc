@@ -12,6 +12,7 @@ import Viewer exposing (Viewer)
 type alias Model =
     { session : Session
     , hasGithubCode : Bool
+    , isLoggingIn : Bool
 
     -- TODO make make error bettter
     , loginFromCodeError : Maybe (Core.HttpError ())
@@ -28,6 +29,7 @@ init session maybeCode =
         Nothing ->
             ( { session = session
               , hasGithubCode = False
+              , isLoggingIn = False
               , loginFromCodeError = Nothing
               }
             , Cmd.none
@@ -36,6 +38,7 @@ init session maybeCode =
         Just code ->
             ( { session = session
               , hasGithubCode = True
+              , isLoggingIn = True
               , loginFromCodeError = Nothing
               }
             , Api.githubLoginFromCode { code = code } CompletedGithubLogin
@@ -89,7 +92,12 @@ update msg model =
             )
 
         CompletedGithubLogin (Err err) ->
-            ( { model | loginFromCodeError = Just err }, Cmd.none )
+            ( { model
+                | isLoggingIn = False
+                , loginFromCodeError = Just err
+              }
+            , Cmd.none
+            )
 
 
 
