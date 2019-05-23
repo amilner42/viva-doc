@@ -1,4 +1,4 @@
-module Api.Api exposing (GetBranchReviewResponse(..), GithubLoginBody, getBranchReview, getLogout, getUser, githubLoginFromCode)
+module Api.Api exposing (GetBranchReviewResponse(..), GithubLoginBody, getBranchReview, getLogout, getUser, githubLoginFromCode, postApproveTags)
 
 {-| This module strictly contains the routes to the API and their respective errors.
 

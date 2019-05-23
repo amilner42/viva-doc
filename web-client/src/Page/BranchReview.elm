@@ -88,15 +88,22 @@ view model =
 
                         RemoteData.Success branchReview ->
                             renderBranchReview
-                                (Viewer.getUsername viewer)
-                                model.displayOnlyUsersTags
-                                model.displayOnlyTagsNeedingApproval
+                                { username = Viewer.getUsername viewer
+                                , displayOnlyUsersTags = model.displayOnlyUsersTags
+                                , displayOnlyTagsNeedingApproval = model.displayOnlyTagsNeedingApproval
+                                }
                                 branchReview
     }
 
 
-renderBranchReview : String -> Bool -> Bool -> BranchReview.BranchReview -> List (Html.Html Msg)
-renderBranchReview username displayOnlyUsersTags displayOnlyTagsNeedingApproval branchReview =
+renderBranchReview :
+    { username : String
+    , displayOnlyUsersTags : Bool
+    , displayOnlyTagsNeedingApproval : Bool
+    }
+    -> BranchReview.BranchReview
+    -> List (Html.Html Msg)
+renderBranchReview { username, displayOnlyUsersTags, displayOnlyTagsNeedingApproval } branchReview =
     renderBranchReviewHeader displayOnlyUsersTags displayOnlyTagsNeedingApproval branchReview
         :: (List.map (renderFileReview username branchReview.approvedTags) <|
                 BranchReview.filterFileReviews
@@ -302,6 +309,7 @@ renderTagOrReview { alteredLines, username, approvedTags } tag =
                                 [ ( "button is-success is-fullwidth", True )
                                 , ( "is-hidden", username /= tag.owner || isTagApproved )
                                 ]
+                            , onClick <| ApproveTags [ tag.tagId ]
                             ]
                             [ text "Approve" ]
                         ]
@@ -324,6 +332,8 @@ type Msg
     = CompletedGetBranchReview (Result.Result (Core.HttpError ()) Api.GetBranchReviewResponse)
     | SetDisplayOnlyUsersTags Bool
     | SetDisplayOnlyTagsNeedingApproval Bool
+    | ApproveTags (List String)
+    | CompletedApproveTags (List String) (Result.Result (Core.HttpError ()) ())
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -341,6 +351,28 @@ update msg model =
 
         SetDisplayOnlyTagsNeedingApproval displayOnlyTagsNeedingApproval ->
             ( { model | displayOnlyTagsNeedingApproval = displayOnlyTagsNeedingApproval }, Cmd.none )
+
+        ApproveTags tags ->
+            ( model
+            , Api.postApproveTags model.repoId model.branchName model.commitId tags (CompletedApproveTags tags)
+            )
+
+        -- TODO Probably better to feed branchReview throguh to avoid `RemoteData.map`
+        CompletedApproveTags approvedTags (Ok ()) ->
+            ( { model
+                | branchReview =
+                    RemoteData.map
+                        (\branchReview ->
+                            { branchReview | approvedTags = List.append approvedTags branchReview.approvedTags }
+                        )
+                        model.branchReview
+              }
+            , Cmd.none
+            )
+
+        -- TODO Handle error
+        CompletedApproveTags _ _ ->
+            ( model, Cmd.none )
 
 
 
