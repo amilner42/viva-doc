@@ -1,6 +1,7 @@
 module BranchReview exposing (AlteredLine, BranchReview, FileReview, FileReviewType(..), Review, ReviewType(..), Tag, decodeBranchReview, filterFileReviews, readableTagType)
 
 import Json.Decode as Decode
+import Set
 
 
 type alias BranchReview =
@@ -9,7 +10,7 @@ type alias BranchReview =
     , branchName : String
     , commitId : String
     , fileReviews : List FileReview
-    , approvedTags : List String
+    , approvedTags : Set.Set String
     }
 
 
@@ -71,7 +72,7 @@ type TagType
 
 filterFileReviews :
     { filterForUser : Maybe String
-    , filterApprovedTags : Maybe (List String)
+    , filterApprovedTags : Maybe (Set.Set String)
     }
     -> List FileReview
     -> List FileReview
@@ -103,11 +104,11 @@ fileReviewFilterTagsForUser username =
         (\review -> review.tag.owner == username)
 
 
-fileReviewFilterTagsThatNeedApproval : List String -> FileReview -> FileReview
+fileReviewFilterTagsThatNeedApproval : Set.Set String -> FileReview -> FileReview
 fileReviewFilterTagsThatNeedApproval approvedTagIds =
     filterFileReviewTagsAndReviews
-        (\{ tagId } -> not <| List.member tagId approvedTagIds)
-        (\{ tag } -> not <| List.member tag.tagId approvedTagIds)
+        (\{ tagId } -> not <| Set.member tagId approvedTagIds)
+        (\{ tag } -> not <| Set.member tag.tagId approvedTagIds)
 
 
 fileReviewHasTagsOrReviews : FileReview -> Bool
@@ -173,7 +174,7 @@ decodeBranchReview =
         (Decode.field "branchName" Decode.string)
         (Decode.field "commitId" Decode.string)
         (Decode.field "fileReviews" (Decode.list decodeFileReview))
-        (Decode.field "approvedTags" (Decode.list Decode.string))
+        (Decode.field "approvedTags" (Decode.list Decode.string) |> Decode.map Set.fromList)
 
 
 decodeFileReview : Decode.Decoder FileReview

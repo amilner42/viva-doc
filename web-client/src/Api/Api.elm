@@ -14,6 +14,7 @@ import Http
 import Json.Decode as Decode
 import Json.Decode.Pipeline exposing (optional)
 import Json.Encode as Encode
+import Set
 import Viewer
 
 
@@ -77,13 +78,13 @@ postApproveTags :
     Int
     -> String
     -> String
-    -> List String
+    -> Set.Set String
     -> (Result.Result (Core.HttpError ()) () -> msg)
     -> Cmd.Cmd msg
 postApproveTags repoId branchName commitId tags handleResult =
     let
         encodedTags =
-            Encode.object [ ( "approveTags", Encode.list Encode.string tags ) ]
+            Encode.object [ ( "approveTags", Encode.set Encode.string tags ) ]
     in
     Core.post
         (Endpoint.branchReviewTags repoId branchName commitId)

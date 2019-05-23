@@ -9,6 +9,7 @@ import Html.Events exposing (onClick)
 import Markdown
 import RemoteData
 import Session exposing (Session)
+import Set
 import Viewer
 
 
@@ -173,7 +174,7 @@ renderBranchReviewHeader displayOnlyUsersTags displayOnlyTagsNeedingApproval bra
         ]
 
 
-renderFileReview : String -> List String -> BranchReview.FileReview -> Html.Html Msg
+renderFileReview : String -> Set.Set String -> BranchReview.FileReview -> Html.Html Msg
 renderFileReview username approvedTags fileReview =
     div [ class "section" ] <|
         [ renderFileReviewHeader fileReview
@@ -197,7 +198,7 @@ renderFileReviewHeader fileReview =
     div [ class "title is-4 has-text-black-bis" ] [ text fileReview.currentFilePath ]
 
 
-renderTags : String -> List String -> List BranchReview.Tag -> Html.Html Msg
+renderTags : String -> Set.Set String -> List BranchReview.Tag -> Html.Html Msg
 renderTags username approvedTags tags =
     div [ class "tile is-ancestor is-vertical" ] <|
         List.map
@@ -210,7 +211,7 @@ renderTags username approvedTags tags =
             tags
 
 
-renderReviews : String -> List String -> List BranchReview.Review -> Html.Html Msg
+renderReviews : String -> Set.Set String -> List BranchReview.Review -> Html.Html Msg
 renderReviews username approvedTags reviews =
     div [ class "tile is-ancestor is-vertical" ] <|
         List.map
@@ -237,14 +238,14 @@ renderReviews username approvedTags reviews =
 renderTagOrReview :
     { alteredLines : Maybe (List BranchReview.AlteredLine)
     , username : String
-    , approvedTags : List String
+    , approvedTags : Set.Set String
     }
     -> BranchReview.Tag
     -> Html.Html Msg
 renderTagOrReview { alteredLines, username, approvedTags } tag =
     let
         isTagApproved =
-            List.member tag.tagId approvedTags
+            Set.member tag.tagId approvedTags
     in
     div [ class "tile is-parent" ]
         [ Markdown.toHtml
@@ -309,7 +310,7 @@ renderTagOrReview { alteredLines, username, approvedTags } tag =
                                 [ ( "button is-success is-fullwidth", True )
                                 , ( "is-hidden", username /= tag.owner || isTagApproved )
                                 ]
-                            , onClick <| ApproveTags [ tag.tagId ]
+                            , onClick <| ApproveTags <| Set.fromList [ tag.tagId ]
                             ]
                             [ text "Approve" ]
                         ]
@@ -332,8 +333,8 @@ type Msg
     = CompletedGetBranchReview (Result.Result (Core.HttpError ()) Api.GetBranchReviewResponse)
     | SetDisplayOnlyUsersTags Bool
     | SetDisplayOnlyTagsNeedingApproval Bool
-    | ApproveTags (List String)
-    | CompletedApproveTags (List String) (Result.Result (Core.HttpError ()) ())
+    | ApproveTags (Set.Set String)
+    | CompletedApproveTags (Set.Set String) (Result.Result (Core.HttpError ()) ())
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -363,7 +364,7 @@ update msg model =
                 | branchReview =
                     RemoteData.map
                         (\branchReview ->
-                            { branchReview | approvedTags = List.append approvedTags branchReview.approvedTags }
+                            { branchReview | approvedTags = Set.union approvedTags branchReview.approvedTags }
                         )
                         model.branchReview
               }
