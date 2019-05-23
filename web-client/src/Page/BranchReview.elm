@@ -4,7 +4,7 @@ import Api.Api as Api
 import Api.Core as Core
 import BranchReview
 import Html exposing (Html, button, div, dl, dt, i, p, span, text)
-import Html.Attributes exposing (class, classList, style)
+import Html.Attributes exposing (class, classList, disabled, style)
 import Html.Events exposing (onClick)
 import Markdown
 import RemoteData
@@ -106,7 +106,7 @@ renderBranchReview :
     -> List (Html.Html Msg)
 renderBranchReview { username, displayOnlyUsersTags, displayOnlyTagsNeedingApproval } branchReview =
     renderBranchReviewHeader displayOnlyUsersTags displayOnlyTagsNeedingApproval branchReview
-        :: (List.map (renderFileReview username branchReview.approvedTags) <|
+        :: (List.map (renderFileReview username) <|
                 BranchReview.filterFileReviews
                     { filterForUser =
                         if displayOnlyUsersTags then
@@ -114,12 +114,7 @@ renderBranchReview { username, displayOnlyUsersTags, displayOnlyTagsNeedingAppro
 
                         else
                             Nothing
-                    , filterApprovedTags =
-                        if displayOnlyTagsNeedingApproval then
-                            Just branchReview.approvedTags
-
-                        else
-                            Nothing
+                    , filterApprovedTags = displayOnlyTagsNeedingApproval
                     }
                     branchReview.fileReviews
            )
@@ -174,22 +169,22 @@ renderBranchReviewHeader displayOnlyUsersTags displayOnlyTagsNeedingApproval bra
         ]
 
 
-renderFileReview : String -> Set.Set String -> BranchReview.FileReview -> Html.Html Msg
-renderFileReview username approvedTags fileReview =
+renderFileReview : String -> BranchReview.FileReview -> Html.Html Msg
+renderFileReview username fileReview =
     div [ class "section" ] <|
         [ renderFileReviewHeader fileReview
         , case fileReview.fileReviewType of
             BranchReview.NewFileReview tags ->
-                renderTags username approvedTags tags
+                renderTags username tags
 
             BranchReview.DeletedFileReview tags ->
-                renderTags username approvedTags tags
+                renderTags username tags
 
             BranchReview.ModifiedFileReview reviews ->
-                renderReviews username approvedTags reviews
+                renderReviews username reviews
 
             BranchReview.RenamedFileReview _ reviews ->
-                renderReviews username approvedTags reviews
+                renderReviews username reviews
         ]
 
 
@@ -198,21 +193,16 @@ renderFileReviewHeader fileReview =
     div [ class "title is-4 has-text-black-bis" ] [ text fileReview.currentFilePath ]
 
 
-renderTags : String -> Set.Set String -> List BranchReview.Tag -> Html.Html Msg
-renderTags username approvedTags tags =
+renderTags : String -> List BranchReview.Tag -> Html.Html Msg
+renderTags username tags =
     div [ class "tile is-ancestor is-vertical" ] <|
         List.map
-            (renderTagOrReview
-                { alteredLines = Nothing
-                , username = username
-                , approvedTags = approvedTags
-                }
-            )
+            (renderTagOrReview { alteredLines = Nothing, username = username })
             tags
 
 
-renderReviews : String -> Set.Set String -> List BranchReview.Review -> Html.Html Msg
-renderReviews username approvedTags reviews =
+renderReviews : String -> List BranchReview.Review -> Html.Html Msg
+renderReviews username reviews =
     div [ class "tile is-ancestor is-vertical" ] <|
         List.map
             (\review ->
@@ -228,7 +218,6 @@ renderReviews username approvedTags reviews =
                             BranchReview.ReviewModifiedTag alteredLines ->
                                 Just alteredLines
                     , username = username
-                    , approvedTags = approvedTags
                     }
                     review.tag
             )
@@ -238,15 +227,10 @@ renderReviews username approvedTags reviews =
 renderTagOrReview :
     { alteredLines : Maybe (List BranchReview.AlteredLine)
     , username : String
-    , approvedTags : Set.Set String
     }
     -> BranchReview.Tag
     -> Html.Html Msg
-renderTagOrReview { alteredLines, username, approvedTags } tag =
-    let
-        isTagApproved =
-            Set.member tag.tagId approvedTags
-    in
+renderTagOrReview { alteredLines, username } tag =
     div [ class "tile is-parent" ]
         [ Markdown.toHtml
             [ class "tile is-8 is-child" ]
@@ -270,20 +254,24 @@ renderTagOrReview { alteredLines, username, approvedTags } tag =
                                 [ div [ class "level" ]
                                     [ div [ class "level-left" ]
                                         [ text <| "Owner: " ++ username ]
-                                    , div
-                                        [ classList
-                                            [ ( "level-right", True )
-                                            , ( "has-text-danger", not isTagApproved )
-                                            , ( "has-text-success", isTagApproved )
-                                            ]
-                                        ]
-                                        [ text <|
-                                            if isTagApproved then
-                                                "Approved"
+                                    , case tag.approvedState of
+                                        BranchReview.Approved ->
+                                            div
+                                                [ class "level-right has-text-success" ]
+                                                [ text "Approved" ]
 
-                                            else
-                                                "Requires Approval"
-                                        ]
+                                        BranchReview.NotApproved ->
+                                            div
+                                                [ class "level-right has-text-danger" ]
+                                                [ text "Requires Approval" ]
+
+                                        BranchReview.RequestingApproval ->
+                                            div
+                                                [ class "level-right has-text-grey-light" ]
+                                                [ text "loading..." ]
+
+                                        BranchReview.RequestFailed err ->
+                                            div [ class "is-hidden" ] []
                                     ]
                                 ]
                             , dt [] [ text <| "Tag type: " ++ BranchReview.readableTagType tag.tagType ]
@@ -305,14 +293,33 @@ renderTagOrReview { alteredLines, username, approvedTags } tag =
                                 ]
                             ]
                             [ text "Show Diff" ]
-                        , button
-                            [ classList
-                                [ ( "button is-success is-fullwidth", True )
-                                , ( "is-hidden", username /= tag.owner || isTagApproved )
-                                ]
-                            , onClick <| ApproveTags <| Set.fromList [ tag.tagId ]
-                            ]
-                            [ text "Approve" ]
+                        , if username /= tag.owner then
+                            div [ class "is-hidden" ] []
+
+                          else
+                            case tag.approvedState of
+                                BranchReview.Approved ->
+                                    div [ class "is-hidden" ] []
+
+                                BranchReview.NotApproved ->
+                                    button
+                                        [ class "button is-success is-fullwidth"
+                                        , onClick <| ApproveTags <| Set.fromList [ tag.tagId ]
+                                        ]
+                                        [ text "Approve" ]
+
+                                BranchReview.RequestingApproval ->
+                                    button
+                                        [ class "button is-success is-fullwidth is-loading" ]
+                                        []
+
+                                -- TOD handle error better?
+                                BranchReview.RequestFailed err ->
+                                    button
+                                        [ class "button is-success is-fullwidth"
+                                        , disabled True
+                                        ]
+                                        [ text "Internal Error" ]
                         ]
                     ]
                 ]
@@ -354,7 +361,20 @@ update msg model =
             ( { model | displayOnlyTagsNeedingApproval = displayOnlyTagsNeedingApproval }, Cmd.none )
 
         ApproveTags tags ->
-            ( model
+            ( { model
+                | branchReview =
+                    RemoteData.map
+                        (BranchReview.updateTags
+                            (\tag ->
+                                if Set.member tag.tagId tags then
+                                    { tag | approvedState = BranchReview.RequestingApproval }
+
+                                else
+                                    tag
+                            )
+                        )
+                        model.branchReview
+              }
             , Api.postApproveTags model.repoId model.branchName model.commitId tags (CompletedApproveTags tags)
             )
 
@@ -363,8 +383,14 @@ update msg model =
             ( { model
                 | branchReview =
                     RemoteData.map
-                        (\branchReview ->
-                            { branchReview | approvedTags = Set.union approvedTags branchReview.approvedTags }
+                        (BranchReview.updateTags
+                            (\tag ->
+                                if Set.member tag.tagId approvedTags then
+                                    { tag | approvedState = BranchReview.Approved }
+
+                                else
+                                    tag
+                            )
                         )
                         model.branchReview
               }
@@ -372,8 +398,23 @@ update msg model =
             )
 
         -- TODO Handle error
-        CompletedApproveTags _ _ ->
-            ( model, Cmd.none )
+        CompletedApproveTags attemptedApprovedTags _ ->
+            ( { model
+                | branchReview =
+                    RemoteData.map
+                        (BranchReview.updateTags
+                            (\tag ->
+                                if Set.member tag.tagId attemptedApprovedTags then
+                                    { tag | approvedState = BranchReview.RequestFailed () }
+
+                                else
+                                    tag
+                            )
+                        )
+                        model.branchReview
+              }
+            , Cmd.none
+            )
 
 
 

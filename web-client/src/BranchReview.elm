@@ -1,4 +1,4 @@
-module BranchReview exposing (AlteredLine, BranchReview, FileReview, FileReviewType(..), Review, ReviewType(..), Tag, decodeBranchReview, filterFileReviews, readableTagType)
+module BranchReview exposing (AlteredLine, ApprovedState(..), BranchReview, FileReview, FileReviewType(..), Review, ReviewType(..), Tag, decodeBranchReview, filterFileReviews, readableTagType, updateTags)
 
 import Json.Decode as Decode
 import Set
@@ -10,7 +10,6 @@ type alias BranchReview =
     , branchName : String
     , commitId : String
     , fileReviews : List FileReview
-    , approvedTags : Set.Set String
     }
 
 
@@ -62,7 +61,17 @@ type alias Tag =
     , tagAnnotationLine : Int
     , content : List String
     , tagId : String
+
+    -- TODO actual error type
+    , approvedState : ApprovedState ()
     }
+
+
+type ApprovedState err
+    = Approved
+    | NotApproved
+    | RequestingApproval
+    | RequestFailed err
 
 
 type TagType
@@ -74,7 +83,7 @@ type TagType
 
 filterFileReviews :
     { filterForUser : Maybe String
-    , filterApprovedTags : Maybe (Set.Set String)
+    , filterApprovedTags : Bool
     }
     -> List FileReview
     -> List FileReview
@@ -89,12 +98,11 @@ filterFileReviews { filterForUser, filterApprovedTags } fileReviews =
                         List.map (fileReviewFilterTagsForUser username) fileReviewsIn
            )
         |> (\fileReviewsIn ->
-                case filterApprovedTags of
-                    Nothing ->
-                        fileReviewsIn
+                if filterApprovedTags then
+                    List.map fileReviewFilterTagsThatNeedApproval fileReviewsIn
 
-                    Just approvedTags ->
-                        List.map (fileReviewFilterTagsThatNeedApproval approvedTags) fileReviewsIn
+                else
+                    fileReviewsIn
            )
         |> List.filter fileReviewHasTagsOrReviews
 
@@ -106,11 +114,20 @@ fileReviewFilterTagsForUser username =
         (\review -> review.tag.owner == username)
 
 
-fileReviewFilterTagsThatNeedApproval : Set.Set String -> FileReview -> FileReview
-fileReviewFilterTagsThatNeedApproval approvedTagIds =
+fileReviewFilterTagsThatNeedApproval : FileReview -> FileReview
+fileReviewFilterTagsThatNeedApproval =
+    let
+        isApproved approvedState =
+            case approvedState of
+                Approved ->
+                    True
+
+                _ ->
+                    False
+    in
     filterFileReviewTagsAndReviews
-        (\{ tagId } -> not <| Set.member tagId approvedTagIds)
-        (\{ tag } -> not <| Set.member tag.tagId approvedTagIds)
+        (\{ approvedState } -> not <| isApproved approvedState)
+        (\{ tag } -> not <| isApproved tag.approvedState)
 
 
 fileReviewHasTagsOrReviews : FileReview -> Bool
@@ -164,78 +181,111 @@ readableTagType tagType =
             "function"
 
 
+{-| Update all tags in a branch review.
+-}
+updateTags : (Tag -> Tag) -> BranchReview -> BranchReview
+updateTags updateTag branchReview =
+    let
+        updateReview : Review -> Review
+        updateReview review =
+            { review | tag = updateTag review.tag }
+
+        fileReviewTagMap : FileReview -> FileReview
+        fileReviewTagMap fileReview =
+            { fileReview
+                | fileReviewType =
+                    case fileReview.fileReviewType of
+                        NewFileReview tags ->
+                            NewFileReview <| List.map updateTag tags
+
+                        DeletedFileReview tags ->
+                            DeletedFileReview <| List.map updateTag tags
+
+                        ModifiedFileReview reviews ->
+                            ModifiedFileReview <| List.map updateReview reviews
+
+                        RenamedFileReview previousFilePath reviews ->
+                            RenamedFileReview previousFilePath <| List.map updateReview reviews
+            }
+    in
+    { branchReview | fileReviews = List.map fileReviewTagMap branchReview.fileReviews }
+
+
 
 -- Encoders and decoders
 
 
 decodeBranchReview : Decode.Decoder BranchReview
 decodeBranchReview =
-    Decode.map6 BranchReview
-        (Decode.field "repoId" Decode.string)
-        (Decode.field "repoFullName" Decode.string)
-        (Decode.field "branchName" Decode.string)
-        (Decode.field "commitId" Decode.string)
-        (Decode.field "fileReviews" (Decode.list decodeFileReview))
-        (Decode.field "approvedTags" (Decode.list Decode.string) |> Decode.map Set.fromList)
+    Decode.field "approvedTags" (Decode.list Decode.string |> Decode.map Set.fromList)
+        |> Decode.andThen
+            (\approvedTags ->
+                Decode.map5 BranchReview
+                    (Decode.field "repoId" Decode.string)
+                    (Decode.field "repoFullName" Decode.string)
+                    (Decode.field "branchName" Decode.string)
+                    (Decode.field "commitId" Decode.string)
+                    (Decode.field "fileReviews" (Decode.list (decodeFileReview approvedTags)))
+            )
 
 
-decodeFileReview : Decode.Decoder FileReview
-decodeFileReview =
+decodeFileReview : Set.Set String -> Decode.Decoder FileReview
+decodeFileReview approvedTags =
     Decode.map2 FileReview
-        decodeFileReviewType
+        (decodeFileReviewType approvedTags)
         (Decode.field "currentFilePath" Decode.string)
 
 
-decodeFileReviewType : Decode.Decoder FileReviewType
-decodeFileReviewType =
+decodeFileReviewType : Set.Set String -> Decode.Decoder FileReviewType
+decodeFileReviewType approvedTags =
     Decode.field "fileReviewType" Decode.string
         |> Decode.andThen
             (\reviewType ->
                 case reviewType of
                     "modified-file" ->
-                        decodeModifiedfileReview
+                        decodeModifiedfileReview approvedTags
 
                     "renamed-file" ->
-                        decodeRenamedFileReview
+                        decodeRenamedFileReview approvedTags
 
                     "new-file" ->
-                        decodeNewFileReview
+                        decodeNewFileReview approvedTags
 
                     "deleted-file" ->
-                        decodeDeletedFileReview
+                        decodeDeletedFileReview approvedTags
 
                     fileReviewType ->
                         Decode.fail <| "You have an invalid file review type: " ++ fileReviewType
             )
 
 
-decodeModifiedfileReview : Decode.Decoder FileReviewType
-decodeModifiedfileReview =
+decodeModifiedfileReview : Set.Set String -> Decode.Decoder FileReviewType
+decodeModifiedfileReview approvedTags =
     Decode.map ModifiedFileReview
-        (Decode.field "reviews" (Decode.list decodeReview))
+        (Decode.field "reviews" (Decode.list <| decodeReview approvedTags))
 
 
-decodeRenamedFileReview : Decode.Decoder FileReviewType
-decodeRenamedFileReview =
+decodeRenamedFileReview : Set.Set String -> Decode.Decoder FileReviewType
+decodeRenamedFileReview approvedTags =
     Decode.map2 RenamedFileReview
         (Decode.field "previousFilePath" Decode.string)
-        (Decode.field "reviews" (Decode.list decodeReview))
+        (Decode.field "reviews" (Decode.list <| decodeReview approvedTags))
 
 
-decodeNewFileReview : Decode.Decoder FileReviewType
-decodeNewFileReview =
+decodeNewFileReview : Set.Set String -> Decode.Decoder FileReviewType
+decodeNewFileReview approvedTags =
     Decode.map NewFileReview
-        (Decode.field "tags" (Decode.list decodeTag))
+        (Decode.field "tags" (Decode.list <| decodeTag approvedTags))
 
 
-decodeDeletedFileReview : Decode.Decoder FileReviewType
-decodeDeletedFileReview =
+decodeDeletedFileReview : Set.Set String -> Decode.Decoder FileReviewType
+decodeDeletedFileReview approvedTags =
     Decode.map DeletedFileReview
-        (Decode.field "tags" (Decode.list decodeTag))
+        (Decode.field "tags" (Decode.list <| decodeTag approvedTags))
 
 
-decodeReview : Decode.Decoder Review
-decodeReview =
+decodeReview : Set.Set String -> Decode.Decoder Review
+decodeReview approvedTags =
     Decode.map2 Review
         (Decode.field "reviewType" Decode.string
             |> Decode.andThen
@@ -255,7 +305,7 @@ decodeReview =
                             Decode.fail <| "Invalid review type: " ++ reviewType
                 )
         )
-        (Decode.field "tag" decodeTag)
+        (Decode.field "tag" <| decodeTag approvedTags)
 
 
 decodeAlteredLine : Decode.Decoder AlteredLine
@@ -280,32 +330,43 @@ decodeAlteredLine =
         (Decode.field "content" Decode.string)
 
 
-decodeTag : Decode.Decoder Tag
-decodeTag =
-    Decode.map7 Tag
-        (Decode.field "tagType" Decode.string
-            |> Decode.andThen
-                (\tagType ->
-                    case tagType of
-                        "file" ->
-                            Decode.succeed FileTag
+decodeTag : Set.Set String -> Decode.Decoder Tag
+decodeTag approvedTags =
+    Decode.field "tagId" Decode.string
+        |> Decode.andThen
+            (\tagId ->
+                Decode.map8 Tag
+                    (Decode.field "tagType" Decode.string
+                        |> Decode.andThen
+                            (\tagType ->
+                                case tagType of
+                                    "file" ->
+                                        Decode.succeed FileTag
 
-                        "block" ->
-                            Decode.succeed BlockTag
+                                    "block" ->
+                                        Decode.succeed BlockTag
 
-                        "function" ->
-                            Decode.succeed FunctionTag
+                                    "function" ->
+                                        Decode.succeed FunctionTag
 
-                        "line" ->
-                            Decode.succeed LineTag
+                                    "line" ->
+                                        Decode.succeed LineTag
 
-                        _ ->
-                            Decode.fail <| "Invalid tag type " ++ tagType
-                )
-        )
-        (Decode.field "owner" Decode.string)
-        (Decode.field "startLine" Decode.int)
-        (Decode.field "endLine" Decode.int)
-        (Decode.field "tagAnnotationLine" Decode.int)
-        (Decode.field "content" (Decode.list Decode.string))
-        (Decode.field "tagId" Decode.string)
+                                    _ ->
+                                        Decode.fail <| "Invalid tag type " ++ tagType
+                            )
+                    )
+                    (Decode.field "owner" Decode.string)
+                    (Decode.field "startLine" Decode.int)
+                    (Decode.field "endLine" Decode.int)
+                    (Decode.field "tagAnnotationLine" Decode.int)
+                    (Decode.field "content" (Decode.list Decode.string))
+                    (Decode.field "tagId" Decode.string)
+                    (Decode.succeed <|
+                        if Set.member tagId approvedTags then
+                            Approved
+
+                        else
+                            NotApproved
+                    )
+            )
