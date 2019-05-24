@@ -175,10 +175,10 @@ renderFileReview username fileReview =
         [ renderFileReviewHeader fileReview
         , case fileReview.fileReviewType of
             BranchReview.NewFileReview tags ->
-                renderTags username tags
+                renderTags username "This tag has been added to a new file" tags
 
             BranchReview.DeletedFileReview tags ->
-                renderTags username tags
+                renderTags username "This tag is being removed inside a deleted file" tags
 
             BranchReview.ModifiedFileReview reviews ->
                 renderReviews username reviews
@@ -190,14 +190,37 @@ renderFileReview username fileReview =
 
 renderFileReviewHeader : BranchReview.FileReview -> Html.Html Msg
 renderFileReviewHeader fileReview =
-    div [ class "title is-4 has-text-black-bis" ] [ text fileReview.currentFilePath ]
+    div
+        [ style "padding-bottom" "15px" ]
+        [ span
+            [ class "has-text-black-ter is-size-3"
+            , style "padding-right" "10px"
+            ]
+            [ text fileReview.currentFilePath ]
+        , span
+            [ class "has-text-grey is-size-6" ]
+            [ text <|
+                case fileReview.fileReviewType of
+                    BranchReview.NewFileReview _ ->
+                        "new file"
+
+                    BranchReview.ModifiedFileReview _ ->
+                        "modified file"
+
+                    BranchReview.DeletedFileReview _ ->
+                        "deleted file"
+
+                    BranchReview.RenamedFileReview _ _ ->
+                        "renamed file"
+            ]
+        ]
 
 
-renderTags : String -> List BranchReview.Tag -> Html.Html Msg
-renderTags username tags =
+renderTags : String -> String -> List BranchReview.Tag -> Html.Html Msg
+renderTags username description tags =
     div [ class "tile is-ancestor is-vertical" ] <|
         List.map
-            (renderTagOrReview { alteredLines = Nothing, username = username })
+            (renderTagOrReview { alteredLines = Nothing, username = username, description = description })
             tags
 
 
@@ -218,6 +241,16 @@ renderReviews username reviews =
                             BranchReview.ReviewModifiedTag alteredLines ->
                                 Just alteredLines
                     , username = username
+                    , description =
+                        case review.reviewType of
+                            BranchReview.ReviewNewTag ->
+                                "This tag has been added to an existing file"
+
+                            BranchReview.ReviewDeletedTag ->
+                                "This tag has been deleted from an existing file"
+
+                            BranchReview.ReviewModifiedTag _ ->
+                                "This tag has been modified"
                     }
                     review.tag
             )
@@ -227,10 +260,11 @@ renderReviews username reviews =
 renderTagOrReview :
     { alteredLines : Maybe (List BranchReview.AlteredLine)
     , username : String
+    , description : String
     }
     -> BranchReview.Tag
     -> Html.Html Msg
-renderTagOrReview { alteredLines, username } tag =
+renderTagOrReview { alteredLines, username, description } tag =
     div [ class "tile is-parent" ]
         [ Markdown.toHtml
             [ class "tile is-8 is-child" ]
@@ -253,7 +287,7 @@ renderTagOrReview { alteredLines, username } tag =
                                 []
                                 [ div [ class "level" ]
                                     [ div [ class "level-left" ]
-                                        [ text <| "Owner: " ++ username ]
+                                        [ text <| BranchReview.readableTagType tag.tagType ]
                                     , case tag.approvedState of
                                         BranchReview.Approved ->
                                             div
@@ -274,8 +308,9 @@ renderTagOrReview { alteredLines, username } tag =
                                             div [ class "is-hidden" ] []
                                     ]
                                 ]
-                            , dt [] [ text <| "Tag type: " ++ BranchReview.readableTagType tag.tagType ]
+                            , dt [] [ text <| "Owner: " ++ tag.owner ]
                             ]
+                        , p [] [ text description ]
                         ]
                     , div
                         [ class "buttons" ]

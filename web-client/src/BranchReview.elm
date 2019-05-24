@@ -169,16 +169,16 @@ readableTagType : TagType -> String
 readableTagType tagType =
     case tagType of
         FileTag ->
-            "file"
+            "File Tag"
 
         LineTag ->
-            "line"
+            "Line Tag"
 
         BlockTag ->
-            "block"
+            "Block Tag"
 
         FunctionTag ->
-            "function"
+            "Function Tag"
 
 
 {-| Update all tags in a branch review.
