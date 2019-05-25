@@ -3,10 +3,10 @@ module Page.BranchReview exposing (Model, Msg, init, subscriptions, toSession, u
 import Api.Api as Api
 import Api.Core as Core
 import BranchReview
+import CustomMarkdown as CM
 import Html exposing (Html, button, div, dl, dt, i, p, span, text)
 import Html.Attributes exposing (class, classList, disabled, style)
 import Html.Events exposing (onClick)
-import Markdown
 import RemoteData
 import Session exposing (Session)
 import Set
@@ -175,10 +175,10 @@ renderFileReview username fileReview =
         [ renderFileReviewHeader fileReview
         , case fileReview.fileReviewType of
             BranchReview.NewFileReview tags ->
-                renderTags username "This tag has been added to a new file" tags
+                renderTags username "This tag has been added to a new file" CM.GreenBackground tags
 
             BranchReview.DeletedFileReview tags ->
-                renderTags username "This tag is being removed inside a deleted file" tags
+                renderTags username "This tag is being removed inside a deleted file" CM.RedBackground tags
 
             BranchReview.ModifiedFileReview reviews ->
                 renderReviews username reviews
@@ -216,11 +216,11 @@ renderFileReviewHeader fileReview =
         ]
 
 
-renderTags : String -> String -> List BranchReview.Tag -> Html.Html Msg
-renderTags username description tags =
+renderTags : String -> String -> CM.RenderStyle -> List BranchReview.Tag -> Html.Html Msg
+renderTags username description renderStyle tags =
     div [ class "tile is-ancestor is-vertical" ] <|
         List.map
-            (renderTagOrReview { alteredLines = Nothing, username = username, description = description })
+            (renderTagOrReview { renderStyle = renderStyle, username = username, description = description })
             tags
 
 
@@ -230,16 +230,16 @@ renderReviews username reviews =
         List.map
             (\review ->
                 renderTagOrReview
-                    { alteredLines =
+                    { renderStyle =
                         case review.reviewType of
                             BranchReview.ReviewNewTag ->
-                                Nothing
+                                CM.PlainBackground
 
                             BranchReview.ReviewDeletedTag ->
-                                Nothing
+                                CM.PlainBackground
 
-                            BranchReview.ReviewModifiedTag alteredLines ->
-                                Just alteredLines
+                            BranchReview.ReviewModifiedTag showAlteredLines alteredLines ->
+                                CM.MixedBackground { showAlteredLines = showAlteredLines, alteredLines = alteredLines }
                     , username = username
                     , description =
                         case review.reviewType of
@@ -249,7 +249,7 @@ renderReviews username reviews =
                             BranchReview.ReviewDeletedTag ->
                                 "This tag has been deleted from an existing file"
 
-                            BranchReview.ReviewModifiedTag _ ->
+                            BranchReview.ReviewModifiedTag _ _ ->
                                 "This tag has been modified"
                     }
                     review.tag
@@ -258,17 +258,17 @@ renderReviews username reviews =
 
 
 renderTagOrReview :
-    { alteredLines : Maybe (List BranchReview.AlteredLine)
+    { renderStyle : CM.RenderStyle
     , username : String
     , description : String
     }
     -> BranchReview.Tag
     -> Html.Html Msg
-renderTagOrReview { alteredLines, username, description } tag =
+renderTagOrReview { renderStyle, username, description } tag =
     div [ class "tile is-parent" ]
-        [ Markdown.toHtml
+        [ div
             [ class "tile is-8 is-child" ]
-            (contentToMarkdownCode tag.content)
+            (CM.getMarkdown tag.content tag.startLine "javascript" renderStyle)
         , div
             [ class "tile is-4"
             ]
@@ -314,20 +314,22 @@ renderTagOrReview { alteredLines, username, description } tag =
                         ]
                     , div
                         [ class "buttons" ]
-                        [ button
-                            [ classList
-                                [ ( "button is-info is-fullwidth", True )
-                                , ( "is-hidden"
-                                  , case alteredLines of
-                                        Nothing ->
-                                            True
+                        [ case renderStyle of
+                            CM.MixedBackground { showAlteredLines } ->
+                                button
+                                    [ class "button is-info is-fullwidth"
+                                    , onClick <| SetShowAlteredLines tag.tagId (not showAlteredLines)
+                                    ]
+                                    [ text <|
+                                        if showAlteredLines then
+                                            "Hide Diff"
 
-                                        Just _ ->
-                                            False
-                                  )
-                                ]
-                            ]
-                            [ text "Show Diff" ]
+                                        else
+                                            "Show Diff"
+                                    ]
+
+                            _ ->
+                                div [ class "is-hidden" ] []
                         , if username /= tag.owner then
                             div [ class "is-hidden" ] []
 
@@ -362,11 +364,6 @@ renderTagOrReview { alteredLines, username, description } tag =
         ]
 
 
-contentToMarkdownCode : List String -> String
-contentToMarkdownCode content =
-    "```javascript\n" ++ String.join "\n" content ++ "\n```"
-
-
 
 -- UPDATE
 
@@ -375,6 +372,7 @@ type Msg
     = CompletedGetBranchReview (Result.Result (Core.HttpError ()) Api.GetBranchReviewResponse)
     | SetDisplayOnlyUsersTags Bool
     | SetDisplayOnlyTagsNeedingApproval Bool
+    | SetShowAlteredLines String Bool
     | ApproveTags (Set.Set String)
     | CompletedApproveTags (Set.Set String) (Result.Result (Core.HttpError ()) ())
 
@@ -394,6 +392,35 @@ update msg model =
 
         SetDisplayOnlyTagsNeedingApproval displayOnlyTagsNeedingApproval ->
             ( { model | displayOnlyTagsNeedingApproval = displayOnlyTagsNeedingApproval }, Cmd.none )
+
+        SetShowAlteredLines tagId showAlteredLines ->
+            ( { model
+                | branchReview =
+                    RemoteData.map
+                        (BranchReview.updateReviews
+                            (\review ->
+                                if review.tag.tagId == tagId then
+                                    { review
+                                        | reviewType =
+                                            case review.reviewType of
+                                                BranchReview.ReviewModifiedTag _ alteredLines ->
+                                                    BranchReview.ReviewModifiedTag showAlteredLines alteredLines
+
+                                                BranchReview.ReviewNewTag ->
+                                                    BranchReview.ReviewNewTag
+
+                                                BranchReview.ReviewDeletedTag ->
+                                                    BranchReview.ReviewDeletedTag
+                                    }
+
+                                else
+                                    review
+                            )
+                        )
+                        model.branchReview
+              }
+            , Cmd.none
+            )
 
         ApproveTags tags ->
             ( { model

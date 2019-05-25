@@ -1,4 +1,4 @@
-module BranchReview exposing (AlteredLine, ApprovedState(..), BranchReview, FileReview, FileReviewType(..), Review, ReviewType(..), Tag, decodeBranchReview, filterFileReviews, readableTagType, updateTags)
+module BranchReview exposing (AlteredLine, ApprovedState(..), BranchReview, EditType(..), FileReview, FileReviewType(..), Review, ReviewType(..), Tag, decodeBranchReview, filterFileReviews, readableTagType, updateReviews, updateTags)
 
 import Json.Decode as Decode
 import Set
@@ -37,7 +37,8 @@ type alias Review =
 type ReviewType
     = ReviewNewTag
     | ReviewDeletedTag
-    | ReviewModifiedTag (List AlteredLine)
+      -- Bool = Show Altered Lines
+    | ReviewModifiedTag Bool (List AlteredLine)
 
 
 type alias AlteredLine =
@@ -211,6 +212,27 @@ updateTags updateTag branchReview =
     { branchReview | fileReviews = List.map fileReviewTagMap branchReview.fileReviews }
 
 
+updateReviews : (Review -> Review) -> BranchReview -> BranchReview
+updateReviews updateReview branchReview =
+    let
+        fileReviewTagMap : FileReview -> FileReview
+        fileReviewTagMap fileReview =
+            { fileReview
+                | fileReviewType =
+                    case fileReview.fileReviewType of
+                        ModifiedFileReview reviews ->
+                            ModifiedFileReview <| List.map updateReview reviews
+
+                        RenamedFileReview previousFilePath reviews ->
+                            RenamedFileReview previousFilePath <| List.map updateReview reviews
+
+                        other ->
+                            other
+            }
+    in
+    { branchReview | fileReviews = List.map fileReviewTagMap branchReview.fileReviews }
+
+
 
 -- Encoders and decoders
 
@@ -299,7 +321,7 @@ decodeReview approvedTags =
 
                         "modified" ->
                             Decode.field "alteredLines" (Decode.list decodeAlteredLine)
-                                |> Decode.map ReviewModifiedTag
+                                |> Decode.map (ReviewModifiedTag False)
 
                         _ ->
                             Decode.fail <| "Invalid review type: " ++ reviewType

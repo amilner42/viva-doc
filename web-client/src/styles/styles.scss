@@ -6,3 +6,34 @@
 
 /** Internal SCSS files */
 @import 'home.scss';
+
+.green-markdown-background {
+  pre {
+    background-color: #E6FFED;
+  }
+}
+
+.red-markdown-background {
+  pre {
+    background-color: #FFEEF0;
+  }
+}
+
+.first-code-block {
+  pre {
+    padding-bottom: 0px;
+  }
+}
+
+.last-code-block {
+  pre {
+    padding-top: 0px;
+  }
+}
+
+.middle-code-block {
+  pre {
+    padding-top: 0px;
+    padding-bottom: 0px;
+  }
+}
