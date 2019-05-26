@@ -1,4 +1,4 @@
-module BranchReview exposing (AlteredLine, ApprovedState(..), BranchReview, EditType(..), FileReview, FileReviewType(..), Review, ReviewType(..), Tag, decodeBranchReview, filterFileReviews, readableTagType, updateReviews, updateTags)
+module BranchReview exposing (AlteredLine, ApprovedState(..), BranchReview, EditType(..), FileReview, FileReviewType(..), Review, ReviewType(..), Tag, countTotalReviewsAndTags, decodeBranchReview, filterFileReviews, readableTagType, updateReviews, updateTags)
 
 import Json.Decode as Decode
 import Set
@@ -106,6 +106,27 @@ filterFileReviews { filterForUser, filterApprovedTags } fileReviews =
                     fileReviewsIn
            )
         |> List.filter fileReviewHasTagsOrReviews
+
+
+countTotalReviewsAndTags : List FileReview -> Int
+countTotalReviewsAndTags =
+    List.foldl (\fileReview totalCount -> totalCount + reviewOrTagCount fileReview) 0
+
+
+reviewOrTagCount : FileReview -> Int
+reviewOrTagCount { fileReviewType } =
+    case fileReviewType of
+        NewFileReview tags ->
+            List.length tags
+
+        DeletedFileReview tags ->
+            List.length tags
+
+        RenamedFileReview _ reviews ->
+            List.length reviews
+
+        ModifiedFileReview reviews ->
+            List.length reviews
 
 
 fileReviewFilterTagsForUser : String -> FileReview -> FileReview

@@ -105,30 +105,67 @@ renderBranchReview :
     -> BranchReview.BranchReview
     -> List (Html.Html Msg)
 renderBranchReview { username, displayOnlyUsersTags, displayOnlyTagsNeedingApproval } branchReview =
-    renderBranchReviewHeader displayOnlyUsersTags displayOnlyTagsNeedingApproval branchReview
-        :: (List.map (renderFileReview username) <|
-                BranchReview.filterFileReviews
-                    { filterForUser =
-                        if displayOnlyUsersTags then
-                            Just username
+    let
+        fileReviewsToRender =
+            BranchReview.filterFileReviews
+                { filterForUser =
+                    if displayOnlyUsersTags then
+                        Just username
 
-                        else
-                            Nothing
-                    , filterApprovedTags = displayOnlyTagsNeedingApproval
-                    }
-                    branchReview.fileReviews
-           )
+                    else
+                        Nothing
+                , filterApprovedTags = displayOnlyTagsNeedingApproval
+                }
+                branchReview.fileReviews
+
+        totalReviews =
+            BranchReview.countTotalReviewsAndTags branchReview.fileReviews
+
+        displayingReviews =
+            BranchReview.countTotalReviewsAndTags fileReviewsToRender
+    in
+    renderBranchReviewHeader
+        displayOnlyUsersTags
+        displayOnlyTagsNeedingApproval
+        displayingReviews
+        totalReviews
+        branchReview
+        :: List.map (renderFileReview username) fileReviewsToRender
 
 
-renderBranchReviewHeader : Bool -> Bool -> BranchReview.BranchReview -> Html.Html Msg
-renderBranchReviewHeader displayOnlyUsersTags displayOnlyTagsNeedingApproval branchReview =
+renderBranchReviewHeader : Bool -> Bool -> Int -> Int -> BranchReview.BranchReview -> Html.Html Msg
+renderBranchReviewHeader displayOnlyUsersTags displayOnlyTagsNeedingApproval displayingReviews totalReviews branchReview =
     div
         [ class "level is-mobile"
         , style "margin-bottom" "0px"
         ]
         [ div
             [ class "level-left" ]
-            [ div [ class "level-item title is-4" ] [ text "Filter Options" ] ]
+            [ div
+                [ class "level-item" ]
+                [ div
+                    []
+                    [ span
+                        [ class "has-text-black-ter is-size-3"
+                        , style "padding-right" "15px"
+                        ]
+                        [ text "Filter Options" ]
+                    , span
+                        [ class "has-text-grey is-size-6" ]
+                        [ text <|
+                            if displayingReviews == totalReviews then
+                                "displaying all " ++ String.fromInt totalReviews ++ " reviews"
+
+                            else
+                                "displaying "
+                                    ++ String.fromInt displayingReviews
+                                    ++ " of "
+                                    ++ String.fromInt totalReviews
+                                    ++ " reviews"
+                        ]
+                    ]
+                ]
+            ]
         , div [ class "buttons level-right" ]
             [ button
                 [ class "button"
