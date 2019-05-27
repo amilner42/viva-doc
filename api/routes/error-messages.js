@@ -6,11 +6,14 @@ const noAccessToRepoError = "You do not have access to this repo...";
 
 const noAccessToApproveTagsError = "You can only approve tags that you own...";
 
+const noAccessToRejectTagsError = "You can only reject your own tags...";
+
 const internalServerError = "There was an unknown internal server error...";
 
 module.export = {
   notLoggedInError,
   noAccessToRepoError,
   internalServerError,
-  noAccessToApproveTagsError
+  noAccessToApproveTagsError,
+  noAccessToRejectTagsError
 }

@@ -48,7 +48,8 @@ export const pipeline = async (
     repoId,
     branchName,
     commitId: finalCommitId,
-    approvedTags: [ ]
+    approvedTags: [ ],
+    requiredConfirmations: Review.getRequiredConfirmations(fileReviewsNeedingApproval)
   })
 
   await branchReview.save()

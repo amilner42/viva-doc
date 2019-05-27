@@ -10,6 +10,7 @@ type alias BranchReview =
     , branchName : String
     , commitId : String
     , fileReviews : List FileReview
+    , requiredConfirmations : Set.Set String
     }
 
 
@@ -71,7 +72,7 @@ type alias Tag =
 type ApprovedState err
     = Approved
     | NotApproved
-    | RequestingApproval
+    | Requesting
     | RequestFailed err
 
 
@@ -263,12 +264,13 @@ decodeBranchReview =
     Decode.field "approvedTags" (Decode.list Decode.string |> Decode.map Set.fromList)
         |> Decode.andThen
             (\approvedTags ->
-                Decode.map5 BranchReview
+                Decode.map6 BranchReview
                     (Decode.field "repoId" Decode.string)
                     (Decode.field "repoFullName" Decode.string)
                     (Decode.field "branchName" Decode.string)
                     (Decode.field "commitId" Decode.string)
                     (Decode.field "fileReviews" (Decode.list (decodeFileReview approvedTags)))
+                    (Decode.field "requiredConfirmations" (Decode.list Decode.string |> Decode.map Set.fromList))
             )
 
 

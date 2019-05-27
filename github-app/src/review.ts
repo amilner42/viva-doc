@@ -192,6 +192,19 @@ export const initFileReviewMetadata = (fileReview: FileReview): FileReviewWithMe
   }
 }
 
+export const getRequiredConfirmations = (fileReviews: FileReview[]): String[] => {
+
+  return R.reduce<FileReview, String[]>((allTags, fileReview) => {
+    return R.reduce<Tag.VdTag, String[]>((fileReviewTags, tag) => {
+
+      if (R.contains(tag.owner, fileReviewTags)) { return fileReviewTags; }
+
+      return fileReviewTags.concat([ tag.owner ]);
+
+    }, allTags, getTags(fileReview));
+  }, [], fileReviews);
+}
+
 /** Calculates the reviews for some file modification given all helpful information.
 
   This is the core functionality of the app.
@@ -403,4 +416,19 @@ const alteredLineInTagPairOwnership = R.curry(
 
 const lineNumberInTagOwnership = (tag: Tag.VdTag, lineNumber: number) => {
   return (lineNumber >= tag.startLine) && (lineNumber <= tag.endLine)
+}
+
+const getTags = (fileReview: FileReview): Tag.VdTag[] => {
+
+  switch (fileReview.fileReviewType) {
+
+    case "deleted-file":
+    case "new-file":
+      return fileReview.tags;
+
+    case "modified-file":
+    case "renamed-file":
+      return R.map((review) => { return review.tag }, fileReview.reviews)
+
+  }
 }

@@ -1,4 +1,4 @@
-module Api.Api exposing (GetBranchReviewResponse(..), GithubLoginBody, getBranchReview, getLogout, getUser, githubLoginFromCode, postApproveTags)
+module Api.Api exposing (GetBranchReviewResponse(..), GithubLoginBody, getBranchReview, getLogout, getUser, githubLoginFromCode, postApproveTags, postRejectTags)
 
 {-| This module strictly contains the routes to the API and their respective errors.
 
@@ -87,7 +87,27 @@ postApproveTags repoId branchName commitId tags handleResult =
             Encode.object [ ( "approveTags", Encode.set Encode.string tags ) ]
     in
     Core.post
-        (Endpoint.branchReviewTags repoId branchName commitId)
+        (Endpoint.branchReviewApproveTags repoId branchName commitId)
+        standardTimeout
+        Nothing
+        (Http.jsonBody encodedTags)
+        (Core.expectJson handleResult (Decode.succeed ()) (Decode.succeed ()))
+
+
+postRejectTags :
+    Int
+    -> String
+    -> String
+    -> Set.Set String
+    -> (Result.Result (Core.HttpError ()) () -> msg)
+    -> Cmd.Cmd msg
+postRejectTags repoId branchName commitId tags handleResult =
+    let
+        encodedTags =
+            Encode.object [ ( "rejectTags", Encode.set Encode.string tags ) ]
+    in
+    Core.post
+        (Endpoint.branchReviewRejectTags repoId branchName commitId)
         standardTimeout
         Nothing
         (Http.jsonBody encodedTags)

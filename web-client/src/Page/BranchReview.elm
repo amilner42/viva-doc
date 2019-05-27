@@ -130,7 +130,7 @@ renderBranchReview { username, displayOnlyUsersTags, displayOnlyTagsNeedingAppro
         displayingReviews
         totalReviews
         branchReview
-        :: List.map (renderFileReview username) fileReviewsToRender
+        :: List.map (renderFileReview username branchReview.requiredConfirmations) fileReviewsToRender
 
 
 renderBranchReviewHeader : Bool -> Bool -> Int -> Int -> BranchReview.BranchReview -> Html.Html Msg
@@ -206,22 +206,38 @@ renderBranchReviewHeader displayOnlyUsersTags displayOnlyTagsNeedingApproval dis
         ]
 
 
-renderFileReview : String -> BranchReview.FileReview -> Html.Html Msg
-renderFileReview username fileReview =
+renderFileReview : String -> Set.Set String -> BranchReview.FileReview -> Html.Html Msg
+renderFileReview username requiredConfirmations fileReview =
     div [ class "section" ] <|
         [ renderFileReviewHeader fileReview
         , case fileReview.fileReviewType of
             BranchReview.NewFileReview tags ->
-                renderTags username "This tag has been added to a new file" CM.GreenBackground tags
+                renderTags
+                    username
+                    "This tag has been added to a new file"
+                    requiredConfirmations
+                    CM.GreenBackground
+                    tags
 
             BranchReview.DeletedFileReview tags ->
-                renderTags username "This tag is being removed inside a deleted file" CM.RedBackground tags
+                renderTags
+                    username
+                    "This tag is being removed inside a deleted file"
+                    requiredConfirmations
+                    CM.RedBackground
+                    tags
 
             BranchReview.ModifiedFileReview reviews ->
-                renderReviews username reviews
+                renderReviews
+                    username
+                    requiredConfirmations
+                    reviews
 
             BranchReview.RenamedFileReview _ reviews ->
-                renderReviews username reviews
+                renderReviews
+                    username
+                    requiredConfirmations
+                    reviews
         ]
 
 
@@ -253,16 +269,22 @@ renderFileReviewHeader fileReview =
         ]
 
 
-renderTags : String -> String -> CM.RenderStyle -> List BranchReview.Tag -> Html.Html Msg
-renderTags username description renderStyle tags =
+renderTags : String -> String -> Set.Set String -> CM.RenderStyle -> List BranchReview.Tag -> Html.Html Msg
+renderTags username description requiredConfirmations renderStyle tags =
     div [ class "tile is-ancestor is-vertical" ] <|
         List.map
-            (renderTagOrReview { renderStyle = renderStyle, username = username, description = description })
+            (renderTagOrReview
+                { renderStyle = renderStyle
+                , username = username
+                , description = description
+                , requiredConfirmations = requiredConfirmations
+                }
+            )
             tags
 
 
-renderReviews : String -> List BranchReview.Review -> Html.Html Msg
-renderReviews username reviews =
+renderReviews : String -> Set.Set String -> List BranchReview.Review -> Html.Html Msg
+renderReviews username requiredConfirmations reviews =
     div [ class "tile is-ancestor is-vertical" ] <|
         List.map
             (\review ->
@@ -288,6 +310,7 @@ renderReviews username reviews =
 
                             BranchReview.ReviewModifiedTag _ _ ->
                                 "This tag has been modified"
+                    , requiredConfirmations = requiredConfirmations
                     }
                     review.tag
             )
@@ -298,10 +321,11 @@ renderTagOrReview :
     { renderStyle : CM.RenderStyle
     , username : String
     , description : String
+    , requiredConfirmations : Set.Set String
     }
     -> BranchReview.Tag
     -> Html.Html Msg
-renderTagOrReview { renderStyle, username, description } tag =
+renderTagOrReview { renderStyle, username, description, requiredConfirmations } tag =
     div [ class "tile is-parent" ]
         [ div
             [ class "tile is-8 is-child" ]
@@ -336,7 +360,7 @@ renderTagOrReview { renderStyle, username, description } tag =
                                                 [ class "level-right has-text-danger" ]
                                                 [ text "Requires Approval" ]
 
-                                        BranchReview.RequestingApproval ->
+                                        BranchReview.Requesting ->
                                             div
                                                 [ class "level-right has-text-grey-light" ]
                                                 [ text "loading..." ]
@@ -367,22 +391,26 @@ renderTagOrReview { renderStyle, username, description } tag =
 
                             _ ->
                                 div [ class "is-hidden" ] []
-                        , if username /= tag.owner then
+                        , if username /= tag.owner || (not <| Set.member username requiredConfirmations) then
                             div [ class "is-hidden" ] []
 
                           else
                             case tag.approvedState of
                                 BranchReview.Approved ->
-                                    div [ class "is-hidden" ] []
+                                    button
+                                        [ class "button is-warning is-fullwidth has-text-white"
+                                        , onClick <| RejectTags <| Set.singleton tag.tagId
+                                        ]
+                                        [ text "Reject" ]
 
                                 BranchReview.NotApproved ->
                                     button
                                         [ class "button is-success is-fullwidth"
-                                        , onClick <| ApproveTags <| Set.fromList [ tag.tagId ]
+                                        , onClick <| ApproveTags <| Set.singleton tag.tagId
                                         ]
                                         [ text "Approve" ]
 
-                                BranchReview.RequestingApproval ->
+                                BranchReview.Requesting ->
                                     button
                                         [ class "button is-success is-fullwidth is-loading" ]
                                         []
@@ -390,7 +418,7 @@ renderTagOrReview { renderStyle, username, description } tag =
                                 -- TOD handle error better?
                                 BranchReview.RequestFailed err ->
                                     button
-                                        [ class "button is-success is-fullwidth"
+                                        [ class "button is-danger is-fullwidth"
                                         , disabled True
                                         ]
                                         [ text "Internal Error" ]
@@ -412,6 +440,8 @@ type Msg
     | SetShowAlteredLines String Bool
     | ApproveTags (Set.Set String)
     | CompletedApproveTags (Set.Set String) (Result.Result (Core.HttpError ()) ())
+    | RejectTags (Set.Set String)
+    | CompletedRejectTags (Set.Set String) (Result.Result (Core.HttpError ()) ())
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -466,7 +496,7 @@ update msg model =
                         (BranchReview.updateTags
                             (\tag ->
                                 if Set.member tag.tagId tags then
-                                    { tag | approvedState = BranchReview.RequestingApproval }
+                                    { tag | approvedState = BranchReview.Requesting }
 
                                 else
                                     tag
@@ -504,6 +534,66 @@ update msg model =
                         (BranchReview.updateTags
                             (\tag ->
                                 if Set.member tag.tagId attemptedApprovedTags then
+                                    { tag | approvedState = BranchReview.RequestFailed () }
+
+                                else
+                                    tag
+                            )
+                        )
+                        model.branchReview
+              }
+            , Cmd.none
+            )
+
+        RejectTags tags ->
+            ( { model
+                | branchReview =
+                    RemoteData.map
+                        (BranchReview.updateTags
+                            (\tag ->
+                                if Set.member tag.tagId tags then
+                                    { tag | approvedState = BranchReview.Requesting }
+
+                                else
+                                    tag
+                            )
+                        )
+                        model.branchReview
+              }
+            , Api.postRejectTags
+                model.repoId
+                model.branchName
+                model.commitId
+                tags
+                (CompletedRejectTags tags)
+            )
+
+        CompletedRejectTags tags (Ok ()) ->
+            ( { model
+                | branchReview =
+                    RemoteData.map
+                        (BranchReview.updateTags
+                            (\tag ->
+                                if Set.member tag.tagId tags then
+                                    { tag | approvedState = BranchReview.NotApproved }
+
+                                else
+                                    tag
+                            )
+                        )
+                        model.branchReview
+              }
+            , Cmd.none
+            )
+
+        -- TODO handle errors
+        CompletedRejectTags attemptedRejectTags _ ->
+            ( { model
+                | branchReview =
+                    RemoteData.map
+                        (BranchReview.updateTags
+                            (\tag ->
+                                if Set.member tag.tagId attemptedRejectTags then
                                     { tag | approvedState = BranchReview.RequestFailed () }
 
                                 else
