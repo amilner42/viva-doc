@@ -360,10 +360,15 @@ renderTagOrReview { renderStyle, username, description, requiredConfirmations } 
                                                 [ class "level-right has-text-danger" ]
                                                 [ text "Requires Approval" ]
 
-                                        BranchReview.Requesting ->
+                                        BranchReview.RequestingApproval ->
                                             div
                                                 [ class "level-right has-text-grey-light" ]
-                                                [ text "loading..." ]
+                                                [ text "requesting approval..." ]
+
+                                        BranchReview.RequestingRejection ->
+                                            div
+                                                [ class "level-right has-text-grey-light" ]
+                                                [ text "removing approval..." ]
 
                                         BranchReview.RequestFailed err ->
                                             div [ class "is-hidden" ] []
@@ -373,56 +378,69 @@ renderTagOrReview { renderStyle, username, description, requiredConfirmations } 
                             ]
                         , p [] [ text description ]
                         ]
-                    , div
-                        [ class "buttons" ]
-                        [ case renderStyle of
-                            CM.MixedBackground { showAlteredLines } ->
-                                button
-                                    [ class "button is-info is-fullwidth"
-                                    , onClick <| SetShowAlteredLines tag.tagId (not showAlteredLines)
-                                    ]
-                                    [ text <|
-                                        if showAlteredLines then
-                                            "Hide Diff"
+                    , div [ class "buttons" ] <|
+                        (if username /= tag.owner || (not <| Set.member username requiredConfirmations) then
+                            []
 
-                                        else
-                                            "Show Diff"
-                                    ]
-
-                            _ ->
-                                div [ class "is-hidden" ] []
-                        , if username /= tag.owner || (not <| Set.member username requiredConfirmations) then
-                            div [ class "is-hidden" ] []
-
-                          else
+                         else
                             case tag.approvedState of
                                 BranchReview.Approved ->
-                                    button
+                                    [ button
                                         [ class "button is-warning is-fullwidth has-text-white"
                                         , onClick <| RejectTags <| Set.singleton tag.tagId
                                         ]
                                         [ text "Reject" ]
+                                    ]
 
                                 BranchReview.NotApproved ->
-                                    button
+                                    [ button
                                         [ class "button is-success is-fullwidth"
                                         , onClick <| ApproveTags <| Set.singleton tag.tagId
                                         ]
-                                        [ text "Approve" ]
+                                        [ text "Looks Good" ]
+                                    , button
+                                        [ class "button is-link is-fullwidth" ]
+                                        [ text "Update Docs" ]
+                                    ]
 
-                                BranchReview.Requesting ->
-                                    button
+                                BranchReview.RequestingApproval ->
+                                    [ button
                                         [ class "button is-success is-fullwidth is-loading" ]
                                         []
+                                    ]
 
-                                -- TOD handle error better?
+                                BranchReview.RequestingRejection ->
+                                    [ button
+                                        [ class "button is-warning is-fullwidth is-loading" ]
+                                        []
+                                    ]
+
+                                -- TODO handle error better?
                                 BranchReview.RequestFailed err ->
-                                    button
+                                    [ button
                                         [ class "button is-danger is-fullwidth"
                                         , disabled True
                                         ]
                                         [ text "Internal Error" ]
-                        ]
+                                    ]
+                        )
+                            ++ [ case renderStyle of
+                                    CM.MixedBackground { showAlteredLines } ->
+                                        button
+                                            [ class "button is-info is-fullwidth"
+                                            , onClick <| SetShowAlteredLines tag.tagId (not showAlteredLines)
+                                            ]
+                                            [ text <|
+                                                if showAlteredLines then
+                                                    "Hide Diff"
+
+                                                else
+                                                    "Show Diff"
+                                            ]
+
+                                    _ ->
+                                        div [ class "is-hidden" ] []
+                               ]
                     ]
                 ]
             ]
@@ -496,7 +514,7 @@ update msg model =
                         (BranchReview.updateTags
                             (\tag ->
                                 if Set.member tag.tagId tags then
-                                    { tag | approvedState = BranchReview.Requesting }
+                                    { tag | approvedState = BranchReview.RequestingApproval }
 
                                 else
                                     tag
@@ -552,7 +570,7 @@ update msg model =
                         (BranchReview.updateTags
                             (\tag ->
                                 if Set.member tag.tagId tags then
-                                    { tag | approvedState = BranchReview.Requesting }
+                                    { tag | approvedState = BranchReview.RequestingRejection }
 
                                 else
                                     tag

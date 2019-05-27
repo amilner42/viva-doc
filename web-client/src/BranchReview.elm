@@ -72,7 +72,8 @@ type alias Tag =
 type ApprovedState err
     = Approved
     | NotApproved
-    | Requesting
+    | RequestingApproval
+    | RequestingRejection
     | RequestFailed err
 
 
