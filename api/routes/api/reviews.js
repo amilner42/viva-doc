@@ -62,11 +62,18 @@ router.post('/review/repo/:repoId/branch/:branchName/commit/:commitId/tags/appro
     return res.status(401).send({ message: errorMessages.noAccessToApproveTagsError });
   }
 
-  // TODO handle errors (including already confirmed all tags)
-  await BranchReviewMetadata.update(
+  const updateResult = await BranchReviewMetadata.update(
     { repoId, branchName, commitId, requiredConfirmations: { $elemMatch: { $eq: username } } },
     { $addToSet: { "approvedTags": { $each: tagsToApprove } } }
   );
+
+  if (updateResult.n === 0) {
+    return res.status(403).send({ message: errorMessages.noModifyingTagsAfterConfirmation });
+  }
+
+  if (updateResult.ok !== 1) {
+    return res.status(500).send({ message: errorMessages.internalServerError });
+  }
 
   return res.json({});
 });
@@ -94,14 +101,20 @@ router.post('/review/repo/:repoId/branch/:branchName/commit/:commitId/tags/rejec
     return res.status(401).send({ message: errorMessages.noAccessToRejectTagsError });
   }
 
-  // TODO handle errors (including already confirmed all tags)
-  await BranchReviewMetadata.update(
+  const updateResult = await BranchReviewMetadata.update(
     { repoId, branchName, commitId, requiredConfirmations: { $elemMatch: { $eq: username } } },
     { $pull: { "approvedTags": { $in: tagsToReject }}}
   )
 
-  return res.json({});
+  if (updateResult.n === 0) {
+    return res.status(403).send({ message: errorMessages.noModifyingTagsAfterConfirmation });
+  }
 
+  if (updateResult.ok !== 1) {
+    return res.status(500).send({ message: errorMessages.internalServerError });
+  }
+
+  return res.json({});
 });
 
 module.exports = router;

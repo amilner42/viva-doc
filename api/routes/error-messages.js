@@ -8,12 +8,15 @@ const noAccessToApproveTagsError = "You can only approve tags that you own...";
 
 const noAccessToRejectTagsError = "You can only reject your own tags...";
 
+const noModifyingTagsAfterConfirmation = "You cannot approve/reject tags once you've given confirmation...";
+
 const internalServerError = "There was an unknown internal server error...";
 
-module.export = {
+module.exports = {
   notLoggedInError,
   noAccessToRepoError,
   internalServerError,
   noAccessToApproveTagsError,
+  noModifyingTagsAfterConfirmation,
   noAccessToRejectTagsError
 }
