@@ -1,5 +1,6 @@
-module BranchReview exposing (AlteredLine, ApprovedState(..), BranchReview, EditType(..), FileReview, FileReviewType(..), Review, ReviewType(..), Tag, countTotalReviewsAndTags, decodeBranchReview, filterFileReviews, readableTagType, updateReviews, updateTags)
+module BranchReview exposing (AlteredLine, ApprovedState(..), BranchReview, EditType(..), FileReview, FileReviewType(..), OwnerTagStatus, Review, ReviewType(..), Status(..), Tag, countTotalReviewsAndTags, decodeBranchReview, filterFileReviews, getOwnerTagStatuses, readableTagType, updateReviews, updateTags)
 
+import Dict
 import Json.Decode as Decode
 import Set
 
@@ -84,6 +85,18 @@ type TagType
     | FunctionTag
 
 
+type alias OwnerTagStatus =
+    { username : String
+    , totalTags : Int
+    , status : Status
+    }
+
+
+type Status
+    = Confirmed
+    | Unconfirmed Int
+
+
 filterFileReviews :
     { filterForUser : Maybe String
     , filterApprovedTags : Bool
@@ -140,15 +153,6 @@ fileReviewFilterTagsForUser username =
 
 fileReviewFilterTagsThatNeedApproval : FileReview -> FileReview
 fileReviewFilterTagsThatNeedApproval =
-    let
-        isApproved approvedState =
-            case approvedState of
-                Approved ->
-                    True
-
-                _ ->
-                    False
-    in
     filterFileReviewTagsAndReviews
         (\{ approvedState } -> not <| isApproved approvedState)
         (\{ tag } -> not <| isApproved tag.approvedState)
@@ -254,6 +258,120 @@ updateReviews updateReview branchReview =
             }
     in
     { branchReview | fileReviews = List.map fileReviewTagMap branchReview.fileReviews }
+
+
+getOwnerTagStatuses : BranchReview -> List OwnerTagStatus
+getOwnerTagStatuses branchReview =
+    tagFold
+        (\tag tagCountDict ->
+            let
+                tagOwner =
+                    tag.owner
+
+                tagApproved =
+                    isApproved tag.approvedState
+            in
+            Dict.update
+                tagOwner
+                (\maybeTagAcc ->
+                    case maybeTagAcc of
+                        Nothing ->
+                            Just
+                                ( if tagApproved then
+                                    1
+
+                                  else
+                                    0
+                                , 1
+                                )
+
+                        Just ( approvedTags, totalTags ) ->
+                            Just
+                                ( if tagApproved then
+                                    approvedTags + 1
+
+                                  else
+                                    approvedTags
+                                , totalTags + 1
+                                )
+                )
+                tagCountDict
+        )
+        Dict.empty
+        branchReview
+        |> Dict.toList
+        |> List.map
+            (\( owner, ( approvedTags, totalTags ) ) ->
+                { username = owner
+                , totalTags = totalTags
+                , status =
+                    if Set.member owner branchReview.requiredConfirmations then
+                        Unconfirmed approvedTags
+
+                    else
+                        Confirmed
+                }
+            )
+
+
+type ReviewOrTag
+    = AReview Review
+    | ATag Tag
+
+
+isApproved : ApprovedState err -> Bool
+isApproved approvedState =
+    case approvedState of
+        Approved ->
+            True
+
+        _ ->
+            False
+
+
+{-| A basic fold on the reviews/tags.
+-}
+reviewOrTagFold : (ReviewOrTag -> acc -> acc) -> acc -> BranchReview -> acc
+reviewOrTagFold foldFunc initAcc branchReview =
+    let
+        allTagsOrReviews : List ReviewOrTag
+        allTagsOrReviews =
+            List.foldl
+                (\fileReview reviewsOrTags ->
+                    List.append reviewsOrTags <|
+                        case fileReview.fileReviewType of
+                            NewFileReview tags ->
+                                List.map ATag tags
+
+                            DeletedFileReview tags ->
+                                List.map ATag tags
+
+                            ModifiedFileReview reviews ->
+                                List.map AReview reviews
+
+                            RenamedFileReview _ reviews ->
+                                List.map AReview reviews
+                )
+                []
+                branchReview.fileReviews
+    in
+    List.foldl foldFunc initAcc allTagsOrReviews
+
+
+{-| A basic fold on the tags.
+-}
+tagFold : (Tag -> acc -> acc) -> acc -> BranchReview -> acc
+tagFold foldFunc =
+    reviewOrTagFold
+        (\tagOrReview ->
+            foldFunc <|
+                case tagOrReview of
+                    ATag aTag ->
+                        aTag
+
+                    AReview aReview ->
+                        aReview.tag
+        )
 
 
 

@@ -4,7 +4,7 @@ import Api.Api as Api
 import Api.Core as Core
 import BranchReview
 import CustomMarkdown as CM
-import Html exposing (Html, button, div, dl, dt, i, p, span, text)
+import Html exposing (Html, button, div, dl, dt, hr, i, p, span, text)
 import Html.Attributes exposing (class, classList, disabled, style)
 import Html.Events exposing (onClick)
 import RemoteData
@@ -124,13 +124,81 @@ renderBranchReview { username, displayOnlyUsersTags, displayOnlyTagsNeedingAppro
         displayingReviews =
             BranchReview.countTotalReviewsAndTags fileReviewsToRender
     in
-    renderBranchReviewHeader
-        displayOnlyUsersTags
-        displayOnlyTagsNeedingApproval
-        displayingReviews
-        totalReviews
-        branchReview
+    renderSummaryHeader branchReview
+        :: renderBranchReviewHeader
+            displayOnlyUsersTags
+            displayOnlyTagsNeedingApproval
+            displayingReviews
+            totalReviews
+            branchReview
         :: List.map (renderFileReview username branchReview.requiredConfirmations) fileReviewsToRender
+
+
+renderSummaryHeader : BranchReview.BranchReview -> Html.Html Msg
+renderSummaryHeader branchReview =
+    let
+        ownerTagStatuses : List BranchReview.OwnerTagStatus
+        ownerTagStatuses =
+            BranchReview.getOwnerTagStatuses branchReview
+
+        totalConfirmationsRequired =
+            List.length ownerTagStatuses
+
+        remainingConfirmationsRequired =
+            Set.size branchReview.requiredConfirmations
+
+        currentConfirmations =
+            totalConfirmationsRequired - remainingConfirmationsRequired
+
+        totalTags =
+            List.foldl (\ownerTagStatus acc -> acc + ownerTagStatus.totalTags) 0 ownerTagStatuses
+
+        totalApprovedTags =
+            List.foldl
+                (\ownerTagStatus acc ->
+                    (+) acc <|
+                        case ownerTagStatus.status of
+                            BranchReview.Confirmed ->
+                                ownerTagStatus.totalTags
+
+                            BranchReview.Unconfirmed approvedTagCount ->
+                                approvedTagCount
+                )
+                0
+                ownerTagStatuses
+
+        statusSubtitle =
+            String.fromInt currentConfirmations
+                ++ " out of "
+                ++ String.fromInt totalConfirmationsRequired
+                ++ " confirmations"
+                ++ ", "
+                ++ String.fromInt totalApprovedTags
+                ++ " out of "
+                ++ String.fromInt totalTags
+                ++ " approved tags"
+    in
+    div
+        [ class "tile is-vertical" ]
+        [ div
+            [ class "tile" ]
+            [ div
+                []
+                [ span
+                    [ class "has-text-black-ter is-size-3 title"
+                    , style "padding-right" "15px"
+                    ]
+                    [ text "Status" ]
+                , span
+                    [ class "has-text-grey is-size-6" ]
+                    [ text <| statusSubtitle ]
+                ]
+            ]
+        , div
+            [ class "tile section" ]
+            [ text "TODO" ]
+        , hr [] []
+        ]
 
 
 renderBranchReviewHeader : Bool -> Bool -> Int -> Int -> BranchReview.BranchReview -> Html.Html Msg
@@ -146,10 +214,10 @@ renderBranchReviewHeader displayOnlyUsersTags displayOnlyTagsNeedingApproval dis
                 [ div
                     []
                     [ span
-                        [ class "has-text-black-ter is-size-3"
+                        [ class "has-text-black-ter is-size-3 title"
                         , style "padding-right" "15px"
                         ]
-                        [ text "Filter Options" ]
+                        [ text "Reviews" ]
                     , span
                         [ class "has-text-grey is-size-6" ]
                         [ text <|
