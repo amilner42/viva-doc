@@ -4,7 +4,7 @@ import Api.Api as Api
 import Api.Core as Core
 import BranchReview
 import CustomMarkdown as CM
-import Html exposing (Html, button, div, dl, dt, hr, i, p, span, text)
+import Html exposing (Html, button, div, dl, dt, hr, i, p, span, table, tbody, td, text, th, thead, tr)
 import Html.Attributes exposing (class, classList, disabled, style)
 import Html.Events exposing (onClick)
 import RemoteData
@@ -171,7 +171,7 @@ renderSummaryHeader branchReview =
             String.fromInt currentConfirmations
                 ++ " out of "
                 ++ String.fromInt totalConfirmationsRequired
-                ++ " confirmations"
+                ++ " approved docs"
                 ++ ", "
                 ++ String.fromInt totalApprovedTags
                 ++ " out of "
@@ -196,8 +196,49 @@ renderSummaryHeader branchReview =
             ]
         , div
             [ class "tile section" ]
-            [ text "TODO" ]
-        , hr [] []
+            [ table
+                [ class "table is-striped is-bordered is-fullwidth is-narrow" ]
+                [ thead
+                    []
+                    [ tr
+                        []
+                        [ th [] [ text "Owner" ]
+                        , th [] [ text "Tags Marked as Ready" ]
+                        , th [] [ text "Total Tags" ]
+                        , th [] [ text "Approved All Docs" ]
+                        ]
+                    ]
+                , tbody [] <|
+                    List.map
+                        (\tagOwnerStatus ->
+                            tr
+                                []
+                                [ td [] [ text tagOwnerStatus.username ]
+                                , td []
+                                    [ text <|
+                                        String.fromInt <|
+                                            case tagOwnerStatus.status of
+                                                BranchReview.Confirmed ->
+                                                    tagOwnerStatus.totalTags
+
+                                                BranchReview.Unconfirmed approvedTags ->
+                                                    approvedTags
+                                    ]
+                                , td [] [ text <| String.fromInt tagOwnerStatus.totalTags ]
+                                , td []
+                                    [ text <|
+                                        case tagOwnerStatus.status of
+                                            BranchReview.Confirmed ->
+                                                "Yes"
+
+                                            BranchReview.Unconfirmed _ ->
+                                                "No"
+                                    ]
+                                ]
+                        )
+                        ownerTagStatuses
+                ]
+            ]
         ]
 
 
