@@ -124,7 +124,7 @@ renderBranchReview { username, displayOnlyUsersTags, displayOnlyTagsNeedingAppro
         displayingReviews =
             BranchReview.countTotalReviewsAndTags fileReviewsToRender
     in
-    renderSummaryHeader branchReview
+    renderSummaryHeader username branchReview
         :: renderBranchReviewHeader
             displayOnlyUsersTags
             displayOnlyTagsNeedingApproval
@@ -134,8 +134,8 @@ renderBranchReview { username, displayOnlyUsersTags, displayOnlyTagsNeedingAppro
         :: List.map (renderFileReview username branchReview.requiredConfirmations) fileReviewsToRender
 
 
-renderSummaryHeader : BranchReview.BranchReview -> Html.Html Msg
-renderSummaryHeader branchReview =
+renderSummaryHeader : String -> BranchReview.BranchReview -> Html.Html Msg
+renderSummaryHeader username branchReview =
     let
         ownerTagStatuses : List BranchReview.OwnerTagStatus
         ownerTagStatuses =
@@ -171,12 +171,16 @@ renderSummaryHeader branchReview =
             String.fromInt currentConfirmations
                 ++ " out of "
                 ++ String.fromInt totalConfirmationsRequired
-                ++ " approved docs"
+                ++ " docs approved"
                 ++ ", "
                 ++ String.fromInt totalApprovedTags
                 ++ " out of "
                 ++ String.fromInt totalTags
-                ++ " approved tags"
+                ++ " tags approved"
+
+        maybeCurrentUserTagStatus : Maybe BranchReview.OwnerTagStatus
+        maybeCurrentUserTagStatus =
+            List.filter (.username >> (==) username) ownerTagStatuses |> List.head
     in
     div
         [ class "tile is-vertical" ]
@@ -195,7 +199,9 @@ renderSummaryHeader branchReview =
                 ]
             ]
         , div
-            [ class "tile section" ]
+            [ class "tile section"
+            , style "padding-bottom" "0px"
+            ]
             [ table
                 [ class "table is-striped is-bordered is-fullwidth is-narrow" ]
                 [ thead
@@ -203,9 +209,9 @@ renderSummaryHeader branchReview =
                     [ tr
                         []
                         [ th [] [ text "Owner" ]
-                        , th [] [ text "Tags Marked as Ready" ]
+                        , th [] [ text "Tags Approved" ]
                         , th [] [ text "Total Tags" ]
-                        , th [] [ text "Approved All Docs" ]
+                        , th [] [ text "Docs Approved" ]
                         ]
                     ]
                 , tbody [] <|
@@ -239,6 +245,43 @@ renderSummaryHeader branchReview =
                         ownerTagStatuses
                 ]
             ]
+        , case maybeCurrentUserTagStatus of
+            Nothing ->
+                div [ class "is-hidden" ] []
+
+            Just currentUserTagStatus ->
+                case currentUserTagStatus.status of
+                    BranchReview.Confirmed ->
+                        div [ class "is-hidden" ] []
+
+                    BranchReview.Unconfirmed approvedTags ->
+                        div
+                            [ class "tile section"
+                            , style "padding-top" "10px"
+                            ]
+                            [ if approvedTags == currentUserTagStatus.totalTags then
+                                button
+                                    [ class "button is-fullwidth is-success"
+                                    , style "height" "52px"
+                                    ]
+                                    [ text "approve all your documentation" ]
+
+                              else
+                                button
+                                    [ class "button is-fullwidth is-success"
+                                    , style "height" "52px"
+                                    , disabled True
+                                    ]
+                                    [ text <|
+                                        if (currentUserTagStatus.totalTags - approvedTags) == 1 then
+                                            "approve 1 more tag to approve all your documentation"
+
+                                        else
+                                            "approve "
+                                                ++ String.fromInt (currentUserTagStatus.totalTags - approvedTags)
+                                                ++ " more tags to approve all your documentation"
+                                    ]
+                            ]
         ]
 
 
@@ -506,7 +549,7 @@ renderTagOrReview { renderStyle, username, description, requiredConfirmations } 
                                         [ class "button is-success is-fullwidth"
                                         , onClick <| ApproveTags <| Set.singleton tag.tagId
                                         ]
-                                        [ text "Looks Good" ]
+                                        [ text "Approve Tag" ]
                                     , button
                                         [ class "button is-link is-fullwidth" ]
                                         [ text "Update Docs" ]
