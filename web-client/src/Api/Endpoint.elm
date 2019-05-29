@@ -1,4 +1,4 @@
-module Api.Endpoint exposing (Endpoint, branchReview, branchReviewApproveTags, branchReviewRejectTags, githubLoginFromCode, logout, request, user)
+module Api.Endpoint exposing (Endpoint, branchReview, branchReviewApproveDocs, branchReviewApproveTags, branchReviewRejectTags, githubLoginFromCode, logout, request, user)
 
 {-| This module hides creates the opaque Endpoint type and keeps all endpoints within this file so
 this file serves as the single source of truth for all app API endpoints.
@@ -112,3 +112,8 @@ branchReviewApproveTags repoId branchName commitId =
 branchReviewRejectTags : Int -> String -> String -> Endpoint
 branchReviewRejectTags repoId branchName commitId =
     url [ "review", "repo", String.fromInt repoId, "branch", branchName, "commit", commitId, "tags", "reject" ] []
+
+
+branchReviewApproveDocs : Int -> String -> String -> Endpoint
+branchReviewApproveDocs repoId branchName commitId =
+    url [ "review", "repo", String.fromInt repoId, "branch", branchName, "commit", commitId, "docs", "approve" ] []

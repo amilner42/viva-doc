@@ -17,6 +17,12 @@ import Viewer
 -- MODEL
 
 
+type ApproveDocsState err
+    = NotRequesting
+    | RequestingDocApproval
+    | RequestForDocApprovalErrored err
+
+
 type alias Model =
     { session : Session.Session
     , repoId : Int
@@ -25,6 +31,9 @@ type alias Model =
     , branchReview : RemoteData.RemoteData () BranchReview.BranchReview
     , displayOnlyUsersTags : Bool
     , displayOnlyTagsNeedingApproval : Bool
+
+    -- TODO actual error type
+    , approveDocsState : ApproveDocsState ()
     }
 
 
@@ -39,6 +48,7 @@ init session repoId branchName commitId =
             , branchReview = RemoteData.NotAsked
             , displayOnlyUsersTags = False
             , displayOnlyTagsNeedingApproval = False
+            , approveDocsState = NotRequesting
             }
     in
     case session of
@@ -90,6 +100,7 @@ view model =
                         RemoteData.Success branchReview ->
                             renderBranchReview
                                 { username = Viewer.getUsername viewer
+                                , approveDocsState = model.approveDocsState
                                 , displayOnlyUsersTags = model.displayOnlyUsersTags
                                 , displayOnlyTagsNeedingApproval = model.displayOnlyTagsNeedingApproval
                                 }
@@ -99,12 +110,13 @@ view model =
 
 renderBranchReview :
     { username : String
+    , approveDocsState : ApproveDocsState err
     , displayOnlyUsersTags : Bool
     , displayOnlyTagsNeedingApproval : Bool
     }
     -> BranchReview.BranchReview
     -> List (Html.Html Msg)
-renderBranchReview { username, displayOnlyUsersTags, displayOnlyTagsNeedingApproval } branchReview =
+renderBranchReview { username, displayOnlyUsersTags, displayOnlyTagsNeedingApproval, approveDocsState } branchReview =
     let
         fileReviewsToRender =
             BranchReview.filterFileReviews
@@ -124,18 +136,18 @@ renderBranchReview { username, displayOnlyUsersTags, displayOnlyTagsNeedingAppro
         displayingReviews =
             BranchReview.countTotalReviewsAndTags fileReviewsToRender
     in
-    renderSummaryHeader username branchReview
+    renderSummaryHeader username approveDocsState branchReview
         :: renderBranchReviewHeader
             displayOnlyUsersTags
             displayOnlyTagsNeedingApproval
             displayingReviews
             totalReviews
             branchReview
-        :: List.map (renderFileReview username branchReview.requiredConfirmations) fileReviewsToRender
+        :: List.map (renderFileReview username branchReview.requiredConfirmations approveDocsState) fileReviewsToRender
 
 
-renderSummaryHeader : String -> BranchReview.BranchReview -> Html.Html Msg
-renderSummaryHeader username branchReview =
+renderSummaryHeader : String -> ApproveDocsState err -> BranchReview.BranchReview -> Html.Html Msg
+renderSummaryHeader username approveDocsState branchReview =
     let
         ownerTagStatuses : List BranchReview.OwnerTagStatus
         ownerTagStatuses =
@@ -200,7 +212,6 @@ renderSummaryHeader username branchReview =
             ]
         , div
             [ class "tile section"
-            , style "padding-bottom" "0px"
             ]
             [ table
                 [ class "table is-striped is-bordered is-fullwidth is-narrow" ]
@@ -257,14 +268,40 @@ renderSummaryHeader username branchReview =
                     BranchReview.Unconfirmed approvedTags ->
                         div
                             [ class "tile section"
-                            , style "padding-top" "10px"
+                            , style "margin-top" "-80px"
                             ]
                             [ if approvedTags == currentUserTagStatus.totalTags then
                                 button
                                     [ class "button is-fullwidth is-success"
+                                    , classList
+                                        [ ( "is-loading"
+                                          , case approveDocsState of
+                                                RequestingDocApproval ->
+                                                    True
+
+                                                _ ->
+                                                    False
+                                          )
+                                        ]
+                                    , disabled <|
+                                        case approveDocsState of
+                                            RequestForDocApprovalErrored _ ->
+                                                True
+
+                                            _ ->
+                                                False
                                     , style "height" "52px"
+                                    , onClick <| ApproveDocs username
                                     ]
-                                    [ text "approve all your documentation" ]
+                                    [ text <|
+                                        case approveDocsState of
+                                            -- TODO handle error better
+                                            RequestForDocApprovalErrored err ->
+                                                "Internal Error"
+
+                                            _ ->
+                                                "approve all your documentation"
+                                    ]
 
                               else
                                 button
@@ -358,8 +395,8 @@ renderBranchReviewHeader displayOnlyUsersTags displayOnlyTagsNeedingApproval dis
         ]
 
 
-renderFileReview : String -> Set.Set String -> BranchReview.FileReview -> Html.Html Msg
-renderFileReview username requiredConfirmations fileReview =
+renderFileReview : String -> Set.Set String -> ApproveDocsState err -> BranchReview.FileReview -> Html.Html Msg
+renderFileReview username requiredConfirmations approveDocsState fileReview =
     div [ class "section" ] <|
         [ renderFileReviewHeader fileReview
         , case fileReview.fileReviewType of
@@ -369,6 +406,7 @@ renderFileReview username requiredConfirmations fileReview =
                     "This tag has been added to a new file"
                     requiredConfirmations
                     CM.GreenBackground
+                    approveDocsState
                     tags
 
             BranchReview.DeletedFileReview tags ->
@@ -377,18 +415,21 @@ renderFileReview username requiredConfirmations fileReview =
                     "This tag is being removed inside a deleted file"
                     requiredConfirmations
                     CM.RedBackground
+                    approveDocsState
                     tags
 
             BranchReview.ModifiedFileReview reviews ->
                 renderReviews
                     username
                     requiredConfirmations
+                    approveDocsState
                     reviews
 
             BranchReview.RenamedFileReview _ reviews ->
                 renderReviews
                     username
                     requiredConfirmations
+                    approveDocsState
                     reviews
         ]
 
@@ -421,8 +462,8 @@ renderFileReviewHeader fileReview =
         ]
 
 
-renderTags : String -> String -> Set.Set String -> CM.RenderStyle -> List BranchReview.Tag -> Html.Html Msg
-renderTags username description requiredConfirmations renderStyle tags =
+renderTags : String -> String -> Set.Set String -> CM.RenderStyle -> ApproveDocsState err -> List BranchReview.Tag -> Html.Html Msg
+renderTags username description requiredConfirmations renderStyle approveDocsState tags =
     div [ class "tile is-ancestor is-vertical" ] <|
         List.map
             (renderTagOrReview
@@ -430,13 +471,14 @@ renderTags username description requiredConfirmations renderStyle tags =
                 , username = username
                 , description = description
                 , requiredConfirmations = requiredConfirmations
+                , approveDocsState = approveDocsState
                 }
             )
             tags
 
 
-renderReviews : String -> Set.Set String -> List BranchReview.Review -> Html.Html Msg
-renderReviews username requiredConfirmations reviews =
+renderReviews : String -> Set.Set String -> ApproveDocsState err -> List BranchReview.Review -> Html.Html Msg
+renderReviews username requiredConfirmations approveDocsState reviews =
     div [ class "tile is-ancestor is-vertical" ] <|
         List.map
             (\review ->
@@ -463,6 +505,7 @@ renderReviews username requiredConfirmations reviews =
                             BranchReview.ReviewModifiedTag _ _ ->
                                 "This tag has been modified"
                     , requiredConfirmations = requiredConfirmations
+                    , approveDocsState = approveDocsState
                     }
                     review.tag
             )
@@ -473,11 +516,12 @@ renderTagOrReview :
     { renderStyle : CM.RenderStyle
     , username : String
     , description : String
+    , approveDocsState : ApproveDocsState err
     , requiredConfirmations : Set.Set String
     }
     -> BranchReview.Tag
     -> Html.Html Msg
-renderTagOrReview { renderStyle, username, description, requiredConfirmations } tag =
+renderTagOrReview { renderStyle, username, description, requiredConfirmations, approveDocsState } tag =
     div [ class "tile is-parent" ]
         [ div
             [ class "tile is-8 is-child" ]
@@ -539,6 +583,13 @@ renderTagOrReview { renderStyle, username, description, requiredConfirmations } 
                                 BranchReview.Approved ->
                                     [ button
                                         [ class "button is-warning is-fullwidth has-text-white"
+                                        , disabled <|
+                                            case approveDocsState of
+                                                RequestingDocApproval ->
+                                                    True
+
+                                                _ ->
+                                                    False
                                         , onClick <| RejectTags <| Set.singleton tag.tagId
                                         ]
                                         [ text "Reject" ]
@@ -547,6 +598,13 @@ renderTagOrReview { renderStyle, username, description, requiredConfirmations } 
                                 BranchReview.NotApproved ->
                                     [ button
                                         [ class "button is-success is-fullwidth"
+                                        , disabled <|
+                                            case approveDocsState of
+                                                RequestingDocApproval ->
+                                                    True
+
+                                                _ ->
+                                                    False
                                         , onClick <| ApproveTags <| Set.singleton tag.tagId
                                         ]
                                         [ text "Approve Tag" ]
@@ -612,6 +670,8 @@ type Msg
     | CompletedApproveTags (Set.Set String) (Result.Result (Core.HttpError ()) ())
     | RejectTags (Set.Set String)
     | CompletedRejectTags (Set.Set String) (Result.Result (Core.HttpError ()) ())
+    | ApproveDocs String
+    | CompletedApproveDocs String (Result.Result (Core.HttpError ()) ())
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -774,6 +834,31 @@ update msg model =
               }
             , Cmd.none
             )
+
+        ApproveDocs username ->
+            ( { model | approveDocsState = RequestingDocApproval }
+            , Api.postApproveDocs model.repoId model.branchName model.commitId <| CompletedApproveDocs username
+            )
+
+        CompletedApproveDocs username (Ok _) ->
+            ( { model
+                | branchReview =
+                    RemoteData.map
+                        (\branchReview ->
+                            { branchReview
+                                | requiredConfirmations =
+                                    Set.remove username branchReview.requiredConfirmations
+                            }
+                        )
+                        model.branchReview
+                , approveDocsState = NotRequesting
+              }
+            , Cmd.none
+            )
+
+        -- TODO handle error
+        CompletedApproveDocs username (Err _) ->
+            ( { model | approveDocsState = RequestForDocApprovalErrored () }, Cmd.none )
 
 
 

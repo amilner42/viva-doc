@@ -1,4 +1,4 @@
-module Api.Api exposing (GetBranchReviewResponse(..), GithubLoginBody, getBranchReview, getLogout, getUser, githubLoginFromCode, postApproveTags, postRejectTags)
+module Api.Api exposing (GetBranchReviewResponse(..), GithubLoginBody, getBranchReview, getLogout, getUser, githubLoginFromCode, postApproveDocs, postApproveTags, postRejectTags)
 
 {-| This module strictly contains the routes to the API and their respective errors.
 
@@ -111,6 +111,21 @@ postRejectTags repoId branchName commitId tags handleResult =
         standardTimeout
         Nothing
         (Http.jsonBody encodedTags)
+        (Core.expectJson handleResult (Decode.succeed ()) (Decode.succeed ()))
+
+
+postApproveDocs :
+    Int
+    -> String
+    -> String
+    -> (Result.Result (Core.HttpError ()) () -> msg)
+    -> Cmd.Cmd msg
+postApproveDocs repoId branchName commitId handleResult =
+    Core.post
+        (Endpoint.branchReviewApproveDocs repoId branchName commitId)
+        standardTimeout
+        Nothing
+        Http.emptyBody
         (Core.expectJson handleResult (Decode.succeed ()) (Decode.succeed ()))
 
 

@@ -117,4 +117,72 @@ router.post('/review/repo/:repoId/branch/:branchName/commit/:commitId/tags/rejec
   return res.json({});
 });
 
+router.post('/review/repo/:repoId/branch/:branchName/commit/:commitId/docs/approve'
+, async function (req, res, next) {
+
+  const user = req.user;
+  const { repoId, branchName, commitId } = req.params;
+
+  if(!user) { return res.status(401).send({ message: errorMessages.notLoggedInError }); }
+
+  const basicUserData = await github.getBasicUserData(user.username, user.accessToken);
+  const hasAccessToRepo = github.hasAccessToRepo(basicUserData.repos, repoId)
+
+  if (!hasAccessToRepo) { return res.status(401).send({ message: errorMessages.noAccessToRepoError }); }
+
+  const username = user.username;
+
+  // TODO handle not finding branchReview / branchReviewMetadata (could be already confirmed if metadata not found)
+  const branchReview = (await BranchReview.findOne({ repoId, branchName, commitId })).toObject();
+  const branchReviewMetadata = (await BranchReviewMetadata.findOne({
+    repoId,
+    branchName,
+    commitId,
+    requiredConfirmations: { $elemMatch: { $eq: username } }
+  })).toObject();
+
+  const allUsersTagsApproved = R.all((fileReview) => {
+    const tags = getTags(fileReview);
+
+    return R.all((tag) => {
+      const isOwner = tag.owner === username;
+      const tagApproved = R.any((approvedTag) => {
+        return tag.tagId.equals(approvedTag);
+      }, branchReviewMetadata.approvedTags)
+
+      return !isOwner || tagApproved;
+    }, tags);
+
+  }, branchReview.fileReviews);
+
+  if (!allUsersTagsApproved) {
+    return res.status(403).send({ message: errorMessages.noApprovingDocsBeforeAllTagsApproved });
+  }
+
+  const updateResult = await BranchReviewMetadata.update(
+    { repoId, branchName, commitId, requiredConfirmations: { $elemMatch: { $eq: username } } },
+    { $pull: { "requiredConfirmations": username }}
+  )
+
+  // TODO check update result to verify ok
+
+  return res.json({});
+});
+
+const getTags = (fileReview) => {
+
+  switch (fileReview.fileReviewType) {
+
+    case "deleted-file":
+    case "new-file":
+      return fileReview.tags;
+
+    case "modified-file":
+    case "renamed-file":
+      return R.map((review) => { return review.tag }, fileReview.reviews)
+
+  }
+}
+
+
 module.exports = router;

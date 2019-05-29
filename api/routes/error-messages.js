@@ -10,6 +10,8 @@ const noAccessToRejectTagsError = "You can only reject your own tags...";
 
 const noModifyingTagsAfterConfirmation = "You cannot approve/reject tags once you've given confirmation...";
 
+const noApprovingDocsBeforeAllTagsApproved = "You must approve all your tags before approving all your documentation...";
+
 const internalServerError = "There was an unknown internal server error...";
 
 module.exports = {
@@ -18,5 +20,6 @@ module.exports = {
   internalServerError,
   noAccessToApproveTagsError,
   noModifyingTagsAfterConfirmation,
-  noAccessToRejectTagsError
+  noAccessToRejectTagsError,
+  noApprovingDocsBeforeAllTagsApproved
 }
