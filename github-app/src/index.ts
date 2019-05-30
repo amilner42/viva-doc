@@ -6,11 +6,6 @@ import mongoose = require("mongoose")
 
 const VIVA_DOC_STATUS_NAME = "continuous-documentation/viva-doc"
 
-// TODO add env for prod
-const getBranchReviewUrl = (repoId: string, branchName: string, commitId: string): string => {
-  return `http://localhost:8080/review/repo/${repoId}/branch/${branchName}/commit/${commitId}`
-}
-
 // TODO add prod env for mongo uri
 mongoose.connect('mongodb://localhost/viva-doc-dev', { useNewUrlParser: true }, (err) => {
   if (err) {
@@ -22,10 +17,11 @@ mongoose.connect('mongodb://localhost/viva-doc-dev', { useNewUrlParser: true }, 
   }
 })
 
-require("./models/BranchReview")
-require("./models/BranchReviewMetadata")
+require("./models/PullRequestReview")
+require("./models/CommitReview")
 
 // All imports to internal modules should be here so that all mongoose schemas have loaded first
+const PullRequestReview = mongoose.model('PullRequestReview')
 import * as Analysis from "./analysis"
 
 export = (app: Probot.Application) => {
@@ -62,40 +58,116 @@ export = (app: Probot.Application) => {
   //   }), repos)
   // })
 
+  // TODO what about reopened?
+  app.on("pull_request.opened", async (context) => {
+
+    const prPayload = context.payload
+    const { owner } = context.repo()
+    const repoId = (prPayload.repository as any).id
+    const repoFullName: string = (prPayload.repository as any).full_name
+    const repoName: string = (prPayload.repository as any).name
+    const branchName: string = (prPayload.pull_request as any).head.ref
+    const pullRequestId: number = (prPayload.pull_request as any).id
+    const pullRequestNumber: number = (prPayload.pull_request as any).number
+    const headCommitId = (prPayload.pull_request as any).head.sha
+
+    const baseBranchName = (prPayload.pull_request as any).base.ref
+    const baseCommitId = (prPayload.pull_request as any).base.sha
+
+    const pullRequestReview = new PullRequestReview({
+      repoId,
+      repoFullName,
+      branchName,
+      baseBranchName,
+      pullRequestId,
+      pullRequestNumber,
+      headCommitId,
+      headCommitApprovedTags: null,
+      headCommitRejectedTags: null,
+      headCommitRemainingOwnersToApproveDocs: null,
+      headCommitTagsAndOwners: null,
+      pendingAnalysisForCommits: [ headCommitId ],
+      currentAnalysisLastCommitWithSuccessStatus: baseCommitId,
+      currentAnalysisLastAnalyzedCommit: null
+    })
+
+    try {
+      await pullRequestReview.save();
+    } catch (err) {
+      // TODO Handle error
+      console.log(`Error saving pull request review: ${err} - ${JSON.stringify(err)}`)
+    }
+
+    // TODO CONTINUE trigger pipeline
+
+    // Analysis.pipeline(
+    //   repoId,
+    //   repoFullName,
+    //   branchName,
+    //   headCommitId,
+    //   () => getBranchReviewUrl(repoId, prNumber, headCommitId),
+    //   () => retrieveDiff(context, owner, repoName, baseBranchName, branchName),
+    //   retrieveFiles(context, owner, repoName, baseCommitId, headCommitId),
+    //   setStatus(context, owner, repoName, headCommitId)
+    // ).catch((err: any) => {
+    //   console.log(`Analysis Pipeline Error: ${err} --- ${JSON.stringify(err)}`)
+    // })
+  })
+
   app.on("push", async (context) => {
+
+    // TODO check if this push is for tags / branches to prevent errors below.
 
     const pushPayload = context.payload
     const repoId: string = (pushPayload.repository as any).id
-    const repoFullName: string = (pushPayload.repository as any).full_name
     const repoName: string = (pushPayload.repository as any).name
     const branchName: string = (R.last(pushPayload.ref.split("/")) as any) // TODO errors?
     const { owner } = context.repo()
     const headCommitId: string = pushPayload.after
 
-    const baseBranchInfo = await getBaseBranch(context, repoName, branchName, owner)
-    if (baseBranchInfo === null) { return }
-    const { baseBranchName, baseBranchId } = baseBranchInfo
+    const prNumbers = await getOpenPullRequestsForBranch(context, repoName, branchName, owner)
 
-    Analysis.pipeline(
-      repoId,
-      repoFullName,
-      branchName,
-      headCommitId,
-      () => getBranchReviewUrl(repoId, branchName, headCommitId),
-      () => retrieveDiff(context, owner, repoName, baseBranchName, branchName),
-      retrieveFiles(context, owner, repoName, baseBranchId, headCommitId),
-      setStatus(context, owner, repoName, headCommitId)
-    ).catch((err: any) => {
-      console.log(`Analysis Pipeline Error: ${err} --- ${JSON.stringify(err)}`)
-    })
+    // Perform analysis on all relevant open PRs.
+    await R.map( async (pullRequestNumber) => {
+
+      const pullRequestReview = await PullRequestReview.findOneAndUpdate(
+        { repoId, pullRequestNumber },
+        { $push: { "pendingAnalysisForCommits": headCommitId }}
+      ).exec();
+
+      // TODO handle error better?
+      if (pullRequestReview === null) {
+        const errMessage =
+          `Missing PullRequestReview object for --- repoId: ${repoId}, prNumber: ${pullRequestNumber}`
+        console.log(errMessage);
+        return;
+      }
+
+      const pullRequestReviewObject = pullRequestReview.toObject();
+
+      if (pullRequestReviewObject.pendingAnalysisForCommits.length === 1) {
+        // TODO CONTINUE trigger pipeline
+        return
+      }
+
+      // Otherwise there is already something being analyzed and this will be analyzed in order when all other
+      // commits finish being analyzed.
+      return;
+
+    }, prNumbers)
 
    })
-
 }
 
-const getBaseBranch = R.curry(
+/** Return an array of pull request numbers representing open pull requests for that branch.
+
+TODO Check can we ever even get more than one? I think maybe if the same branch has 2 PRs for 2 dif base branches?
+
+TODO handle errors?
+*/
+const getOpenPullRequestsForBranch =
   async (context: Probot.Context, repoName: string, branchName: string, owner: string)
-  : Promise<null | { baseBranchName: string, baseBranchId: string }> => {
+  : Promise<Number[]> => {
 
   // TODO check this is good when under an organization?
   const pullListResponse = await context.github.pulls.list({
@@ -105,25 +177,16 @@ const getBaseBranch = R.curry(
     head: `${owner}:${branchName}`
   })
 
-  if (pullListResponse.data.length === 0) {
-    return null;
-  }
+  return R.map((datum) => { return datum.number },  pullListResponse.data)
+}
 
-  if (pullListResponse.data.length > 1) {
-    throw new Error(`Not sure which diff to use with ${pullListResponse.data.length} PRs`)
-  }
-
-  const pullRequest = pullListResponse.data[0]
-
-  return { baseBranchName: pullRequest.base.ref, baseBranchId: pullRequest.base.sha }
-})
-
+/** TODO DOC */
 const retrieveDiff = R.curry(
   async ( context: Probot.Context
   , owner: string
   , repo: string
-  , baseBranchName: string
-  , headBranchName: string
+  , baseBranchNameOrCommitSHA: string
+  , headBranchNameOrCommitSHA: string
   ) : Promise<any> => {
 
   // Need the correct accept header to get the diff:
@@ -136,11 +199,12 @@ const retrieveDiff = R.curry(
     headers: diffAcceptHeader,
     owner,
     repo,
-    base: baseBranchName,
-    head: headBranchName
+    base: baseBranchNameOrCommitSHA,
+    head: headBranchNameOrCommitSHA
   } as any).then(R.path(["data"]))
 })
 
+/** TODO DOC */
 const retrieveFiles = R.curry(
   async ( context: Probot.Context
   , owner: string
@@ -171,6 +235,7 @@ const retrieveFiles = R.curry(
   return [ previousFile, currentFile ]
 })
 
+/** TODO DOC */
 const setStatus = R.curry(
   async ( context: Probot.Context
   , owner: string
@@ -192,3 +257,12 @@ const setStatus = R.curry(
 
   return context.github.repos.createStatus(settings).then(R.path(["data"]))
 })
+
+
+/** TODO DOC
+
+TODO add env for prod.
+ */
+const getBranchReviewUrl = (repoId: string, prNumber: number, commitId: string): string => {
+  return `http://localhost:8080/review/repo/${repoId}/pr/${prNumber}/commit/${commitId}`
+}

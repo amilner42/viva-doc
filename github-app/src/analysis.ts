@@ -9,8 +9,6 @@ import * as Lang from "./languages/index"
 import * as AppError from "./error"
 
 import mongoose from "mongoose"
-const BranchReview = mongoose.model('BranchReview')
-const BranchReviewMetadata = mongoose.model('BranchReviewMetadata')
 
 /** EXTERNAL FUNCTIONS */
 
@@ -25,36 +23,36 @@ export const pipeline = async (
   setStatus: (statusState: "success" | "failure" | "pending", optional?: { description?: string, target_url?: string }) => Promise<any>
 ) => {
 
-  // TODO "base branch" should be the name of the base branch.
-  await setStatus("pending", { description: "Analyzing documentation against base branch..." })
-
-  const fileReviewsNeedingApproval = await getFileReviewsWithMetadataNeedingApproval(retrieveDiff, retrieveFiles)
-
-  if (fileReviewsNeedingApproval.length === 0) {
-    await setStatus("success", { description: "No tags require approval" })
-    return
-  }
-
-  // TODO for prod handle errors
-  const branchReview = new BranchReview({
-    repoId,
-    repoFullName,
-    branchName,
-    commitId: finalCommitId,
-    fileReviews: fileReviewsNeedingApproval
-  })
-
-  const branchReviewMetadata = new BranchReviewMetadata({
-    repoId,
-    branchName,
-    commitId: finalCommitId,
-    approvedTags: [ ],
-    requiredConfirmations: Review.getRequiredConfirmations(fileReviewsNeedingApproval)
-  })
-
-  await branchReview.save()
-  await branchReviewMetadata.save()
-  await setStatus("failure", { description: "Tags require approval", target_url: getBranchReviewUrl() })
+  // // TODO "base branch" should be the name of the base branch.
+  // await setStatus("pending", { description: "Analyzing documentation against base branch..." })
+  //
+  // const fileReviewsNeedingApproval = await getFileReviewsWithMetadataNeedingApproval(retrieveDiff, retrieveFiles)
+  //
+  // if (fileReviewsNeedingApproval.length === 0) {
+  //   await setStatus("success", { description: "No tags require approval" })
+  //   return
+  // }
+  //
+  // // TODO for prod handle errors
+  // const branchReview = new BranchReview({
+  //   repoId,
+  //   repoFullName,
+  //   branchName,
+  //   commitId: finalCommitId,
+  //   fileReviews: fileReviewsNeedingApproval
+  // })
+  //
+  // const branchReviewMetadata = new BranchReviewMetadata({
+  //   repoId,
+  //   branchName,
+  //   commitId: finalCommitId,
+  //   approvedTags: [ ],
+  //   requiredConfirmations: Review.getRequiredConfirmations(fileReviewsNeedingApproval)
+  // })
+  //
+  // await branchReview.save()
+  // await branchReviewMetadata.save()
+  // await setStatus("failure", { description: "Tags require approval", target_url: getBranchReviewUrl() })
 }
 
 export const getFileReviewsWithMetadataNeedingApproval = async (
