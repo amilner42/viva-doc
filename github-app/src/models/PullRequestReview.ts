@@ -1,5 +1,22 @@
 import mongoose = require("mongoose")
 
+export interface PullRequestReview {
+  repoId: string,
+  repoFullName: string,
+  branchName: string,
+  baseBranchName: string,
+  pullRequestId: string,
+  pullRequestNumber: number,
+  headCommitId: string,
+  headCommitApprovedTags: string[] | null,
+  headCommitRejectedTags: string[] | null,
+  headCommitRemainingOwnersToApproveDocs: string[] | null,
+  headCommitTagsAndOwners: { owner: string, tagId: string }[] | null,
+  pendingAnalysisForCommits: string[],
+  currentAnalysisLastCommitWithSuccessStatus: string,
+  currentAnalysisLastAnalyzedCommit: string | null
+}
+
 const PullRequestReviewSchema = new mongoose.Schema({
   repoId: { type: String, required: [true, "can't be blank"], index: true },
   repoFullName: { type: String, required: [true, "can't be blank"] },
