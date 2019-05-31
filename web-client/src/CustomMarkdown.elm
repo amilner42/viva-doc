@@ -3,7 +3,7 @@ module CustomMarkdown exposing (RenderStyle(..), getMarkdown)
 {-| Module for handling rendering markdown.
 -}
 
-import BranchReview
+import CommitReview
 import Html exposing (div)
 import Html.Attributes exposing (class, style)
 import Markdown
@@ -13,7 +13,7 @@ type RenderStyle
     = GreenBackground
     | RedBackground
     | PlainBackground
-    | MixedBackground { alteredLines : List BranchReview.AlteredLine, showAlteredLines : Bool }
+    | MixedBackground { alteredLines : List CommitReview.AlteredLine, showAlteredLines : Bool }
 
 
 {-| Get the markdown for some content.
@@ -65,7 +65,7 @@ getMarkdownBlocksForAlteredLines :
     List String
     -> Int
     -> String
-    -> List BranchReview.AlteredLine
+    -> List CommitReview.AlteredLine
     -> List (Html.Html msg)
 getMarkdownBlocksForAlteredLines content startLineNumber language alteredLines =
     let
@@ -101,7 +101,7 @@ getMarkdownBlocksForAlteredLines content startLineNumber language alteredLines =
         go :
             List String
             -> Int
-            -> List BranchReview.AlteredLine
+            -> List CommitReview.AlteredLine
             -> DiffAccumulator
             -> List { cssClass : String, content : String }
             -> List { cssClass : String, content : String }
@@ -121,7 +121,7 @@ getMarkdownBlocksForAlteredLines content startLineNumber language alteredLines =
                 -- Only altered lines remaining
                 ( [], firstRemainingAlteredLine :: restOfRemainingAlteredLines ) ->
                     case ( firstRemainingAlteredLine.editType, diffAcc ) of
-                        ( BranchReview.Insertion, Green greenContent ) ->
+                        ( CommitReview.Insertion, Green greenContent ) ->
                             go
                                 []
                                 (currentLineNumber + 1)
@@ -129,7 +129,7 @@ getMarkdownBlocksForAlteredLines content startLineNumber language alteredLines =
                                 (Green <| greenContent ++ [ firstRemainingAlteredLine.content ])
                                 finalResult
 
-                        ( BranchReview.Insertion, _ ) ->
+                        ( CommitReview.Insertion, _ ) ->
                             go
                                 []
                                 (currentLineNumber + 1)
@@ -137,7 +137,7 @@ getMarkdownBlocksForAlteredLines content startLineNumber language alteredLines =
                                 (Green [ firstRemainingAlteredLine.content ])
                                 (addDiffAccToFinalResult diffAcc finalResult)
 
-                        ( BranchReview.Deletion, Red redContent ) ->
+                        ( CommitReview.Deletion, Red redContent ) ->
                             go
                                 []
                                 currentLineNumber
@@ -145,7 +145,7 @@ getMarkdownBlocksForAlteredLines content startLineNumber language alteredLines =
                                 (Red <| redContent ++ [ firstRemainingAlteredLine.content ])
                                 finalResult
 
-                        ( BranchReview.Deletion, _ ) ->
+                        ( CommitReview.Deletion, _ ) ->
                             go
                                 []
                                 currentLineNumber
@@ -157,7 +157,7 @@ getMarkdownBlocksForAlteredLines content startLineNumber language alteredLines =
                 ( firstContentLine :: restOfRemainingContent, firstRemainingAlteredLine :: restOfRemainingAlteredLines ) ->
                     if firstRemainingAlteredLine.currentLineNumber == currentLineNumber then
                         case firstRemainingAlteredLine.editType of
-                            BranchReview.Deletion ->
+                            CommitReview.Deletion ->
                                 case diffAcc of
                                     Red redContent ->
                                         go
@@ -175,7 +175,7 @@ getMarkdownBlocksForAlteredLines content startLineNumber language alteredLines =
                                             (Red <| [ firstRemainingAlteredLine.content ])
                                             (addDiffAccToFinalResult diffAcc finalResult)
 
-                            BranchReview.Insertion ->
+                            CommitReview.Insertion ->
                                 case diffAcc of
                                     Green greenContent ->
                                         go

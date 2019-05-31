@@ -1,4 +1,4 @@
-module Api.Endpoint exposing (Endpoint, branchReview, branchReviewApproveDocs, branchReviewApproveTags, branchReviewRejectTags, githubLoginFromCode, logout, request, user)
+module Api.Endpoint exposing (Endpoint, commitReview, commitReviewApproveDocs, commitReviewApproveTags, commitReviewRejectTags, githubLoginFromCode, logout, request, user)
 
 {-| This module hides creates the opaque Endpoint type and keeps all endpoints within this file so
 this file serves as the single source of truth for all app API endpoints.
@@ -99,21 +99,21 @@ user =
     url [ "user" ] []
 
 
-branchReview : Int -> String -> String -> Endpoint
-branchReview repoId branchName commitId =
+commitReview : Int -> String -> String -> Endpoint
+commitReview repoId branchName commitId =
     url [ "review", "repo", String.fromInt repoId, "branch", branchName, "commit", commitId ] []
 
 
-branchReviewApproveTags : Int -> String -> String -> Endpoint
-branchReviewApproveTags repoId branchName commitId =
+commitReviewApproveTags : Int -> String -> String -> Endpoint
+commitReviewApproveTags repoId branchName commitId =
     url [ "review", "repo", String.fromInt repoId, "branch", branchName, "commit", commitId, "tags", "approve" ] []
 
 
-branchReviewRejectTags : Int -> String -> String -> Endpoint
-branchReviewRejectTags repoId branchName commitId =
+commitReviewRejectTags : Int -> String -> String -> Endpoint
+commitReviewRejectTags repoId branchName commitId =
     url [ "review", "repo", String.fromInt repoId, "branch", branchName, "commit", commitId, "tags", "reject" ] []
 
 
-branchReviewApproveDocs : Int -> String -> String -> Endpoint
-branchReviewApproveDocs repoId branchName commitId =
+commitReviewApproveDocs : Int -> String -> String -> Endpoint
+commitReviewApproveDocs repoId branchName commitId =
     url [ "review", "repo", String.fromInt repoId, "branch", branchName, "commit", commitId, "docs", "approve" ] []

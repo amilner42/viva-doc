@@ -1,11 +1,11 @@
-module BranchReview exposing (AlteredLine, ApprovedState(..), BranchReview, EditType(..), FileReview, FileReviewType(..), OwnerTagStatus, Review, ReviewType(..), Status(..), Tag, countTotalReviewsAndTags, decodeBranchReview, filterFileReviews, getOwnerTagStatuses, readableTagType, updateReviews, updateTags)
+module CommitReview exposing (AlteredLine, ApprovedState(..), CommitReview, EditType(..), FileReview, FileReviewType(..), OwnerTagStatus, Review, ReviewType(..), Status(..), Tag, countTotalReviewsAndTags, decodeCommitReview, filterFileReviews, getOwnerTagStatuses, readableTagType, updateReviews, updateTags)
 
 import Dict
 import Json.Decode as Decode
 import Set
 
 
-type alias BranchReview =
+type alias CommitReview =
     { repoId : String
     , repoFullName : String
     , branchName : String
@@ -209,10 +209,10 @@ readableTagType tagType =
             "Function Tag"
 
 
-{-| Update all tags in a branch review.
+{-| Update all tags in a commit review.
 -}
-updateTags : (Tag -> Tag) -> BranchReview -> BranchReview
-updateTags updateTag branchReview =
+updateTags : (Tag -> Tag) -> CommitReview -> CommitReview
+updateTags updateTag commitReview =
     let
         updateReview : Review -> Review
         updateReview review =
@@ -236,11 +236,11 @@ updateTags updateTag branchReview =
                             RenamedFileReview previousFilePath <| List.map updateReview reviews
             }
     in
-    { branchReview | fileReviews = List.map fileReviewTagMap branchReview.fileReviews }
+    { commitReview | fileReviews = List.map fileReviewTagMap commitReview.fileReviews }
 
 
-updateReviews : (Review -> Review) -> BranchReview -> BranchReview
-updateReviews updateReview branchReview =
+updateReviews : (Review -> Review) -> CommitReview -> CommitReview
+updateReviews updateReview commitReview =
     let
         fileReviewTagMap : FileReview -> FileReview
         fileReviewTagMap fileReview =
@@ -257,11 +257,11 @@ updateReviews updateReview branchReview =
                             other
             }
     in
-    { branchReview | fileReviews = List.map fileReviewTagMap branchReview.fileReviews }
+    { commitReview | fileReviews = List.map fileReviewTagMap commitReview.fileReviews }
 
 
-getOwnerTagStatuses : BranchReview -> List OwnerTagStatus
-getOwnerTagStatuses branchReview =
+getOwnerTagStatuses : CommitReview -> List OwnerTagStatus
+getOwnerTagStatuses commitReview =
     tagFold
         (\tag tagCountDict ->
             let
@@ -298,14 +298,14 @@ getOwnerTagStatuses branchReview =
                 tagCountDict
         )
         Dict.empty
-        branchReview
+        commitReview
         |> Dict.toList
         |> List.map
             (\( owner, ( approvedTags, totalTags ) ) ->
                 { username = owner
                 , totalTags = totalTags
                 , status =
-                    if Set.member owner branchReview.requiredConfirmations then
+                    if Set.member owner commitReview.requiredConfirmations then
                         Unconfirmed approvedTags
 
                     else
@@ -331,8 +331,8 @@ isApproved approvedState =
 
 {-| A basic fold on the reviews/tags.
 -}
-reviewOrTagFold : (ReviewOrTag -> acc -> acc) -> acc -> BranchReview -> acc
-reviewOrTagFold foldFunc initAcc branchReview =
+reviewOrTagFold : (ReviewOrTag -> acc -> acc) -> acc -> CommitReview -> acc
+reviewOrTagFold foldFunc initAcc commitReview =
     let
         allTagsOrReviews : List ReviewOrTag
         allTagsOrReviews =
@@ -353,14 +353,14 @@ reviewOrTagFold foldFunc initAcc branchReview =
                                 List.map AReview reviews
                 )
                 []
-                branchReview.fileReviews
+                commitReview.fileReviews
     in
     List.foldl foldFunc initAcc allTagsOrReviews
 
 
 {-| A basic fold on the tags.
 -}
-tagFold : (Tag -> acc -> acc) -> acc -> BranchReview -> acc
+tagFold : (Tag -> acc -> acc) -> acc -> CommitReview -> acc
 tagFold foldFunc =
     reviewOrTagFold
         (\tagOrReview ->
@@ -378,12 +378,12 @@ tagFold foldFunc =
 -- Encoders and decoders
 
 
-decodeBranchReview : Decode.Decoder BranchReview
-decodeBranchReview =
+decodeCommitReview : Decode.Decoder CommitReview
+decodeCommitReview =
     Decode.field "approvedTags" (Decode.list Decode.string |> Decode.map Set.fromList)
         |> Decode.andThen
             (\approvedTags ->
-                Decode.map6 BranchReview
+                Decode.map6 CommitReview
                     (Decode.field "repoId" Decode.string)
                     (Decode.field "repoFullName" Decode.string)
                     (Decode.field "branchName" Decode.string)

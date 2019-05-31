@@ -26,7 +26,7 @@ type Route
       -- Maybe string is code from github redirect
     | OAuthRedirect (Maybe String)
       -- Repo number / branch name / commit hash
-    | BranchReview Int String String
+    | CommitReview Int String String
 
 
 parser : Parser (Route -> a) a
@@ -34,7 +34,7 @@ parser =
     oneOf
         [ Parser.map Home Parser.top
         , Parser.map OAuthRedirect (s "oauth_redirect" <?> Query.string "code")
-        , Parser.map BranchReview (s "review" </> s "repo" </> int </> s "branch" </> string </> s "commit" </> string)
+        , Parser.map CommitReview (s "review" </> s "repo" </> int </> s "branch" </> string </> s "commit" </> string)
         ]
 
 
@@ -72,7 +72,7 @@ routeToString page =
                 Root ->
                     []
 
-                BranchReview repoId branchName commitId ->
+                CommitReview repoId branchName commitId ->
                     [ "review", "repo", String.fromInt repoId, "branch", branchName, "commit", commitId ]
 
                 -- Certain routes shouldn't be accessed directly

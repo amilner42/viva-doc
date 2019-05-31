@@ -16,7 +16,7 @@ import Json.Decode as Decode
 import LocalStorage
 import Page
 import Page.Blank as Blank
-import Page.BranchReview as BranchReview
+import Page.CommitReview as CommitReview
 import Page.Home as Home
 import Page.NotFound as NotFound
 import Page.OAuthRedirect as OAuthRedirect
@@ -44,7 +44,7 @@ type PageModel
     | NotFound Session
     | Home Home.Model
     | OAuthRedirect OAuthRedirect.Model
-    | BranchReview BranchReview.Model
+    | CommitReview CommitReview.Model
 
 
 {-| On init we have 2 cases:
@@ -116,8 +116,8 @@ view model =
         OAuthRedirect oauthRedirect ->
             viewPage GotOAuthRedirectMsg (OAuthRedirect.view oauthRedirect)
 
-        BranchReview branchReviewModel ->
-            viewPage GotBranchReviewMsg (BranchReview.view branchReviewModel)
+        CommitReview commitReviewModel ->
+            viewPage GotCommitReviewMsg (CommitReview.view commitReviewModel)
 
 
 
@@ -135,7 +135,7 @@ type Msg
     | Logout
     | CompletedLogout (Result (Core.HttpError ()) ())
     | GotHomeMsg Home.Msg
-    | GotBranchReviewMsg BranchReview.Msg
+    | GotCommitReviewMsg CommitReview.Msg
     | GotOAuthRedirectMsg OAuthRedirect.Msg
 
 
@@ -154,8 +154,8 @@ toSession { pageModel } =
         OAuthRedirect oauthRedirect ->
             OAuthRedirect.toSession oauthRedirect
 
-        BranchReview branchReviewModel ->
-            BranchReview.toSession branchReviewModel
+        CommitReview commitReviewModel ->
+            CommitReview.toSession commitReviewModel
 
 
 changeRouteTo : Maybe Route -> Model -> ( Model, Cmd Msg )
@@ -189,9 +189,9 @@ changeRouteTo maybeRoute model =
             OAuthRedirect.init session maybeCode
                 |> updatePageModel OAuthRedirect GotOAuthRedirectMsg model
 
-        Just (Route.BranchReview repoId branchName commitId) ->
-            BranchReview.init session repoId branchName commitId
-                |> updatePageModel BranchReview GotBranchReviewMsg model
+        Just (Route.CommitReview repoId branchName commitId) ->
+            CommitReview.init session repoId branchName commitId
+                |> updatePageModel CommitReview GotCommitReviewMsg model
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -241,10 +241,10 @@ update msg model =
             , Cmd.batch
                 [ -- Save a url to jump back to after auth if needed
                   case model.pageModel of
-                    BranchReview { repoId, branchName, commitId } ->
+                    CommitReview { repoId, branchName, commitId } ->
                         LocalStorage.saveModel
                             { relativeUrl =
-                                Route.BranchReview repoId branchName commitId
+                                Route.CommitReview repoId branchName commitId
                                     |> Route.routeToString
                             }
 
@@ -303,9 +303,9 @@ update msg model =
             Home.update pageMsg homeModel
                 |> updatePageModel Home GotHomeMsg model
 
-        ( GotBranchReviewMsg pageMsg, BranchReview branchReviewModel ) ->
-            BranchReview.update pageMsg branchReviewModel
-                |> updatePageModel BranchReview GotBranchReviewMsg model
+        ( GotCommitReviewMsg pageMsg, CommitReview commitReviewModel ) ->
+            CommitReview.update pageMsg commitReviewModel
+                |> updatePageModel CommitReview GotCommitReviewMsg model
 
         ( GotOAuthRedirectMsg pageMsg, OAuthRedirect oauthRedirectModel ) ->
             let
@@ -364,8 +364,8 @@ subscriptions model =
             OAuthRedirect oauthRedirect ->
                 Sub.map GotOAuthRedirectMsg <| OAuthRedirect.subscriptions oauthRedirect
 
-            BranchReview branchReviewModel ->
-                Sub.map GotBranchReviewMsg <| BranchReview.subscriptions branchReviewModel
+            CommitReview commitReviewModel ->
+                Sub.map GotCommitReviewMsg <| CommitReview.subscriptions commitReviewModel
         ]
 
 

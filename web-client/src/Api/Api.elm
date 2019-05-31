@@ -1,4 +1,4 @@
-module Api.Api exposing (GetBranchReviewResponse(..), GithubLoginBody, getBranchReview, getLogout, getUser, githubLoginFromCode, postApproveDocs, postApproveTags, postRejectTags)
+module Api.Api exposing (GetCommitReviewResponse(..), GithubLoginBody, getCommitReview, getLogout, getUser, githubLoginFromCode, postApproveDocs, postApproveTags, postRejectTags)
 
 {-| This module strictly contains the routes to the API and their respective errors.
 
@@ -9,7 +9,7 @@ likely be put in `Api.Core`.
 
 import Api.Core as Core
 import Api.Endpoint as Endpoint
-import BranchReview
+import CommitReview
 import Http
 import Json.Decode as Decode
 import Json.Decode.Pipeline exposing (optional)
@@ -52,24 +52,24 @@ getUser handleResult =
         (Core.expectJsonWithUserAndRepos handleResult Viewer.decodeViewer (Decode.succeed ()))
 
 
-type GetBranchReviewResponse
-    = GetBranchReviewResponse BranchReview.BranchReview Core.Username Core.Repos
+type GetCommitReviewResponse
+    = GetCommitReviewResponse CommitReview.CommitReview Core.Username Core.Repos
 
 
-getBranchReview :
+getCommitReview :
     Int
     -> String
     -> String
-    -> (Result.Result (Core.HttpError ()) GetBranchReviewResponse -> msg)
+    -> (Result.Result (Core.HttpError ()) GetCommitReviewResponse -> msg)
     -> Cmd.Cmd msg
-getBranchReview repoId branchName commitId handleResult =
+getCommitReview repoId branchName commitId handleResult =
     Core.get
-        (Endpoint.branchReview repoId branchName commitId)
+        (Endpoint.commitReview repoId branchName commitId)
         standardTimeout
         Nothing
         (Core.expectJsonWithUserAndRepos
             handleResult
-            (BranchReview.decodeBranchReview |> Decode.map GetBranchReviewResponse)
+            (CommitReview.decodeCommitReview |> Decode.map GetCommitReviewResponse)
             (Decode.succeed ())
         )
 
@@ -87,7 +87,7 @@ postApproveTags repoId branchName commitId tags handleResult =
             Encode.object [ ( "approveTags", Encode.set Encode.string tags ) ]
     in
     Core.post
-        (Endpoint.branchReviewApproveTags repoId branchName commitId)
+        (Endpoint.commitReviewApproveTags repoId branchName commitId)
         standardTimeout
         Nothing
         (Http.jsonBody encodedTags)
@@ -107,7 +107,7 @@ postRejectTags repoId branchName commitId tags handleResult =
             Encode.object [ ( "rejectTags", Encode.set Encode.string tags ) ]
     in
     Core.post
-        (Endpoint.branchReviewRejectTags repoId branchName commitId)
+        (Endpoint.commitReviewRejectTags repoId branchName commitId)
         standardTimeout
         Nothing
         (Http.jsonBody encodedTags)
@@ -122,7 +122,7 @@ postApproveDocs :
     -> Cmd.Cmd msg
 postApproveDocs repoId branchName commitId handleResult =
     Core.post
-        (Endpoint.branchReviewApproveDocs repoId branchName commitId)
+        (Endpoint.commitReviewApproveDocs repoId branchName commitId)
         standardTimeout
         Nothing
         Http.emptyBody

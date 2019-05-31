@@ -1,8 +1,8 @@
-module Page.BranchReview exposing (Model, Msg, init, subscriptions, toSession, update, view)
+module Page.CommitReview exposing (Model, Msg, init, subscriptions, toSession, update, view)
 
 import Api.Api as Api
 import Api.Core as Core
-import BranchReview
+import CommitReview
 import CustomMarkdown as CM
 import Html exposing (Html, button, div, dl, dt, hr, i, p, span, table, tbody, td, text, th, thead, tr)
 import Html.Attributes exposing (class, classList, disabled, style)
@@ -28,7 +28,7 @@ type alias Model =
     , repoId : Int
     , branchName : String
     , commitId : String
-    , branchReview : RemoteData.RemoteData () BranchReview.BranchReview
+    , commitReview : RemoteData.RemoteData () CommitReview.CommitReview
     , displayOnlyUsersTags : Bool
     , displayOnlyTagsNeedingApproval : Bool
 
@@ -45,7 +45,7 @@ init session repoId branchName commitId =
             , repoId = repoId
             , branchName = branchName
             , commitId = commitId
-            , branchReview = RemoteData.NotAsked
+            , commitReview = RemoteData.NotAsked
             , displayOnlyUsersTags = False
             , displayOnlyTagsNeedingApproval = False
             , approveDocsState = NotRequesting
@@ -65,8 +65,8 @@ init session repoId branchName commitId =
                     True
             in
             if userHasAccessToThisRepo then
-                ( { model | branchReview = RemoteData.Loading }
-                , Api.getBranchReview repoId branchName commitId CompletedGetBranchReview
+                ( { model | commitReview = RemoteData.Loading }
+                , Api.getCommitReview repoId branchName commitId CompletedGetCommitReview
                 )
 
             else
@@ -87,7 +87,7 @@ view model =
                     [ text "You need to be logged in to view this page..." ]
 
                 Session.LoggedIn _ viewer ->
-                    case model.branchReview of
+                    case model.commitReview of
                         RemoteData.NotAsked ->
                             [ text "Logged in... " ]
 
@@ -97,29 +97,29 @@ view model =
                         RemoteData.Failure _ ->
                             [ text "Uh oh" ]
 
-                        RemoteData.Success branchReview ->
-                            renderBranchReview
+                        RemoteData.Success commitReview ->
+                            renderCommitReview
                                 { username = Viewer.getUsername viewer
                                 , approveDocsState = model.approveDocsState
                                 , displayOnlyUsersTags = model.displayOnlyUsersTags
                                 , displayOnlyTagsNeedingApproval = model.displayOnlyTagsNeedingApproval
                                 }
-                                branchReview
+                                commitReview
     }
 
 
-renderBranchReview :
+renderCommitReview :
     { username : String
     , approveDocsState : ApproveDocsState err
     , displayOnlyUsersTags : Bool
     , displayOnlyTagsNeedingApproval : Bool
     }
-    -> BranchReview.BranchReview
+    -> CommitReview.CommitReview
     -> List (Html.Html Msg)
-renderBranchReview { username, displayOnlyUsersTags, displayOnlyTagsNeedingApproval, approveDocsState } branchReview =
+renderCommitReview { username, displayOnlyUsersTags, displayOnlyTagsNeedingApproval, approveDocsState } commitReview =
     let
         fileReviewsToRender =
-            BranchReview.filterFileReviews
+            CommitReview.filterFileReviews
                 { filterForUser =
                     if displayOnlyUsersTags then
                         Just username
@@ -128,36 +128,36 @@ renderBranchReview { username, displayOnlyUsersTags, displayOnlyTagsNeedingAppro
                         Nothing
                 , filterApprovedTags = displayOnlyTagsNeedingApproval
                 }
-                branchReview.fileReviews
+                commitReview.fileReviews
 
         totalReviews =
-            BranchReview.countTotalReviewsAndTags branchReview.fileReviews
+            CommitReview.countTotalReviewsAndTags commitReview.fileReviews
 
         displayingReviews =
-            BranchReview.countTotalReviewsAndTags fileReviewsToRender
+            CommitReview.countTotalReviewsAndTags fileReviewsToRender
     in
-    renderSummaryHeader username approveDocsState branchReview
-        :: renderBranchReviewHeader
+    renderSummaryHeader username approveDocsState commitReview
+        :: renderCommitReviewHeader
             displayOnlyUsersTags
             displayOnlyTagsNeedingApproval
             displayingReviews
             totalReviews
-            branchReview
-        :: List.map (renderFileReview username branchReview.requiredConfirmations approveDocsState) fileReviewsToRender
+            commitReview
+        :: List.map (renderFileReview username commitReview.requiredConfirmations approveDocsState) fileReviewsToRender
 
 
-renderSummaryHeader : String -> ApproveDocsState err -> BranchReview.BranchReview -> Html.Html Msg
-renderSummaryHeader username approveDocsState branchReview =
+renderSummaryHeader : String -> ApproveDocsState err -> CommitReview.CommitReview -> Html.Html Msg
+renderSummaryHeader username approveDocsState commitReview =
     let
-        ownerTagStatuses : List BranchReview.OwnerTagStatus
+        ownerTagStatuses : List CommitReview.OwnerTagStatus
         ownerTagStatuses =
-            BranchReview.getOwnerTagStatuses branchReview
+            CommitReview.getOwnerTagStatuses commitReview
 
         totalConfirmationsRequired =
             List.length ownerTagStatuses
 
         remainingConfirmationsRequired =
-            Set.size branchReview.requiredConfirmations
+            Set.size commitReview.requiredConfirmations
 
         currentConfirmations =
             totalConfirmationsRequired - remainingConfirmationsRequired
@@ -170,10 +170,10 @@ renderSummaryHeader username approveDocsState branchReview =
                 (\ownerTagStatus acc ->
                     (+) acc <|
                         case ownerTagStatus.status of
-                            BranchReview.Confirmed ->
+                            CommitReview.Confirmed ->
                                 ownerTagStatus.totalTags
 
-                            BranchReview.Unconfirmed approvedTagCount ->
+                            CommitReview.Unconfirmed approvedTagCount ->
                                 approvedTagCount
                 )
                 0
@@ -190,7 +190,7 @@ renderSummaryHeader username approveDocsState branchReview =
                 ++ String.fromInt totalTags
                 ++ " tags approved"
 
-        maybeCurrentUserTagStatus : Maybe BranchReview.OwnerTagStatus
+        maybeCurrentUserTagStatus : Maybe CommitReview.OwnerTagStatus
         maybeCurrentUserTagStatus =
             List.filter (.username >> (==) username) ownerTagStatuses |> List.head
     in
@@ -235,20 +235,20 @@ renderSummaryHeader username approveDocsState branchReview =
                                     [ text <|
                                         String.fromInt <|
                                             case tagOwnerStatus.status of
-                                                BranchReview.Confirmed ->
+                                                CommitReview.Confirmed ->
                                                     tagOwnerStatus.totalTags
 
-                                                BranchReview.Unconfirmed approvedTags ->
+                                                CommitReview.Unconfirmed approvedTags ->
                                                     approvedTags
                                     ]
                                 , td [] [ text <| String.fromInt tagOwnerStatus.totalTags ]
                                 , td []
                                     [ text <|
                                         case tagOwnerStatus.status of
-                                            BranchReview.Confirmed ->
+                                            CommitReview.Confirmed ->
                                                 "Yes"
 
-                                            BranchReview.Unconfirmed _ ->
+                                            CommitReview.Unconfirmed _ ->
                                                 "No"
                                     ]
                                 ]
@@ -262,10 +262,10 @@ renderSummaryHeader username approveDocsState branchReview =
 
             Just currentUserTagStatus ->
                 case currentUserTagStatus.status of
-                    BranchReview.Confirmed ->
+                    CommitReview.Confirmed ->
                         div [ class "is-hidden" ] []
 
-                    BranchReview.Unconfirmed approvedTags ->
+                    CommitReview.Unconfirmed approvedTags ->
                         div
                             [ class "tile section"
                             , style "margin-top" "-80px"
@@ -322,8 +322,8 @@ renderSummaryHeader username approveDocsState branchReview =
         ]
 
 
-renderBranchReviewHeader : Bool -> Bool -> Int -> Int -> BranchReview.BranchReview -> Html.Html Msg
-renderBranchReviewHeader displayOnlyUsersTags displayOnlyTagsNeedingApproval displayingReviews totalReviews branchReview =
+renderCommitReviewHeader : Bool -> Bool -> Int -> Int -> CommitReview.CommitReview -> Html.Html Msg
+renderCommitReviewHeader displayOnlyUsersTags displayOnlyTagsNeedingApproval displayingReviews totalReviews commitReview =
     div
         [ class "level is-mobile"
         , style "margin-bottom" "0px"
@@ -395,12 +395,12 @@ renderBranchReviewHeader displayOnlyUsersTags displayOnlyTagsNeedingApproval dis
         ]
 
 
-renderFileReview : String -> Set.Set String -> ApproveDocsState err -> BranchReview.FileReview -> Html.Html Msg
+renderFileReview : String -> Set.Set String -> ApproveDocsState err -> CommitReview.FileReview -> Html.Html Msg
 renderFileReview username requiredConfirmations approveDocsState fileReview =
     div [ class "section" ] <|
         [ renderFileReviewHeader fileReview
         , case fileReview.fileReviewType of
-            BranchReview.NewFileReview tags ->
+            CommitReview.NewFileReview tags ->
                 renderTags
                     username
                     "This tag has been added to a new file"
@@ -409,7 +409,7 @@ renderFileReview username requiredConfirmations approveDocsState fileReview =
                     approveDocsState
                     tags
 
-            BranchReview.DeletedFileReview tags ->
+            CommitReview.DeletedFileReview tags ->
                 renderTags
                     username
                     "This tag is being removed inside a deleted file"
@@ -418,14 +418,14 @@ renderFileReview username requiredConfirmations approveDocsState fileReview =
                     approveDocsState
                     tags
 
-            BranchReview.ModifiedFileReview reviews ->
+            CommitReview.ModifiedFileReview reviews ->
                 renderReviews
                     username
                     requiredConfirmations
                     approveDocsState
                     reviews
 
-            BranchReview.RenamedFileReview _ reviews ->
+            CommitReview.RenamedFileReview _ reviews ->
                 renderReviews
                     username
                     requiredConfirmations
@@ -434,7 +434,7 @@ renderFileReview username requiredConfirmations approveDocsState fileReview =
         ]
 
 
-renderFileReviewHeader : BranchReview.FileReview -> Html.Html Msg
+renderFileReviewHeader : CommitReview.FileReview -> Html.Html Msg
 renderFileReviewHeader fileReview =
     div
         [ style "padding-bottom" "15px" ]
@@ -447,22 +447,22 @@ renderFileReviewHeader fileReview =
             [ class "has-text-grey is-size-6" ]
             [ text <|
                 case fileReview.fileReviewType of
-                    BranchReview.NewFileReview _ ->
+                    CommitReview.NewFileReview _ ->
                         "new file"
 
-                    BranchReview.ModifiedFileReview _ ->
+                    CommitReview.ModifiedFileReview _ ->
                         "modified file"
 
-                    BranchReview.DeletedFileReview _ ->
+                    CommitReview.DeletedFileReview _ ->
                         "deleted file"
 
-                    BranchReview.RenamedFileReview _ _ ->
+                    CommitReview.RenamedFileReview _ _ ->
                         "renamed file"
             ]
         ]
 
 
-renderTags : String -> String -> Set.Set String -> CM.RenderStyle -> ApproveDocsState err -> List BranchReview.Tag -> Html.Html Msg
+renderTags : String -> String -> Set.Set String -> CM.RenderStyle -> ApproveDocsState err -> List CommitReview.Tag -> Html.Html Msg
 renderTags username description requiredConfirmations renderStyle approveDocsState tags =
     div [ class "tile is-ancestor is-vertical" ] <|
         List.map
@@ -477,7 +477,7 @@ renderTags username description requiredConfirmations renderStyle approveDocsSta
             tags
 
 
-renderReviews : String -> Set.Set String -> ApproveDocsState err -> List BranchReview.Review -> Html.Html Msg
+renderReviews : String -> Set.Set String -> ApproveDocsState err -> List CommitReview.Review -> Html.Html Msg
 renderReviews username requiredConfirmations approveDocsState reviews =
     div [ class "tile is-ancestor is-vertical" ] <|
         List.map
@@ -485,24 +485,24 @@ renderReviews username requiredConfirmations approveDocsState reviews =
                 renderTagOrReview
                     { renderStyle =
                         case review.reviewType of
-                            BranchReview.ReviewNewTag ->
+                            CommitReview.ReviewNewTag ->
                                 CM.PlainBackground
 
-                            BranchReview.ReviewDeletedTag ->
+                            CommitReview.ReviewDeletedTag ->
                                 CM.PlainBackground
 
-                            BranchReview.ReviewModifiedTag showAlteredLines alteredLines ->
+                            CommitReview.ReviewModifiedTag showAlteredLines alteredLines ->
                                 CM.MixedBackground { showAlteredLines = showAlteredLines, alteredLines = alteredLines }
                     , username = username
                     , description =
                         case review.reviewType of
-                            BranchReview.ReviewNewTag ->
+                            CommitReview.ReviewNewTag ->
                                 "This tag has been added to an existing file"
 
-                            BranchReview.ReviewDeletedTag ->
+                            CommitReview.ReviewDeletedTag ->
                                 "This tag has been deleted from an existing file"
 
-                            BranchReview.ReviewModifiedTag _ _ ->
+                            CommitReview.ReviewModifiedTag _ _ ->
                                 "This tag has been modified"
                     , requiredConfirmations = requiredConfirmations
                     , approveDocsState = approveDocsState
@@ -519,7 +519,7 @@ renderTagOrReview :
     , approveDocsState : ApproveDocsState err
     , requiredConfirmations : Set.Set String
     }
-    -> BranchReview.Tag
+    -> CommitReview.Tag
     -> Html.Html Msg
 renderTagOrReview { renderStyle, username, description, requiredConfirmations, approveDocsState } tag =
     div [ class "tile is-parent" ]
@@ -544,29 +544,29 @@ renderTagOrReview { renderStyle, username, description, requiredConfirmations, a
                                 []
                                 [ div [ class "level" ]
                                     [ div [ class "level-left" ]
-                                        [ text <| BranchReview.readableTagType tag.tagType ]
+                                        [ text <| CommitReview.readableTagType tag.tagType ]
                                     , case tag.approvedState of
-                                        BranchReview.Approved ->
+                                        CommitReview.Approved ->
                                             div
                                                 [ class "level-right has-text-success" ]
                                                 [ text "Approved" ]
 
-                                        BranchReview.NotApproved ->
+                                        CommitReview.NotApproved ->
                                             div
                                                 [ class "level-right has-text-danger" ]
                                                 [ text "Requires Approval" ]
 
-                                        BranchReview.RequestingApproval ->
+                                        CommitReview.RequestingApproval ->
                                             div
                                                 [ class "level-right has-text-grey-light" ]
                                                 [ text "requesting approval..." ]
 
-                                        BranchReview.RequestingRejection ->
+                                        CommitReview.RequestingRejection ->
                                             div
                                                 [ class "level-right has-text-grey-light" ]
                                                 [ text "removing approval..." ]
 
-                                        BranchReview.RequestFailed err ->
+                                        CommitReview.RequestFailed err ->
                                             div [ class "is-hidden" ] []
                                     ]
                                 ]
@@ -580,7 +580,7 @@ renderTagOrReview { renderStyle, username, description, requiredConfirmations, a
 
                          else
                             case tag.approvedState of
-                                BranchReview.Approved ->
+                                CommitReview.Approved ->
                                     [ button
                                         [ class "button is-warning is-fullwidth has-text-white"
                                         , disabled <|
@@ -595,7 +595,7 @@ renderTagOrReview { renderStyle, username, description, requiredConfirmations, a
                                         [ text "Reject" ]
                                     ]
 
-                                BranchReview.NotApproved ->
+                                CommitReview.NotApproved ->
                                     [ button
                                         [ class "button is-success is-fullwidth"
                                         , disabled <|
@@ -613,20 +613,20 @@ renderTagOrReview { renderStyle, username, description, requiredConfirmations, a
                                         [ text "Update Docs" ]
                                     ]
 
-                                BranchReview.RequestingApproval ->
+                                CommitReview.RequestingApproval ->
                                     [ button
                                         [ class "button is-success is-fullwidth is-loading" ]
                                         []
                                     ]
 
-                                BranchReview.RequestingRejection ->
+                                CommitReview.RequestingRejection ->
                                     [ button
                                         [ class "button is-warning is-fullwidth is-loading" ]
                                         []
                                     ]
 
                                 -- TODO handle error better?
-                                BranchReview.RequestFailed err ->
+                                CommitReview.RequestFailed err ->
                                     [ button
                                         [ class "button is-danger is-fullwidth"
                                         , disabled True
@@ -662,7 +662,7 @@ renderTagOrReview { renderStyle, username, description, requiredConfirmations, a
 
 
 type Msg
-    = CompletedGetBranchReview (Result.Result (Core.HttpError ()) Api.GetBranchReviewResponse)
+    = CompletedGetCommitReview (Result.Result (Core.HttpError ()) Api.GetCommitReviewResponse)
     | SetDisplayOnlyUsersTags Bool
     | SetDisplayOnlyTagsNeedingApproval Bool
     | SetShowAlteredLines String Bool
@@ -677,12 +677,12 @@ type Msg
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        CompletedGetBranchReview (Result.Ok (Api.GetBranchReviewResponse branchReview user repos)) ->
-            ( { model | branchReview = RemoteData.Success branchReview }, Cmd.none )
+        CompletedGetCommitReview (Result.Ok (Api.GetCommitReviewResponse commitReview user repos)) ->
+            ( { model | commitReview = RemoteData.Success commitReview }, Cmd.none )
 
         -- TODO handle error
-        CompletedGetBranchReview (Result.Err err) ->
-            ( { model | branchReview = RemoteData.Failure () }, Cmd.none )
+        CompletedGetCommitReview (Result.Err err) ->
+            ( { model | commitReview = RemoteData.Failure () }, Cmd.none )
 
         SetDisplayOnlyUsersTags displayOnlyUsersTags ->
             ( { model | displayOnlyUsersTags = displayOnlyUsersTags }, Cmd.none )
@@ -692,66 +692,66 @@ update msg model =
 
         SetShowAlteredLines tagId showAlteredLines ->
             ( { model
-                | branchReview =
+                | commitReview =
                     RemoteData.map
-                        (BranchReview.updateReviews
+                        (CommitReview.updateReviews
                             (\review ->
                                 if review.tag.tagId == tagId then
                                     { review
                                         | reviewType =
                                             case review.reviewType of
-                                                BranchReview.ReviewModifiedTag _ alteredLines ->
-                                                    BranchReview.ReviewModifiedTag showAlteredLines alteredLines
+                                                CommitReview.ReviewModifiedTag _ alteredLines ->
+                                                    CommitReview.ReviewModifiedTag showAlteredLines alteredLines
 
-                                                BranchReview.ReviewNewTag ->
-                                                    BranchReview.ReviewNewTag
+                                                CommitReview.ReviewNewTag ->
+                                                    CommitReview.ReviewNewTag
 
-                                                BranchReview.ReviewDeletedTag ->
-                                                    BranchReview.ReviewDeletedTag
+                                                CommitReview.ReviewDeletedTag ->
+                                                    CommitReview.ReviewDeletedTag
                                     }
 
                                 else
                                     review
                             )
                         )
-                        model.branchReview
+                        model.commitReview
               }
             , Cmd.none
             )
 
         ApproveTags tags ->
             ( { model
-                | branchReview =
+                | commitReview =
                     RemoteData.map
-                        (BranchReview.updateTags
+                        (CommitReview.updateTags
                             (\tag ->
                                 if Set.member tag.tagId tags then
-                                    { tag | approvedState = BranchReview.RequestingApproval }
+                                    { tag | approvedState = CommitReview.RequestingApproval }
 
                                 else
                                     tag
                             )
                         )
-                        model.branchReview
+                        model.commitReview
               }
             , Api.postApproveTags model.repoId model.branchName model.commitId tags (CompletedApproveTags tags)
             )
 
-        -- TODO Probably better to feed branchReview throguh to avoid `RemoteData.map`
+        -- TODO Probably better to feed commitReview throguh to avoid `RemoteData.map`
         CompletedApproveTags approvedTags (Ok ()) ->
             ( { model
-                | branchReview =
+                | commitReview =
                     RemoteData.map
-                        (BranchReview.updateTags
+                        (CommitReview.updateTags
                             (\tag ->
                                 if Set.member tag.tagId approvedTags then
-                                    { tag | approvedState = BranchReview.Approved }
+                                    { tag | approvedState = CommitReview.Approved }
 
                                 else
                                     tag
                             )
                         )
-                        model.branchReview
+                        model.commitReview
               }
             , Cmd.none
             )
@@ -759,36 +759,36 @@ update msg model =
         -- TODO Handle error
         CompletedApproveTags attemptedApprovedTags _ ->
             ( { model
-                | branchReview =
+                | commitReview =
                     RemoteData.map
-                        (BranchReview.updateTags
+                        (CommitReview.updateTags
                             (\tag ->
                                 if Set.member tag.tagId attemptedApprovedTags then
-                                    { tag | approvedState = BranchReview.RequestFailed () }
+                                    { tag | approvedState = CommitReview.RequestFailed () }
 
                                 else
                                     tag
                             )
                         )
-                        model.branchReview
+                        model.commitReview
               }
             , Cmd.none
             )
 
         RejectTags tags ->
             ( { model
-                | branchReview =
+                | commitReview =
                     RemoteData.map
-                        (BranchReview.updateTags
+                        (CommitReview.updateTags
                             (\tag ->
                                 if Set.member tag.tagId tags then
-                                    { tag | approvedState = BranchReview.RequestingRejection }
+                                    { tag | approvedState = CommitReview.RequestingRejection }
 
                                 else
                                     tag
                             )
                         )
-                        model.branchReview
+                        model.commitReview
               }
             , Api.postRejectTags
                 model.repoId
@@ -800,18 +800,18 @@ update msg model =
 
         CompletedRejectTags tags (Ok ()) ->
             ( { model
-                | branchReview =
+                | commitReview =
                     RemoteData.map
-                        (BranchReview.updateTags
+                        (CommitReview.updateTags
                             (\tag ->
                                 if Set.member tag.tagId tags then
-                                    { tag | approvedState = BranchReview.NotApproved }
+                                    { tag | approvedState = CommitReview.NotApproved }
 
                                 else
                                     tag
                             )
                         )
-                        model.branchReview
+                        model.commitReview
               }
             , Cmd.none
             )
@@ -819,18 +819,18 @@ update msg model =
         -- TODO handle errors
         CompletedRejectTags attemptedRejectTags _ ->
             ( { model
-                | branchReview =
+                | commitReview =
                     RemoteData.map
-                        (BranchReview.updateTags
+                        (CommitReview.updateTags
                             (\tag ->
                                 if Set.member tag.tagId attemptedRejectTags then
-                                    { tag | approvedState = BranchReview.RequestFailed () }
+                                    { tag | approvedState = CommitReview.RequestFailed () }
 
                                 else
                                     tag
                             )
                         )
-                        model.branchReview
+                        model.commitReview
               }
             , Cmd.none
             )
@@ -842,15 +842,15 @@ update msg model =
 
         CompletedApproveDocs username (Ok _) ->
             ( { model
-                | branchReview =
+                | commitReview =
                     RemoteData.map
-                        (\branchReview ->
-                            { branchReview
+                        (\commitReview ->
+                            { commitReview
                                 | requiredConfirmations =
-                                    Set.remove username branchReview.requiredConfirmations
+                                    Set.remove username commitReview.requiredConfirmations
                             }
                         )
-                        model.branchReview
+                        model.commitReview
                 , approveDocsState = NotRequesting
               }
             , Cmd.none
