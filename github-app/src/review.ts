@@ -108,6 +108,11 @@ export type ReviewModifiedTag = BaseReview & Diff.HasAlteredLines & {
   reviewType: "modified";
 }
 
+export interface TagAndOwner {
+  owner: string,
+  tagId: string
+}
+
 // Get reviews from all the parsed information
 export const getReviews = (diffWCAT: Tag.FileDiffWithCodeAndTags): FileReview => {
 
@@ -192,10 +197,10 @@ export const initFileReviewMetadata = (fileReview: FileReview): FileReviewWithMe
   }
 }
 
-export const getRequiredConfirmations = (fileReviews: FileReview[]): String[] => {
+export const getAllOwners = (fileReviews: FileReview[]): string[] => {
 
-  return R.reduce<FileReview, String[]>((allTags, fileReview) => {
-    return R.reduce<Tag.VdTag, String[]>((fileReviewTags, tag) => {
+  return R.reduce<FileReview, string[]>((allTags, fileReview) => {
+    return R.reduce<Tag.VdTag, string[]>((fileReviewTags, tag) => {
 
       if (R.contains(tag.owner, fileReviewTags)) { return fileReviewTags; }
 
@@ -204,6 +209,19 @@ export const getRequiredConfirmations = (fileReviews: FileReview[]): String[] =>
     }, allTags, getTags(fileReview));
   }, [], fileReviews);
 }
+
+export const getListOfTagsAndOwners =
+  (fileReviewsWithMetadata: FileReviewWithMetadata[]): TagAndOwner[] => {
+
+  return R.reduce<FileReviewWithMetadata, TagAndOwner[]>((allTagAndOwners, fileReview) => {
+    return R.reduce<TagWithMetadata, TagAndOwner[]>((fileReviewTagAndOwners, tag) => {
+
+      return fileReviewTagAndOwners.concat([ { owner: tag.owner, tagId: tag.tagId.toString() } ]);
+
+    }, allTagAndOwners, getTagsWithMetadata(fileReview));
+  }, [], fileReviewsWithMetadata);
+}
+
 
 /** Calculates the reviews for some file modification given all helpful information.
 
@@ -419,6 +437,21 @@ const lineNumberInTagOwnership = (tag: Tag.VdTag, lineNumber: number) => {
 }
 
 const getTags = (fileReview: FileReview): Tag.VdTag[] => {
+
+  switch (fileReview.fileReviewType) {
+
+    case "deleted-file":
+    case "new-file":
+      return fileReview.tags;
+
+    case "modified-file":
+    case "renamed-file":
+      return R.map((review) => { return review.tag }, fileReview.reviews)
+
+  }
+}
+
+const getTagsWithMetadata = (fileReview: FileReviewWithMetadata): TagWithMetadata[] => {
 
   switch (fileReview.fileReviewType) {
 

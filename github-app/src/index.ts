@@ -21,44 +21,12 @@ require("./models/PullRequestReview")
 require("./models/CommitReview")
 
 // All imports to internal modules should be here so that all mongoose schemas have loaded first
-const PullRequestReview = mongoose.model('PullRequestReview')
+const PullRequestReviewModel = mongoose.model('PullRequestReview')
+import { PullRequestReview } from "./models/PullRequestReview"
 import * as Analysis from "./analysis"
 
 export = (app: Probot.Application) => {
 
-  // On installation going to set the default branch to be protected.
-  // @PROD This will not be the solution in production, but rather probably refer to the config file to figure out which
-  // branches they'd like to integrate with VD.
-  // app.on("installation.created", async (context) => {
-  //   const repos = (await context.github.apps.listRepos({})).data.repositories
-  //   await R.map((async repo => {
-  //     const defaultBranch = repo.default_branch
-  //     const owner = repo.owner.login
-  //     const repoName = repo.name
-  //     const branches = (await context.github.repos.listBranches({ owner, repo: repoName })).data
-  //
-  //     R.map((branch) => {
-  //       const branchName = branch.name
-  //       if (branchName === defaultBranch && branch.protected === false) {
-  //         // @PROD Probably need to make sure this is just adding a rule and not replacing other existing rules.
-  //         context.github.repos.updateBranchProtection({
-  //           owner,
-  //           repo: repoName,
-  //           branch: branchName,
-  //           required_status_checks: {
-  //             strict: true,
-  //             contexts: [ VIVA_DOC_STATUS_NAME ]
-  //           },
-  //           enforce_admins: true,
-  //           required_pull_request_reviews: null,
-  //           restrictions: null
-  //         })
-  //       }
-  //     }, branches)
-  //   }), repos)
-  // })
-
-  // TODO what about reopened?
   app.on("pull_request.opened", async (context) => {
 
     const prPayload = context.payload
@@ -74,7 +42,7 @@ export = (app: Probot.Application) => {
     const baseBranchName = (prPayload.pull_request as any).base.ref
     const baseCommitId = (prPayload.pull_request as any).base.sha
 
-    const pullRequestReview = new PullRequestReview({
+    const pullRequestReviewObject: PullRequestReview = {
       repoId,
       repoFullName,
       branchName,
@@ -89,7 +57,9 @@ export = (app: Probot.Application) => {
       pendingAnalysisForCommits: [ headCommitId ],
       currentAnalysisLastCommitWithSuccessStatus: baseCommitId,
       currentAnalysisLastAnalyzedCommit: null
-    })
+    }
+
+    const pullRequestReview = new PullRequestReviewModel(pullRequestReviewObject)
 
     try {
       await pullRequestReview.save();
@@ -98,20 +68,17 @@ export = (app: Probot.Application) => {
       console.log(`Error saving pull request review: ${err} - ${JSON.stringify(err)}`)
     }
 
-    // TODO CONTINUE trigger pipeline
+    await Analysis.pipeline(
+      pullRequestReviewObject,
+      getClientUrlForCommitReview(repoId, pullRequestNumber),
+      retrieveDiff(context, owner, repoName),
+      retrieveFile(context, owner, repoName),
+      setCommitStatus(context, owner, repoName)
+    ).catch((err) => {
+      console.log(`Analysis Pipeline Error: ${err} --- ${JSON.stringify(err)}`)
+    })
 
-    // Analysis.pipeline(
-    //   repoId,
-    //   repoFullName,
-    //   branchName,
-    //   headCommitId,
-    //   () => getBranchReviewUrl(repoId, prNumber, headCommitId),
-    //   () => retrieveDiff(context, owner, repoName, baseBranchName, branchName),
-    //   retrieveFiles(context, owner, repoName, baseCommitId, headCommitId),
-    //   setStatus(context, owner, repoName, headCommitId)
-    // ).catch((err: any) => {
-    //   console.log(`Analysis Pipeline Error: ${err} --- ${JSON.stringify(err)}`)
-    // })
+    return
   })
 
   app.on("push", async (context) => {
@@ -130,9 +97,19 @@ export = (app: Probot.Application) => {
     // Perform analysis on all relevant open PRs.
     await R.map( async (pullRequestNumber) => {
 
-      const pullRequestReview = await PullRequestReview.findOneAndUpdate(
+      const pullRequestReview = await PullRequestReviewModel.findOneAndUpdate(
         { repoId, pullRequestNumber },
-        { $push: { "pendingAnalysisForCommits": headCommitId }}
+        {
+          $push: { "pendingAnalysisForCommits": headCommitId },
+          headCommitId: headCommitId,
+          headCommitApprovedTags: null,
+          headCommitRejectedTags: null,
+          headCommitRemainingOwnersToApproveDocs: null,
+          headCommitTagsAndOwners: null
+        },
+        {
+          new: true
+        }
       ).exec();
 
       // TODO handle error better?
@@ -143,21 +120,30 @@ export = (app: Probot.Application) => {
         return;
       }
 
-      const pullRequestReviewObject = pullRequestReview.toObject();
+      const pullRequestReviewObject: PullRequestReview = pullRequestReview.toObject();
 
       if (pullRequestReviewObject.pendingAnalysisForCommits.length === 1) {
-        // TODO CONTINUE trigger pipeline
+        await Analysis.pipeline(
+          pullRequestReviewObject,
+          getClientUrlForCommitReview(repoId, pullRequestNumber),
+          retrieveDiff(context, owner, repoName),
+          retrieveFile(context, owner, repoName),
+          setCommitStatus(context, owner, repoName)
+        ).catch((err) => {
+          console.log(`Analysis Pipeline Error: ${err} --- ${JSON.stringify(err)}`)
+        })
         return
       }
 
       // Otherwise there is already something being analyzed and this will be analyzed in order when all other
       // commits finish being analyzed.
-      return;
+      return
 
     }, prNumbers)
 
    })
 }
+
 
 /** Return an array of pull request numbers representing open pull requests for that branch.
 
@@ -167,7 +153,7 @@ TODO handle errors?
 */
 const getOpenPullRequestsForBranch =
   async (context: Probot.Context, repoName: string, branchName: string, owner: string)
-  : Promise<Number[]> => {
+  : Promise<number[]> => {
 
   // TODO check this is good when under an organization?
   const pullListResponse = await context.github.pulls.list({
@@ -180,14 +166,14 @@ const getOpenPullRequestsForBranch =
   return R.map((datum) => { return datum.number },  pullListResponse.data)
 }
 
-/** TODO DOC */
+
 const retrieveDiff = R.curry(
   async ( context: Probot.Context
   , owner: string
-  , repo: string
+  , repoName: string
   , baseBranchNameOrCommitSHA: string
   , headBranchNameOrCommitSHA: string
-  ) : Promise<any> => {
+  ) : Promise<string> => {
 
   // Need the correct accept header to get the diff:
   // Refer: https://developer.github.com/v3/media/#commits-commit-comparison-and-pull-requests
@@ -195,51 +181,44 @@ const retrieveDiff = R.curry(
   // Unfortunetly the typings are wrong, and they don't include `headers` even though octokit (which this wraps)
   // has that field, and of course we need to pass the correct header to get the correct media type. This is
   // why I have a `as any` at the end here, it is only because the typings are wrong.
-  return context.github.repos.compareCommits({
+  const diffResponse = await context.github.repos.compareCommits({
     headers: diffAcceptHeader,
     owner,
-    repo,
+    repo: repoName,
     base: baseBranchNameOrCommitSHA,
     head: headBranchNameOrCommitSHA
-  } as any).then(R.path(["data"]))
+  } as any);
+
+  return diffResponse.data;
 })
 
-/** TODO DOC */
-const retrieveFiles = R.curry(
+
+const retrieveFile = R.curry(
   async ( context: Probot.Context
   , owner: string
-  , repo: string
-  , baseCommitId: string
-  , headCommitId: string
-  , previousFilePath: string
-  , currentFilePath: string
-  ) : Promise<[string, string]> => {
+  , repoName: string
+  , commitId: string
+  , filePath: string
+  ) : Promise<string> => {
 
-  const getFile = async (commitId: string, path: string): Promise<string> => {
-    return context.github.repos.getContents({
-      owner,
-      repo,
-      path,
-      ref: commitId
-    })
-    .then(R.path<any>(["data"]))
-    .then((data) => {
-      return (new Buffer(data.content, data.encoding)).toString("ascii")
-    })
-  }
+  return context.github.repos.getContents({
+    owner,
+    repo: repoName,
+    path: filePath,
+    ref: commitId
+  })
+  .then(R.path<any>(["data"]))
+  .then((data) => {
+    return (new Buffer(data.content, data.encoding)).toString("ascii")
+  })
 
-
-  const previousFile = await getFile(baseCommitId, previousFilePath)
-  const currentFile = await getFile(headCommitId, currentFilePath)
-
-  return [ previousFile, currentFile ]
 })
 
-/** TODO DOC */
-const setStatus = R.curry(
+
+const setCommitStatus = R.curry(
   async ( context: Probot.Context
   , owner: string
-  , repo: string
+  , repoName: string
   , commitId: string
   , statusState: "success" | "failure" | "pending"
   , optional?: { description?: string, target_url?: string }
@@ -247,7 +226,7 @@ const setStatus = R.curry(
 
   const requiredSettings = {
     owner,
-    repo,
+    repo: repoName,
     sha: commitId,
     context: VIVA_DOC_STATUS_NAME,
     state: statusState
@@ -259,10 +238,7 @@ const setStatus = R.curry(
 })
 
 
-/** TODO DOC
-
-TODO add env for prod.
- */
-const getBranchReviewUrl = (repoId: string, prNumber: number, commitId: string): string => {
+// TODO add env for prod.
+const getClientUrlForCommitReview = R.curry((repoId: string, prNumber: number, commitId: string): string => {
   return `http://localhost:8080/review/repo/${repoId}/pr/${prNumber}/commit/${commitId}`
-}
+})

@@ -1,6 +1,6 @@
 import mongoose = require("mongoose")
 
-import { FileReview } from "../review";
+import { FileReviewWithMetadata, TagAndOwner } from "../review";
 
 export interface CommitReview {
   repoId: string,
@@ -8,11 +8,11 @@ export interface CommitReview {
   branchName: string,
   commitId: string,
   pullRequestNumber: number,
-  fileReviews: FileReview[],
+  fileReviews: FileReviewWithMetadata[],
   approvedTags: string[],
   rejectedTags: string[],
   remainingOwnersToApproveDocs: string[],
-  tagsAndOwners: { owner: string, tagId: string }[]
+  tagsAndOwners: TagAndOwner[]
 }
 
 const CommitReviewSchema = new mongoose.Schema({

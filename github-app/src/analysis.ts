@@ -9,51 +9,154 @@ import * as Lang from "./languages/index"
 import * as AppError from "./error"
 
 import mongoose from "mongoose"
+const PullRequestReviewModel = mongoose.model("PullRequestReview")
+import { PullRequestReview } from "./models/PullRequestReview"
+const CommitReviewModel = mongoose.model("CommitReview")
+import { CommitReview } from "./models/CommitReview"
 
-/** EXTERNAL FUNCTIONS */
 
+// TODO DOC
+// TODO handle errors
 export const pipeline = async (
-  repoId: string,
-  repoFullName: string,
-  branchName: string,
-  finalCommitId: string,
-  getBranchReviewUrl: () => string,
-  retrieveDiff: () => Promise<any>,
-  retrieveFiles: (previousFilePath: string, currentFilePath: string) => Promise<[string, string]>,
-  setStatus: (statusState: "success" | "failure" | "pending", optional?: { description?: string, target_url?: string }) => Promise<any>
+  pullRequestReview: PullRequestReview,
+  getClientUrlForCommitReview: (commitId: string) => string,
+  retrieveDiff: (baseCommitId: string, headCommitId: string) => Promise<string>,
+  retrieveFile: (commitId: string, filePath: string) => Promise<string>,
+  setCommitStatus: (commitId: string, statusState: "success" | "failure" | "pending", optional?: { description?: string, target_url?: string }) => Promise<any>
 ) => {
 
-  // // TODO "base branch" should be the name of the base branch.
-  // await setStatus("pending", { description: "Analyzing documentation against base branch..." })
-  //
-  // const fileReviewsNeedingApproval = await getFileReviewsWithMetadataNeedingApproval(retrieveDiff, retrieveFiles)
-  //
-  // if (fileReviewsNeedingApproval.length === 0) {
-  //   await setStatus("success", { description: "No tags require approval" })
-  //   return
-  // }
-  //
-  // // TODO for prod handle errors
-  // const branchReview = new BranchReview({
-  //   repoId,
-  //   repoFullName,
-  //   branchName,
-  //   commitId: finalCommitId,
-  //   fileReviews: fileReviewsNeedingApproval
-  // })
-  //
-  // const branchReviewMetadata = new BranchReviewMetadata({
-  //   repoId,
-  //   branchName,
-  //   commitId: finalCommitId,
-  //   approvedTags: [ ],
-  //   requiredConfirmations: Review.getRequiredConfirmations(fileReviewsNeedingApproval)
-  // })
-  //
-  // await branchReview.save()
-  // await branchReviewMetadata.save()
-  // await setStatus("failure", { description: "Tags require approval", target_url: getBranchReviewUrl() })
+  if (pullRequestReview.pendingAnalysisForCommits.length === 0) {
+    console.log("Nothing to analyze...")
+    return
+  }
+
+  const analyzingCommitId = pullRequestReview.pendingAnalysisForCommits[0]
+  const baseCommitId = pullRequestReview.currentAnalysisLastCommitWithSuccessStatus
+
+  await setCommitStatus(
+    analyzingCommitId,
+    "pending",
+    { description: `Analyzing documentation against ${pullRequestReview.baseBranchName} branch...` }
+  )
+
+  const fileReviewsNeedingApproval = await
+    getFileReviewsWithMetadataNeedingApproval(
+      async () => { return retrieveDiff(baseCommitId, analyzingCommitId) },
+      async (previousfilePath: string, currentFilePath: string): Promise<[string, string]> => {
+        const previousFileContent = await retrieveFile(baseCommitId, previousfilePath)
+        const currentFileContent = await retrieveFile(analyzingCommitId, currentFilePath)
+
+        return [ previousFileContent, currentFileContent ]
+      }
+    )
+
+  // The following 4 steps should be performed in this order.
+
+  // 1. Save new CommitReview
+
+  const owners = Review.getAllOwners(fileReviewsNeedingApproval)
+  const tagsAndOwners = Review.getListOfTagsAndOwners(fileReviewsNeedingApproval)
+  const approvedTags: string[] = [] /* TODO CALCULATE CARRY-OVERS */
+  const rejectedTags: string[] = [] /* TODO CALCULATE CARRY-OVERS */
+  const remainingOwnersToApproveDocs: string[] = owners /* TODO CALCULATE CARRY-OVERS */
+  const lastCommitWithSuccessStatus =
+    remainingOwnersToApproveDocs.length === 0
+      ? analyzingCommitId
+      : pullRequestReview.currentAnalysisLastCommitWithSuccessStatus
+
+
+  const commitReviewObject: CommitReview = {
+    repoId: pullRequestReview.repoId,
+    repoFullName: pullRequestReview.repoFullName,
+    branchName: pullRequestReview.branchName,
+    commitId: analyzingCommitId,
+    pullRequestNumber: pullRequestReview.pullRequestNumber,
+    fileReviews: fileReviewsNeedingApproval,
+    approvedTags,
+    rejectedTags,
+    remainingOwnersToApproveDocs,
+    tagsAndOwners
+  }
+
+  const commitReview = new CommitReviewModel(commitReviewObject)
+  await commitReview.save()
+
+  // 2. Update PullRequestReview
+
+  let updatedPullRequestReview: mongoose.Document | null;
+
+  // First attempt to atomically update assuming this commit is still the most recent commit in the PR.
+  updatedPullRequestReview = await PullRequestReviewModel.findOneAndUpdate(
+    {
+      repoId: pullRequestReview.repoId,
+      pullRequestNumber: pullRequestReview.pullRequestNumber,
+      headCommitId: analyzingCommitId
+    },
+    {
+      headCommitApprovedTags: approvedTags,
+      headCommitRejectedTags: rejectedTags,
+      headCommitRemainingOwnersToApproveDocs: remainingOwnersToApproveDocs,
+      headCommitTagsAndOwners: tagsAndOwners,
+      $pull: { pendingAnalysisForCommits: analyzingCommitId },
+      currentAnalysisLastCommitWithSuccessStatus: lastCommitWithSuccessStatus,
+      currentAnalysisLastAnalyzedCommit: analyzingCommitId
+    },
+    {
+      new: true
+    }
+  ).exec()
+
+  // Atomic update failed because this is no longer the head commit, perform update on non headCommitXXX fields.
+  if (updatedPullRequestReview === null) {
+
+    updatedPullRequestReview = await PullRequestReviewModel.findOneAndUpdate(
+      {
+        repoId: pullRequestReview.repoId,
+        pullRequestNumber: pullRequestReview.pullRequestNumber
+      },
+      {
+        $pull: { pendingAnalysisForCommits: analyzingCommitId },
+        currentAnalysisLastCommitWithSuccessStatus: lastCommitWithSuccessStatus,
+        currentAnalysisLastAnalyzedCommit: analyzingCommitId
+      },
+      {
+        new: true
+      }
+    )
+  }
+
+  if (updatedPullRequestReview === null) {
+    throw new Error(`Error : Could not update pull request review with fields --- repoId : ${pullRequestReview.repoId}, pullRequestNumber: ${pullRequestReview.pullRequestNumber}`)
+  }
+
+  // 3. Set commit status
+
+  if (lastCommitWithSuccessStatus === analyzingCommitId) {
+    await setCommitStatus(analyzingCommitId, "success", { description: "No tags required approval" })
+  } else {
+    await setCommitStatus(
+      analyzingCommitId,
+      "failure",
+      { description: "Tags require approval", target_url: getClientUrlForCommitReview(analyzingCommitId) }
+    )
+  }
+
+  // 4. Recurse pipeline if needed
+
+  const updatedPullRequestReviewObject: PullRequestReview = updatedPullRequestReview.toObject()
+
+  if (updatedPullRequestReviewObject.pendingAnalysisForCommits.length > 0) {
+    pipeline(
+      updatedPullRequestReviewObject,
+      getClientUrlForCommitReview,
+      retrieveDiff,
+      retrieveFile,
+      setCommitStatus
+    )
+  }
+
 }
+
 
 export const getFileReviewsWithMetadataNeedingApproval = async (
   retrieveDiff: () => Promise<any>,
