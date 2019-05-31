@@ -122,7 +122,7 @@ export const pipeline = async (
       {
         new: true
       }
-    )
+    ).exec()
   }
 
   if (updatedPullRequestReview === null) {
