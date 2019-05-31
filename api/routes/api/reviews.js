@@ -27,7 +27,7 @@ router.get('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId'
     return res.staus(404).send({ message: errorMessages.noPullRequestReview });
   }
 
-  const commitReview = CommitReviewModel.findOne({ repoId, pullRequestNumber, commitId }).exec();
+  const commitReview = await CommitReviewModel.findOne({ repoId, pullRequestNumber, commitId }).exec();
 
   if (commitReview === null) {
     return res.status(404).send({ message: errorMessages.noCommitReview });
@@ -114,7 +114,7 @@ router.post('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/approve
     return res.status(500).send({ message: errorMessages.internalServerError });
   }
 
-  const commitReviewUpdateResult = CommitReviewModel.updateOne(
+  const commitReviewUpdateResult = await CommitReviewModel.updateOne(
     {
       repoId,
       pullRequestNumber,
