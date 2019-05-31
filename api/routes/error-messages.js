@@ -12,7 +12,17 @@ const noModifyingTagsAfterConfirmation = "You cannot approve/reject tags once yo
 
 const noApprovingDocsBeforeAllTagsApproved = "You must approve all your tags before approving all your documentation...";
 
+const noPullRequestReview = "Unable to find a review for that pull request...";
+
+const noCommitReview = "Unable to find a review for that commit...";
+
+const noUpdatingNonHeadCommit = "You can only update the head commit...";
+
 const internalServerError = "There was an unknown internal server error...";
+
+const noApprovingAlreadyApprovedTag = "You can't approve an already-approved tag...";
+
+const noApprovingRejectedTag = "You cannot approve a rejected tag...";
 
 module.exports = {
   notLoggedInError,
@@ -21,5 +31,10 @@ module.exports = {
   noAccessToApproveTagsError,
   noModifyingTagsAfterConfirmation,
   noAccessToRejectTagsError,
-  noApprovingDocsBeforeAllTagsApproved
+  noApprovingDocsBeforeAllTagsApproved,
+  noPullRequestReview,
+  noCommitReview,
+  noUpdatingNonHeadCommit,
+  noApprovingAlreadyApprovedTag,
+  noApprovingRejectedTag
 }

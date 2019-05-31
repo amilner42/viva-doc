@@ -1,7 +1,7 @@
 const passport = require('passport');
 const GitHubStrategy = require('passport-github').Strategy;
 const mongoose = require('mongoose');
-const User = mongoose.model('User');
+const UserModel = mongoose.model('User');
 const config = require('../config');
 
 passport.use(new GitHubStrategy({
@@ -10,7 +10,7 @@ passport.use(new GitHubStrategy({
     callbackURL: config.githubCallbackUrl
   },
   function(accessToken, refreshToken, profile, done) {
-    User.findOrCreate(
+    UserModel.findOrCreate(
       { githubId: profile.id },
       // These fields can change so we can't search by them
       {
@@ -32,7 +32,7 @@ passport.serializeUser(function(user, done) {
 
 // Deserialize by id
 passport.deserializeUser(function(id, done) {
-  User.findById(id)
+  UserModel.findById(id)
   .then((usr) => done(null, usr))
   .catch((err) => done(err));
 });

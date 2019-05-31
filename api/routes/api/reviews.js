@@ -4,49 +4,52 @@ const mongoose = require('mongoose');
 
 const github = require("../../github");
 const errorMessages = require("../error-messages");
-const BranchReview = mongoose.model('BranchReview');
-const BranchReviewMetadata = mongoose.model('BranchReviewMetadata');
+const CommitReviewModel = mongoose.model('CommitReview');
+const PullRequestReviewModel = mongoose.model('PullRequestReview');
 
 
-router.get('/review/repo/:repoId/branch/:branchName/commit/:commitId'
-, async function(req, res, next) {
+router.get('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId'
+, async function (req, res, next) {
 
   const user = req.user;
 
-  if(!user) { return res.status(401).send({ message: errorMessages.notLoggedInError }); }
+  if (!user) { return res.status(401).send({ message: errorMessages.notLoggedInError }); }
 
   const basicUserData = await github.getBasicUserData(user.username, user.accessToken);
-  const { repoId, branchName, commitId } = req.params;
+  const { repoId, pullRequestNumber, commitId } = req.params;
   const hasAccessToRepo = github.hasAccessToRepo(basicUserData.repos, repoId)
 
   if (!hasAccessToRepo) { return res.status(401).send({ message: errorMessages.noAccessToRepoError }); }
 
-  // TODO handle not finding it
-  const branchReview = (await BranchReview.findOne({ repoId, branchName, commitId })).toObject();
-  const branchReviewMetadata = (await BranchReviewMetadata.findOne({ repoId, branchName, commitId })).toObject();
+  const pullRequestReview = await PullRequestReviewModel.findOne({ repoId, pullRequestNumber }).exec();
 
-  // TODO
-  if (branchReview === null) {
-    return res.json({});
+  if (pullRequestReview === null) {
+    return res.staus(404).send({ message: errorMessages.noPullRequestReview });
   }
 
-  // Add username/repos to the obj
-  branchReview.username = basicUserData.username
-  branchReview.repos = basicUserData.repos
-  branchReview.approvedTags = branchReviewMetadata.approvedTags;
-  branchReview.requiredConfirmations = branchReviewMetadata.requiredConfirmations;
+  const commitReview = CommitReviewModel.findOne({ repoId, pullRequestNumber, commitId }).exec();
 
-  return res.json(branchReview);
+  if (commitReview === null) {
+    return res.status(404).send({ message: errorMessages.noCommitReview });
+  }
+
+  const pullRequestReviewObject = pullRequestReview.toObject();
+  const commitReviewObject = commitReview.toObject();
+
+  commitReviewObject.isHeadCommit = commitReview.commitId === pullRequestReviewObject.headCommitId;
+
+  return res.json(commitReviewObject);
 });
 
-router.post('/review/repo/:repoId/branch/:branchName/commit/:commitId/tags/approve'
-, async function(req, res, next) {
+
+router.post('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/approvedtags'
+, async function (req, res, next) {
 
   const user = req.user;
-  const { repoId, branchName, commitId } = req.params;
+  const { repoId, pullRequestNumber, commitId } = req.params;
   const tagsToApprove = req.body.approveTags; // TODO Validate this?
 
-  if(!user) { return res.status(401).send({ message: errorMessages.notLoggedInError }); }
+  if (!user) { return res.status(401).send({ message: errorMessages.notLoggedInError }); }
 
   const basicUserData = await github.getBasicUserData(user.username, user.accessToken);
   const hasAccessToRepo = github.hasAccessToRepo(basicUserData.repos, repoId)
@@ -55,37 +58,146 @@ router.post('/review/repo/:repoId/branch/:branchName/commit/:commitId/tags/appro
 
   const username = user.username;
 
-  // TODO handle not finding it
-  const branchReview = (await BranchReview.findOne({ repoId, branchName, commitId })).toObject();
+  const pullRequestReview = await PullRequestReviewModel.findOne({ repoId, pullRequestNumber }).exec();
 
-  if (!R.all((tagId) => github.isOwnerOfTag(branchReview, tagId, username), tagsToApprove)) {
-    return res.status(401).send({ message: errorMessages.noAccessToApproveTagsError });
+  if (pullRequestReview === null) {
+    return res.staus(404).send({ message: errorMessages.noPullRequestReview });
   }
 
-  const updateResult = await BranchReviewMetadata.update(
-    { repoId, branchName, commitId, requiredConfirmations: { $elemMatch: { $eq: username } } },
-    { $addToSet: { "approvedTags": { $each: tagsToApprove } } }
-  );
+  const commitReview = await CommitReview.findOne({ repoId, pullRequestNumber, commitId }).exec();
 
-  if (updateResult.n === 0) {
-    return res.status(403).send({ message: errorMessages.noModifyingTagsAfterConfirmation });
+  if (commitReview === null) {
+    return res.status(404).send({ message: errorMessages.noCommitReview });
   }
 
-  if (updateResult.ok !== 1) {
+  const commitReviewObject = commitReview.toObject();
+  const pullRequestReviewObject = pullRequestReview.toObject();
+
+  if (pullRequestReviewObject.headCommitId !== commitId) {
+    return res.status(423).send({ message: errorMessages.noUpdatingNonHeadCommit });
+  }
+
+  if (!ownsTags(commitReviewObject.tagsAndOwners, tagsToApprove, username)) {
+    return res.status(403).send({ message: errorMessages.noAccessToApproveTagsError })
+  }
+
+  if (containsAnyTag(commitReviewObject.approveTags, tagsToApprove)) {
+    return res.status(403).send({ message: errorMessages.noApprovingAlreadyApprovedTag })
+  }
+
+  if (containsAnyTag(commitReviewObject.rejectedTags, tagsToApprove)) {
+    return res.status(403).send({ message: errorMessages.noApprovingRejectedTag });
+  }
+
+  if (!hasToApproveDocs(commitReviewObject.remainingOwnersToApproveDocs, username)) {
+    return res.status(403).send({ message: errorMessages.noModifyingTagsAfterConfirmation })
+  }
+
+  // TODO RACE CONDITIONS ON QUERY
+
+  const pullRequestUpdateResult = await PullRequestReviewModel.updateOne(
+    {
+      repoId,
+      pullRequestNumber,
+      headCommitId: commitId
+    },
+    {
+      $addToSet: { "headCommitApprovedTags": { $each: tagsToApprove } }
+    }
+  ).exec();
+
+  if (!updateOneMatched(pullRequestUpdateResult)) {
+    return res.status(423).send({ message: errorMessages.noUpdatingNonHeadCommit });
+  }
+
+  if (!updateOneModified(pullRequestUpdateResult)) {
+    return res.status(500).send({ message: errorMessages.internalServerError });
+  }
+
+  const commitReviewUpdateResult = CommitReviewModel.updateOne(
+    {
+      repoId,
+      pullRequestNumber,
+      commitId
+    },
+    {
+      $addToSet: { "approvedTags": { $each: tagsToApprove } }
+    }
+  ).exec();
+
+  if (!updateOneMatched(commitReviewUpdateResult) || !updateOneModified(commitReviewUpdateResult)) {
+    // TODO What to do here? We've already done updates to PR
     return res.status(500).send({ message: errorMessages.internalServerError });
   }
 
   return res.json({});
 });
 
-router.post('/review/repo/:repoId/branch/:branchName/commit/:commitId/tags/reject'
+
+router.delete('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/approvedtags/:tagId'
 , async function (req, res, next) {
 
   const user = req.user;
-  const { repoId, branchName, commitId } = req.params;
+  const { repoId, pullRequestNumber, commitId, tagId } = req.params;
+
+  if (!user) { return res.status(401).send({ message: errorMessages.notLoggedInError }); }
+
+  const basicUserData = await github.getBasicUserData(user.username, user.accessToken);
+  const hasAccessToRepo = github.hasAccessToRepo(basicUserData.repos, repoId)
+
+  if (!hasAccessToRepo) { return res.status(401).send({ message: errorMessages.noAccessToRepoError }); }
+
+  const username = user.username;
+
+  // TODO ALL SAFETY CHECKS / RACE CONDITIONS ON QUERIES
+
+  const pullRequestUpdateResult = await PullRequestReviewModel.updateOne(
+    {
+      repoId,
+      pullRequestNumber,
+      headCommitId: commitId
+    },
+    {
+      $pull: { "headCommitApprovedTags": tagId }
+    }
+  ).exec();
+
+  if (!updateOneMatched(pullRequestUpdateResult)) {
+    return res.status(423).send({ message: errorMessages.noUpdatingNonHeadCommit });
+  }
+
+  if (!updateOneModified(pullRequestUpdateResult)) {
+    return res.status(500).send({ message: errorMessages.internalServerError });
+  }
+
+  const commitReviewUpdateResult = await commitReviewUpdateResult.updateOne(
+    {
+      repoId,
+      pullRequestNumber,
+      commitId
+    },
+    {
+      $pull: { "approvedTags": tagId }
+    }
+  ).exec();
+
+  if (!updateOneMatched(commitReviewUpdateResult) || !updateOneModified(commitReviewUpdateResult)) {
+    // TODO What to do here? We've already done updates to PR
+    return res.status(500).send({ message: errorMessages.internalServerError });
+  }
+
+  return res.json({});
+});
+
+
+router.post('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/rejectedtags'
+, async function (req, res, next) {
+
+  const user = req.user;
+  const { repoId, pullRequestNumber, commitId } = req.params;
   const tagsToReject = req.body.rejectTags; // TODO Validate this?
 
-  if(!user) { return res.status(401).send({ message: errorMessages.notLoggedInError }); }
+  if (!user) { return res.status(401).send({ message: errorMessages.notLoggedInError }); }
 
   const basicUserData = await github.getBasicUserData(user.username, user.accessToken);
   const hasAccessToRepo = github.hasAccessToRepo(basicUserData.repos, repoId)
@@ -94,36 +206,54 @@ router.post('/review/repo/:repoId/branch/:branchName/commit/:commitId/tags/rejec
 
   const username = user.username;
 
-  // TODO handle not finding it
-  const branchReview = (await BranchReview.findOne({ repoId, branchName, commitId })).toObject();
+  // TODO ALL SAFETY CHECKS / RACE CONDITIONS ON QUERIES
 
-  if (!R.all((tagId) => github.isOwnerOfTag(branchReview, tagId, username), tagsToReject)) {
-    return res.status(401).send({ message: errorMessages.noAccessToRejectTagsError });
+  const pullRequestUpdateResult = await PullRequestReviewModel.updateOne(
+    {
+      repoId,
+      pullRequestNumber,
+      headCommitId: commitId
+    },
+    {
+      $addToSet: { "headCommitRejectedTags": { $each: tagsToReject } }
+    }
+  ).exec();
+
+  if (!updateOneMatched(pullRequestUpdateResult)) {
+    return res.status(423).send({ message: errorMessages.noUpdatingNonHeadCommit });
   }
 
-  const updateResult = await BranchReviewMetadata.update(
-    { repoId, branchName, commitId, requiredConfirmations: { $elemMatch: { $eq: username } } },
-    { $pull: { "approvedTags": { $in: tagsToReject }}}
-  )
-
-  if (updateResult.n === 0) {
-    return res.status(403).send({ message: errorMessages.noModifyingTagsAfterConfirmation });
+  if (!updateOneModified(pullRequestUpdateResult)) {
+    return res.status(500).send({ message: errorMessages.internalServerError });
   }
 
-  if (updateResult.ok !== 1) {
+  const commitReviewUpdateResult = await commitReviewUpdateResult.updateOne(
+    {
+      repoId,
+      pullRequestNumber,
+      commitId
+    },
+    {
+      $addToSet: { "rejectedTags": { $each: tagsToReject } }
+    }
+  ).exec();
+
+  if (!updateOneMatched(commitReviewUpdateResult) || !updateOneModified(commitReviewUpdateResult)) {
+    // TODO What to do here? We've already done updates to PR
     return res.status(500).send({ message: errorMessages.internalServerError });
   }
 
   return res.json({});
 });
 
-router.post('/review/repo/:repoId/branch/:branchName/commit/:commitId/docs/approve'
+
+router.delete('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/rejectedtags/:tagId'
 , async function (req, res, next) {
 
   const user = req.user;
-  const { repoId, branchName, commitId } = req.params;
+  const { repoId, pullRequestNumber, commitId, tagId } = req.params;
 
-  if(!user) { return res.status(401).send({ message: errorMessages.notLoggedInError }); }
+  if (!user) { return res.status(401).send({ message: errorMessages.notLoggedInError }); }
 
   const basicUserData = await github.getBasicUserData(user.username, user.accessToken);
   const hasAccessToRepo = github.hasAccessToRepo(basicUserData.repos, repoId)
@@ -132,56 +262,85 @@ router.post('/review/repo/:repoId/branch/:branchName/commit/:commitId/docs/appro
 
   const username = user.username;
 
-  // TODO handle not finding branchReview / branchReviewMetadata (could be already confirmed if metadata not found)
-  const branchReview = (await BranchReview.findOne({ repoId, branchName, commitId })).toObject();
-  const branchReviewMetadata = (await BranchReviewMetadata.findOne({
-    repoId,
-    branchName,
-    commitId,
-    requiredConfirmations: { $elemMatch: { $eq: username } }
-  })).toObject();
+  // TODO ALL SAFETY CHECKS / RACE CONDITIONS ON QUERIES
 
-  const allUsersTagsApproved = R.all((fileReview) => {
-    const tags = getTags(fileReview);
+  const pullRequestUpdateResult = await PullRequestReviewModel.updateOne(
+    {
+      repoId,
+      pullRequestNumber,
+      headCommitId: commitId
+    },
+    {
+      $pull: { "headCommitRejectedTags": tagId }
+    }
+  ).exec();
 
-    return R.all((tag) => {
-      const isOwner = tag.owner === username;
-      const tagApproved = R.any((approvedTag) => {
-        return tag.tagId.equals(approvedTag);
-      }, branchReviewMetadata.approvedTags)
-
-      return !isOwner || tagApproved;
-    }, tags);
-
-  }, branchReview.fileReviews);
-
-  if (!allUsersTagsApproved) {
-    return res.status(403).send({ message: errorMessages.noApprovingDocsBeforeAllTagsApproved });
+  if (!updateOneMatched(pullRequestUpdateResult)) {
+    return res.status(423).send({ message: errorMessages.noUpdatingNonHeadCommit });
   }
 
-  const updateResult = await BranchReviewMetadata.update(
-    { repoId, branchName, commitId, requiredConfirmations: { $elemMatch: { $eq: username } } },
-    { $pull: { "requiredConfirmations": username }}
-  )
+  if (!updateOneModified(pullRequestUpdateResult)) {
+    return res.status(500).send({ message: errorMessages.internalServerError });
+  }
 
-  // TODO check update result to verify ok
+  const commitReviewUpdateResult = await commitReviewUpdateResult.updateOne(
+    {
+      repoId,
+      pullRequestNumber,
+      commitId
+    },
+    {
+      $pull: { "rejectedTags": tagId }
+    }
+  ).exec();
+
+  if (!updateOneMatched(commitReviewUpdateResult) || !updateOneModified(commitReviewUpdateResult)) {
+    // TODO What to do here? We've already done updates to PR
+    return res.status(500).send({ message: errorMessages.internalServerError });
+  }
 
   return res.json({});
+
 });
 
-const getTags = (fileReview) => {
 
-  switch (fileReview.fileReviewType) {
+router.post('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/approveddocs'
+, async function (req, res, next) {
 
-    case "deleted-file":
-    case "new-file":
-      return fileReview.tags;
+  // TODO
+  res.status(500).send({ message: "NOT IMPLEMENTED "})
 
-    case "modified-file":
-    case "renamed-file":
-      return R.map((review) => { return review.tag }, fileReview.reviews)
+});
 
-  }
+
+const hasToApproveDocs = (remainingOwnersToApproveDocs, username) => {
+  return R.contains(username, remainingOwnersToApproveDocs);
+}
+
+
+const ownsTags = (tagsAndOwners, tagIds, username) => {
+  return R.all((tagId) => {
+    return R.any((tagAndOwner) => {
+      return tagAndOwner.owner === username && tagAndOwner.tagId === tagId;
+    }, tagsAndOwners)
+  }, tagIds);
+}
+
+
+const containsAnyTag = (tagList, tagMembers) => {
+  return R.any((tagMember) => {
+    return R.contains(tagMember, tagList);
+  }, tagMembers);
+}
+
+
+const updateOneMatched = (updateResult) => {
+  return updateResult.n === 1;
+}
+
+
+const updateOneModified = (updateResult) => {
+  return updateResult.nModified === 1;
 }
 
 
