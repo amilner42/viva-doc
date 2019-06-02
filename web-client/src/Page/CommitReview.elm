@@ -289,7 +289,7 @@ renderSummaryHeader username approveDocsState commitReview =
                                 , style "height" "52px"
                                 , disabled True
                                 ]
-                                [ text "approving documentation disabled until all tags approved" ]
+                                [ text "approving documentation is disabled until all your tags approved" ]
                         ]
         ]
 
@@ -536,22 +536,22 @@ renderTagOrReview { renderStyle, username, description, remainingOwnersToApprove
                                         CommitReview.RequestingApproval ->
                                             div
                                                 [ class "level-right has-text-grey-light" ]
-                                                [ text "requesting approval..." ]
+                                                [ text "Requesting approval..." ]
 
                                         CommitReview.RequestingRejection ->
                                             div
                                                 [ class "level-right has-text-grey-light" ]
-                                                [ text "requesting rejection..." ]
+                                                [ text "Requesting rejection..." ]
 
                                         CommitReview.RequestingRemoveApproval ->
                                             div
                                                 [ class "level-right has-text-grey-light" ]
-                                                [ text "removing approval..." ]
+                                                [ text "Removing approval..." ]
 
                                         CommitReview.RequestingRemoveRejection ->
                                             div
                                                 [ class "level-right has-text-grey-light" ]
-                                                [ text "removing rejection..." ]
+                                                [ text "Removing rejection..." ]
 
                                         CommitReview.RequestFailed err ->
                                             div [ class "is-hidden" ] []
@@ -584,7 +584,7 @@ renderTagOrReview { renderStyle, username, description, remainingOwnersToApprove
                                         ]
                                         [ text "Approve" ]
                                     , button
-                                        [ class "button is-danger is-fullwidth  has-text-white"
+                                        [ class "button is-danger is-fullwidth has-text-white"
                                         , onClick <| RejectTags <| Set.singleton tag.tagId
                                         , disabled <| requestingDocApproval
                                         ]
@@ -593,42 +593,53 @@ renderTagOrReview { renderStyle, username, description, remainingOwnersToApprove
 
                                 CommitReview.Approved ->
                                     [ button
-                                        [ class "button is-fullwidth has-text-white"
+                                        [ class "button is-success is-fullwidth is-outlined"
                                         , disabled <| requestingDocApproval
-                                        , onClick <| RejectTags <| Set.singleton tag.tagId
+                                        , onClick <| RemoveApprovalOnTag tag.tagId
                                         ]
-                                        [ text "Remove Approval" ]
+                                        [ text "Undo Approval" ]
                                     ]
 
                                 CommitReview.Rejected ->
                                     [ button
-                                        [ class "button is-fullwidth has-text-white"
+                                        [ class "button is-fullwidth is-danger is-outlined"
                                         , disabled <| requestingDocApproval
+                                        , onClick <| RemoveRejectionOnTag tag.tagId
                                         ]
-                                        [ text "Remove Rejection" ]
+                                        [ text "Undo Rejection" ]
                                     ]
 
                                 CommitReview.RequestingApproval ->
                                     [ button
                                         [ class "button is-success is-fullwidth is-loading" ]
                                         []
+                                    , button
+                                        [ class "button is-danger is-fullwidth  has-text-white"
+                                        , disabled True
+                                        ]
+                                        [ text "Reject" ]
                                     ]
 
                                 CommitReview.RequestingRejection ->
                                     [ button
+                                        [ class "button is-success is-fullwidth"
+                                        , disabled True
+                                        ]
+                                        [ text "Approve" ]
+                                    , button
                                         [ class "button is-danger is-fullwidth is-loading" ]
                                         []
                                     ]
 
                                 CommitReview.RequestingRemoveApproval ->
                                     [ button
-                                        [ class "button is-success is-fullwidth is-loading" ]
+                                        [ class "button is-success is-fullwidth is-outlined is-loading" ]
                                         []
                                     ]
 
                                 CommitReview.RequestingRemoveRejection ->
                                     [ button
-                                        [ class "button is-danger is-fullwidth is-loading" ]
+                                        [ class "button is-danger is-fullwidth is-outlined is-loading" ]
                                         []
                                     ]
 
