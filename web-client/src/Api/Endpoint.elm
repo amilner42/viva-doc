@@ -1,4 +1,4 @@
-module Api.Endpoint exposing (Endpoint, commitReview, commitReviewApproveDocs, commitReviewApproveTags, commitReviewRejectTags, githubLoginFromCode, logout, request, user)
+module Api.Endpoint exposing (Endpoint, commitReview, commitReviewApproveDocs, commitReviewApproveTag, commitReviewApproveTags, commitReviewRejectTag, commitReviewRejectTags, githubLoginFromCode, logout, request, user)
 
 {-| This module hides creates the opaque Endpoint type and keeps all endpoints within this file so
 this file serves as the single source of truth for all app API endpoints.
@@ -99,21 +99,92 @@ user =
     url [ "user" ] []
 
 
-commitReview : Int -> String -> String -> Endpoint
-commitReview repoId branchName commitId =
-    url [ "review", "repo", String.fromInt repoId, "branch", branchName, "commit", commitId ] []
+commitReview : Int -> Int -> String -> Endpoint
+commitReview repoId prNumber commitId =
+    url
+        [ "review"
+        , "repo"
+        , String.fromInt repoId
+        , "pr"
+        , String.fromInt prNumber
+        , "commit"
+        , commitId
+        ]
+        []
 
 
-commitReviewApproveTags : Int -> String -> String -> Endpoint
-commitReviewApproveTags repoId branchName commitId =
-    url [ "review", "repo", String.fromInt repoId, "branch", branchName, "commit", commitId, "tags", "approve" ] []
+commitReviewApproveTags : Int -> Int -> String -> Endpoint
+commitReviewApproveTags repoId prNumber commitId =
+    url
+        [ "review"
+        , "repo"
+        , String.fromInt repoId
+        , "pr"
+        , String.fromInt prNumber
+        , "commit"
+        , commitId
+        , "approvedtags"
+        ]
+        []
 
 
-commitReviewRejectTags : Int -> String -> String -> Endpoint
-commitReviewRejectTags repoId branchName commitId =
-    url [ "review", "repo", String.fromInt repoId, "branch", branchName, "commit", commitId, "tags", "reject" ] []
+commitReviewApproveTag : Int -> Int -> String -> String -> Endpoint
+commitReviewApproveTag repoId prNumber commitId tagId =
+    url
+        [ "review"
+        , "repo"
+        , String.fromInt repoId
+        , "pr"
+        , String.fromInt prNumber
+        , "commit"
+        , commitId
+        , "approvedtags"
+        , tagId
+        ]
+        []
 
 
-commitReviewApproveDocs : Int -> String -> String -> Endpoint
-commitReviewApproveDocs repoId branchName commitId =
-    url [ "review", "repo", String.fromInt repoId, "branch", branchName, "commit", commitId, "docs", "approve" ] []
+commitReviewRejectTags : Int -> Int -> String -> Endpoint
+commitReviewRejectTags repoId prNumber commitId =
+    url
+        [ "review"
+        , "repo"
+        , String.fromInt repoId
+        , "pr"
+        , String.fromInt prNumber
+        , "commit"
+        , commitId
+        , "rejectedtags"
+        ]
+        []
+
+
+commitReviewRejectTag : Int -> Int -> String -> String -> Endpoint
+commitReviewRejectTag repoId prNumber commitId tagId =
+    url
+        [ "review"
+        , "repo"
+        , String.fromInt repoId
+        , "pr"
+        , String.fromInt prNumber
+        , "commit"
+        , commitId
+        , "rejectedtags"
+        , tagId
+        ]
+        []
+
+
+commitReviewApproveDocs : Int -> Int -> String -> Endpoint
+commitReviewApproveDocs repoId prNumber commitId =
+    url
+        [ "review"
+        , "repo"
+        , String.fromInt repoId
+        , "pr"
+        , String.fromInt prNumber
+        , "commit"
+        , commitId
+        , "approveddocs"
+        ]
+        []

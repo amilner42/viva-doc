@@ -9,9 +9,10 @@ type alias CommitReview =
     { repoId : String
     , repoFullName : String
     , branchName : String
+    , pullRequestNumber : Int
     , commitId : String
     , fileReviews : List FileReview
-    , requiredConfirmations : Set.Set String
+    , remainingOwnersToApproveDocs : Set.Set String
     }
 
 
@@ -71,10 +72,13 @@ type alias Tag =
 
 
 type ApprovedState err
-    = Approved
-    | NotApproved
+    = Neutral
+    | Approved
+    | Rejected
     | RequestingApproval
+    | RequestingRemoveApproval
     | RequestingRejection
+    | RequestingRemoveRejection
     | RequestFailed err
 
 
@@ -87,8 +91,11 @@ type TagType
 
 type alias OwnerTagStatus =
     { username : String
+    , approvedTags : Int
+    , rejectedTags : Int
+    , neutralTags : Int
     , totalTags : Int
-    , status : Status
+    , approvedDocs : Bool
     }
 
 
@@ -264,36 +271,25 @@ getOwnerTagStatuses : CommitReview -> List OwnerTagStatus
 getOwnerTagStatuses commitReview =
     tagFold
         (\tag tagCountDict ->
-            let
-                tagOwner =
-                    tag.owner
-
-                tagApproved =
-                    isApproved tag.approvedState
-            in
             Dict.update
-                tagOwner
+                tag.owner
                 (\maybeTagAcc ->
-                    case maybeTagAcc of
-                        Nothing ->
-                            Just
-                                ( if tagApproved then
-                                    1
+                    Maybe.withDefault { approved = 0, rejected = 0, neutral = 0, total = 0 } maybeTagAcc
+                        |> (\acc ->
+                                case tag.approvedState of
+                                    Approved ->
+                                        { acc | approved = acc.approved + 1, total = acc.total + 1 }
 
-                                  else
-                                    0
-                                , 1
-                                )
+                                    Rejected ->
+                                        { acc | rejected = acc.rejected + 1, total = acc.total + 1 }
 
-                        Just ( approvedTags, totalTags ) ->
-                            Just
-                                ( if tagApproved then
-                                    approvedTags + 1
+                                    Neutral ->
+                                        { acc | neutral = acc.neutral + 1, total = acc.total + 1 }
 
-                                  else
-                                    approvedTags
-                                , totalTags + 1
-                                )
+                                    _ ->
+                                        { acc | total = acc.total + 1 }
+                           )
+                        |> Just
                 )
                 tagCountDict
         )
@@ -301,15 +297,13 @@ getOwnerTagStatuses commitReview =
         commitReview
         |> Dict.toList
         |> List.map
-            (\( owner, ( approvedTags, totalTags ) ) ->
+            (\( owner, { approved, rejected, neutral, total } ) ->
                 { username = owner
-                , totalTags = totalTags
-                , status =
-                    if Set.member owner commitReview.requiredConfirmations then
-                        Unconfirmed approvedTags
-
-                    else
-                        Confirmed
+                , totalTags = total
+                , approvedTags = approved
+                , rejectedTags = rejected
+                , neutralTags = neutral
+                , approvedDocs = not <| Set.member owner commitReview.remainingOwnersToApproveDocs
                 }
             )
 
@@ -374,82 +368,91 @@ tagFold foldFunc =
         )
 
 
-
--- Encoders and decoders
+type alias ApprovedAndRejectedTags =
+    { approvedTags : Set.Set String
+    , rejectedTags : Set.Set String
+    }
 
 
 decodeCommitReview : Decode.Decoder CommitReview
 decodeCommitReview =
-    Decode.field "approvedTags" (Decode.list Decode.string |> Decode.map Set.fromList)
+    let
+        decodeApprovedAndRejectedTags =
+            Decode.map2 ApprovedAndRejectedTags
+                (Decode.field "approvedTags" (Decode.list Decode.string |> Decode.map Set.fromList))
+                (Decode.field "rejectedTags" (Decode.list Decode.string |> Decode.map Set.fromList))
+    in
+    decodeApprovedAndRejectedTags
         |> Decode.andThen
-            (\approvedTags ->
-                Decode.map6 CommitReview
+            (\tagStates ->
+                Decode.map7 CommitReview
                     (Decode.field "repoId" Decode.string)
                     (Decode.field "repoFullName" Decode.string)
                     (Decode.field "branchName" Decode.string)
+                    (Decode.field "pullRequestNumber" Decode.int)
                     (Decode.field "commitId" Decode.string)
-                    (Decode.field "fileReviews" (Decode.list (decodeFileReview approvedTags)))
-                    (Decode.field "requiredConfirmations" (Decode.list Decode.string |> Decode.map Set.fromList))
+                    (Decode.field "fileReviews" (Decode.list <| decodeFileReview tagStates))
+                    (Decode.field "remainingOwnersToApproveDocs" (Decode.list Decode.string |> Decode.map Set.fromList))
             )
 
 
-decodeFileReview : Set.Set String -> Decode.Decoder FileReview
-decodeFileReview approvedTags =
+decodeFileReview : ApprovedAndRejectedTags -> Decode.Decoder FileReview
+decodeFileReview tagStates =
     Decode.map2 FileReview
-        (decodeFileReviewType approvedTags)
+        (decodeFileReviewType tagStates)
         (Decode.field "currentFilePath" Decode.string)
 
 
-decodeFileReviewType : Set.Set String -> Decode.Decoder FileReviewType
-decodeFileReviewType approvedTags =
+decodeFileReviewType : ApprovedAndRejectedTags -> Decode.Decoder FileReviewType
+decodeFileReviewType tagStates =
     Decode.field "fileReviewType" Decode.string
         |> Decode.andThen
             (\reviewType ->
                 case reviewType of
                     "modified-file" ->
-                        decodeModifiedfileReview approvedTags
+                        decodeModifiedfileReview tagStates
 
                     "renamed-file" ->
-                        decodeRenamedFileReview approvedTags
+                        decodeRenamedFileReview tagStates
 
                     "new-file" ->
-                        decodeNewFileReview approvedTags
+                        decodeNewFileReview tagStates
 
                     "deleted-file" ->
-                        decodeDeletedFileReview approvedTags
+                        decodeDeletedFileReview tagStates
 
                     fileReviewType ->
                         Decode.fail <| "You have an invalid file review type: " ++ fileReviewType
             )
 
 
-decodeModifiedfileReview : Set.Set String -> Decode.Decoder FileReviewType
-decodeModifiedfileReview approvedTags =
+decodeModifiedfileReview : ApprovedAndRejectedTags -> Decode.Decoder FileReviewType
+decodeModifiedfileReview tagStates =
     Decode.map ModifiedFileReview
-        (Decode.field "reviews" (Decode.list <| decodeReview approvedTags))
+        (Decode.field "reviews" (Decode.list <| decodeReview tagStates))
 
 
-decodeRenamedFileReview : Set.Set String -> Decode.Decoder FileReviewType
-decodeRenamedFileReview approvedTags =
+decodeRenamedFileReview : ApprovedAndRejectedTags -> Decode.Decoder FileReviewType
+decodeRenamedFileReview tagStates =
     Decode.map2 RenamedFileReview
         (Decode.field "previousFilePath" Decode.string)
-        (Decode.field "reviews" (Decode.list <| decodeReview approvedTags))
+        (Decode.field "reviews" (Decode.list <| decodeReview tagStates))
 
 
-decodeNewFileReview : Set.Set String -> Decode.Decoder FileReviewType
-decodeNewFileReview approvedTags =
+decodeNewFileReview : ApprovedAndRejectedTags -> Decode.Decoder FileReviewType
+decodeNewFileReview tagStates =
     Decode.map NewFileReview
-        (Decode.field "tags" (Decode.list <| decodeTag approvedTags))
+        (Decode.field "tags" (Decode.list <| decodeTag tagStates))
 
 
-decodeDeletedFileReview : Set.Set String -> Decode.Decoder FileReviewType
-decodeDeletedFileReview approvedTags =
+decodeDeletedFileReview : ApprovedAndRejectedTags -> Decode.Decoder FileReviewType
+decodeDeletedFileReview tagStates =
     Decode.map DeletedFileReview
-        (Decode.field "tags" (Decode.list <| decodeTag approvedTags))
+        (Decode.field "tags" (Decode.list <| decodeTag tagStates))
 
 
-decodeReview : Set.Set String -> Decode.Decoder Review
-decodeReview approvedTags =
+decodeReview : ApprovedAndRejectedTags -> Decode.Decoder Review
+decodeReview tagStates =
     Decode.map2 Review
         (Decode.field "reviewType" Decode.string
             |> Decode.andThen
@@ -469,7 +472,7 @@ decodeReview approvedTags =
                             Decode.fail <| "Invalid review type: " ++ reviewType
                 )
         )
-        (Decode.field "tag" <| decodeTag approvedTags)
+        (Decode.field "tag" <| decodeTag tagStates)
 
 
 decodeAlteredLine : Decode.Decoder AlteredLine
@@ -494,8 +497,8 @@ decodeAlteredLine =
         (Decode.field "content" Decode.string)
 
 
-decodeTag : Set.Set String -> Decode.Decoder Tag
-decodeTag approvedTags =
+decodeTag : ApprovedAndRejectedTags -> Decode.Decoder Tag
+decodeTag { approvedTags, rejectedTags } =
     Decode.field "tagId" Decode.string
         |> Decode.andThen
             (\tagId ->
@@ -530,7 +533,10 @@ decodeTag approvedTags =
                         if Set.member tagId approvedTags then
                             Approved
 
+                        else if Set.member tagId rejectedTags then
+                            Rejected
+
                         else
-                            NotApproved
+                            Neutral
                     )
             )

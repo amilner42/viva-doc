@@ -189,8 +189,8 @@ changeRouteTo maybeRoute model =
             OAuthRedirect.init session maybeCode
                 |> updatePageModel OAuthRedirect GotOAuthRedirectMsg model
 
-        Just (Route.CommitReview repoId branchName commitId) ->
-            CommitReview.init session repoId branchName commitId
+        Just (Route.CommitReview repoId prNumber commitId) ->
+            CommitReview.init session repoId prNumber commitId
                 |> updatePageModel CommitReview GotCommitReviewMsg model
 
 
@@ -241,10 +241,10 @@ update msg model =
             , Cmd.batch
                 [ -- Save a url to jump back to after auth if needed
                   case model.pageModel of
-                    CommitReview { repoId, branchName, commitId } ->
+                    CommitReview { repoId, prNumber, commitId } ->
                         LocalStorage.saveModel
                             { relativeUrl =
-                                Route.CommitReview repoId branchName commitId
+                                Route.CommitReview repoId prNumber commitId
                                     |> Route.routeToString
                             }
 
