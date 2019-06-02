@@ -64,7 +64,7 @@ router.post('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/approve
     return res.staus(404).send({ message: errorMessages.noPullRequestReview });
   }
 
-  const commitReview = await CommitReview.findOne({ repoId, pullRequestNumber, commitId }).exec();
+  const commitReview = await CommitReviewModel.findOne({ repoId, pullRequestNumber, commitId }).exec();
 
   if (commitReview === null) {
     return res.status(404).send({ message: errorMessages.noCommitReview });
@@ -81,7 +81,7 @@ router.post('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/approve
     return res.status(403).send({ message: errorMessages.noAccessToApproveTagsError })
   }
 
-  if (containsAnyTag(commitReviewObject.approveTags, tagsToApprove)) {
+  if (containsAnyTag(commitReviewObject.approvedTags, tagsToApprove)) {
     return res.status(403).send({ message: errorMessages.noApprovingAlreadyApprovedTag })
   }
 
@@ -95,7 +95,7 @@ router.post('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/approve
 
   // TODO RACE CONDITIONS ON QUERY
 
-  const pullRequestUpdateResult = await PullRequestReviewModel.updateOne(
+  const pullRequestUpdateResult = await PullRequestReviewModel.update(
     {
       repoId,
       pullRequestNumber,
@@ -114,7 +114,7 @@ router.post('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/approve
     return res.status(500).send({ message: errorMessages.internalServerError });
   }
 
-  const commitReviewUpdateResult = await CommitReviewModel.updateOne(
+  const commitReviewUpdateResult = await CommitReviewModel.update(
     {
       repoId,
       pullRequestNumber,
@@ -151,7 +151,7 @@ router.delete('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/appro
 
   // TODO ALL SAFETY CHECKS / RACE CONDITIONS ON QUERIES
 
-  const pullRequestUpdateResult = await PullRequestReviewModel.updateOne(
+  const pullRequestUpdateResult = await PullRequestReviewModel.update(
     {
       repoId,
       pullRequestNumber,
@@ -170,7 +170,7 @@ router.delete('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/appro
     return res.status(500).send({ message: errorMessages.internalServerError });
   }
 
-  const commitReviewUpdateResult = await commitReviewUpdateResult.updateOne(
+  const commitReviewUpdateResult = await CommitReviewModel.update(
     {
       repoId,
       pullRequestNumber,
@@ -208,7 +208,7 @@ router.post('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/rejecte
 
   // TODO ALL SAFETY CHECKS / RACE CONDITIONS ON QUERIES
 
-  const pullRequestUpdateResult = await PullRequestReviewModel.updateOne(
+  const pullRequestUpdateResult = await PullRequestReviewModel.update(
     {
       repoId,
       pullRequestNumber,
@@ -227,7 +227,7 @@ router.post('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/rejecte
     return res.status(500).send({ message: errorMessages.internalServerError });
   }
 
-  const commitReviewUpdateResult = await commitReviewUpdateResult.updateOne(
+  const commitReviewUpdateResult = await CommitReviewModel.update(
     {
       repoId,
       pullRequestNumber,
@@ -264,7 +264,7 @@ router.delete('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/rejec
 
   // TODO ALL SAFETY CHECKS / RACE CONDITIONS ON QUERIES
 
-  const pullRequestUpdateResult = await PullRequestReviewModel.updateOne(
+  const pullRequestUpdateResult = await PullRequestReviewModel.update(
     {
       repoId,
       pullRequestNumber,
@@ -283,7 +283,7 @@ router.delete('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/rejec
     return res.status(500).send({ message: errorMessages.internalServerError });
   }
 
-  const commitReviewUpdateResult = await commitReviewUpdateResult.updateOne(
+  const commitReviewUpdateResult = await CommitReviewModel.update(
     {
       repoId,
       pullRequestNumber,
