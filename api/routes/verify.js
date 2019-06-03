@@ -5,7 +5,7 @@ const mongoose = require('mongoose');
 const CommitReviewModel = mongoose.model('CommitReview');
 const PullRequestReviewModel = mongoose.model('PullRequestReview');
 
-const github = require("../github");
+const githubApi = require("../github-api");
 const errorMessages = require("./error-messages");
 
 
@@ -23,8 +23,8 @@ const getLoggedInUser = (req) => {
 
 const hasAccessToRepo = async (user, repoId) => {
 
-  const basicUserData = await github.getBasicUserData(user.username, user.accessToken);
-  const hasAccessToRepo = github.hasAccessToRepo(basicUserData.repos, repoId);
+  const basicUserData = await githubApi.getBasicUserData(user.username, user.accessToken);
+  const hasAccessToRepo = githubApi.hasAccessToRepo(basicUserData.repos, repoId);
 
   if (!hasAccessToRepo) {
     throw { httpCode: 401, message: errorMessages.noAccessToRepoError };
