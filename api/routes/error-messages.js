@@ -10,9 +10,13 @@ const noModifyingTagsAfterConfirmation = "You cannot approve/reject tags once yo
 
 const noApprovingDocsBeforeAllTagsApproved = "You must approve all your tags before approving all your documentation...";
 
+const noApprovingDocsIfNotOnRemainingDocApprovalList = "You are not on the list of remaining owners needed to approve docs...";
+
 const noPullRequestReview = "Unable to find a review for that pull request...";
 
 const noCommitReview = "Unable to find a review for that commit...";
+
+const noRepo = "Unable to find that repo...";
 
 const noUpdatingNonHeadCommit = "You can only update the head commit...";
 
@@ -37,8 +41,10 @@ module.exports = {
   noModifyingTagsYouDontOwn,
   noModifyingTagsAfterConfirmation,
   noApprovingDocsBeforeAllTagsApproved,
+  noApprovingDocsIfNotOnRemainingDocApprovalList,
   noPullRequestReview,
   noCommitReview,
+  noRepo,
   noUpdatingNonHeadCommit,
   noApprovingAlreadyApprovedTag,
   noRejectingAlreadyRejectedTag,

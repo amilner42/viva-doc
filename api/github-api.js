@@ -1,4 +1,4 @@
-// Module for github helpers
+// Module for github api helpers
 
 const R = require('ramda');
 const Github = require('github-api');

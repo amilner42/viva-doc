@@ -2,11 +2,13 @@ const router = require('express').Router();
 
 const verify = require("../verify");
 const errorMessages = require("../error-messages");
+const githubApp = require("../../github-app");
 
 const mongoose = require('mongoose');
 const CommitReviewModel = mongoose.model('CommitReview');
 const PullRequestReviewModel = mongoose.model('PullRequestReview');
 
+// TODO endpoints here need to be midnful of race conditions / mid way updates. Should probably all only update PullRequest...
 
 router.get('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId'
 , async function (req, res, next) {
@@ -46,7 +48,7 @@ router.post('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/approve
 
     const username = user.username;
 
-    verify.isHeadCommit(pullRequestReviewObject, commitReviewObject);
+    verify.isHeadCommit(pullRequestReviewObject, commitId);
 
     verify.ownsTags(commitReviewObject.tagsAndOwners, tagsToApprove, username);
 
@@ -67,8 +69,6 @@ router.post('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/approve
       username,
       errorMessages.noModifyingTagsAfterConfirmation
     );
-
-    // TODO RACE CONDITIONS ON QUERY
 
     const pullRequestUpdateResult = await PullRequestReviewModel.update(
       {
@@ -122,7 +122,7 @@ router.delete('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/appro
     const pullRequestReviewObject = await verify.getPullRequestReviewObject(repoId, pullRequestNumber);
     const commitReviewObject = await verify.getCommitReviewObject(repoId, pullRequestNumber, commitId);
 
-    verify.isHeadCommit(pullRequestReviewObject, commitReviewObject);
+    verify.isHeadCommit(pullRequestReviewObject, commitId);
 
     verify.ownsTags(commitReviewObject.tagsAndOwners, [ tagId ], username);
 
@@ -187,7 +187,7 @@ router.post('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/rejecte
     const pullRequestReviewObject = await verify.getPullRequestReviewObject(repoId, pullRequestNumber);
     const commitReviewObject = await verify.getCommitReviewObject(repoId, pullRequestNumber, commitId);
 
-    verify.isHeadCommit(pullRequestReviewObject, commitReviewObject);
+    verify.isHeadCommit(pullRequestReviewObject, commitId);
 
     verify.ownsTags(commitReviewObject.tagsAndOwners, tagsToReject, username);
 
@@ -261,7 +261,7 @@ router.delete('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/rejec
     const pullRequestReviewObject = await verify.getPullRequestReviewObject(repoId, pullRequestNumber);
     const commitReviewObject = await verify.getCommitReviewObject(repoId, pullRequestNumber, commitId);
 
-    verify.isHeadCommit(pullRequestReviewObject, commitReviewObject);
+    verify.isHeadCommit(pullRequestReviewObject, commitId);
 
     verify.ownsTags(commitReviewObject.tagsAndOwners, [ tagId ], username);
 
@@ -313,8 +313,80 @@ router.delete('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/rejec
 router.post('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/approveddocs'
 , async function (req, res, next) {
 
-  // TODO
-  res.status(500).send({ message: "NOT IMPLEMENTED "})
+  try {
+
+    const { repoId, pullRequestNumber, commitId } = req.params;
+
+    const user = verify.getLoggedInUser(req);
+    await verify.hasAccessToRepo(user, repoId);
+
+    const username = user.username;
+
+    const pullRequestReviewObject = await verify.getPullRequestReviewObject(repoId, pullRequestNumber);
+
+    verify.isHeadCommit(pullRequestReviewObject, commitId);
+
+    verify.userHasNotApprovedDocs(
+      pullRequestReviewObject.headCommitRemainingOwnersToApproveDocs,
+      username,
+      errorMessages.noApprovingDocsIfNotOnRemainingDocApprovalList
+    );
+
+    const updatedPullRequestReview = await PullRequestReviewModel.findOneAndUpdate(
+      { repoId, pullRequestNumber, headCommitId: commitId },
+      { $pull: { "headCommitRemainingOwnersToApproveDocs": username } },
+      { new: true }
+    ).exec();
+
+    if (updatedPullRequestReview === null) {
+      throw { httpCode: 423, message: errorMessages.noUpdatingNonHeadCommit };
+    }
+
+    const commitReviewUpdateResult = await CommitReviewModel.update(
+      {
+        repoId,
+        pullRequestNumber,
+        commitId
+      },
+      {
+        $pull: { "remainingOwnersToApproveDocs": username }
+      }
+    ).exec();
+
+    verify.updateMatchedOneResult(commitReviewUpdateResult, 500, errorMessages.internalServerError);
+    verify.updateModifiedOneResult(commitReviewUpdateResult);
+
+    // No need for any more work, still people that need to approve their docs.
+    if (updatedPullRequestReview.headCommitRemainingOwnersToApproveDocs.length > 0) {
+      return res.json({});
+    }
+
+    const repoObject = await verify.getRepoObject(repoId);
+
+    // TODO Should we wrap this in a try catch and handle errors better? Not sure how...
+    await githubApp.putSuccessStatusOnCommit(
+      repoObject.installationId,
+      repoObject.owner,
+      repoObject.repoName,
+      commitId
+    );
+
+    const pullRequestUpdateResult = await PullRequestReviewModel.update(
+      { repoId, pullRequestNumber },
+      {
+        "currentAnalysisLastCommitWithSuccessStatus": commitId,
+        "currentAnalysisLastAnalyzedCommit": commitId
+      }
+    ).exec();
+
+    verify.updateMatchedOneResult(pullRequestUpdateResult, 500, errorMessages.internalServerError);
+    verify.updateModifiedOneResult(pullRequestUpdateResult);
+
+    return res.json({});
+
+  } catch (err) {
+    next(err);
+  }
 
 });
 

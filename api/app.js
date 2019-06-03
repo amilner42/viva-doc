@@ -46,6 +46,7 @@ if (!isProduction) {
 require('./models/User');
 require('./models/CommitReview');
 require('./models/PullRequestReview');
+require('./models/Repo');
 require('./config/passport');
 
 app.use(require('./routes'));

@@ -3,6 +3,9 @@ logs
 *.log
 .DS_Store
 
+# Private keys
+*.pem
+
 npm-debug.log*
 
 # Runtime data

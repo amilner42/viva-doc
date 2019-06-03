@@ -4,6 +4,7 @@ const R = require('ramda');
 const mongoose = require('mongoose');
 const CommitReviewModel = mongoose.model('CommitReview');
 const PullRequestReviewModel = mongoose.model('PullRequestReview');
+const RepoModel = mongoose.model('Repo');
 
 const githubApi = require("../github-api");
 const errorMessages = require("./error-messages");
@@ -56,9 +57,21 @@ const getCommitReviewObject = async (repoId, pullRequestNumber, commitId) => {
 }
 
 
-const isHeadCommit = (pullRequestReviewObject, commitReviewObject) => {
+const getRepoObject = async (repoId) => {
 
-  if (pullRequestReviewObject.headCommitId !== commitReviewObject.commitId) {
+  const repo = await RepoModel.findOne({ repoId }).exec();
+
+  if (repo === null) {
+    throw { httpCode: 404, message: errorMessages.noRepo }
+  }
+
+  return repo.toObject();
+}
+
+
+const isHeadCommit = (pullRequestReviewObject, commitId) => {
+
+  if (pullRequestReviewObject.headCommitId !== commitId) {
     throw { httpCode: 423, message: errorMessages.noUpdatingNonHeadCommit };
   }
 }
@@ -148,6 +161,7 @@ module.exports = {
   hasAccessToRepo,
   getPullRequestReviewObject,
   getCommitReviewObject,
+  getRepoObject,
   isHeadCommit,
   ownsTags,
   tagApproved,
