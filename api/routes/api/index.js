@@ -1,22 +1,26 @@
 const router = require('express').Router();
+const errorMessages = require('../error-messages');
 
 router.use('/', require('./users'));
 router.use('/', require('./reviews'));
 
-// Return Mongoose validation errors to the client.
-router.use(function(err, req, res, next){
-  if(err.name === 'ValidationError'){
-    return res.status(422).json({
-      errors: Object.keys(err.errors).reduce(function(errors, key){
-        // Set errors so they can be printed on the client.
-        errors[key] = `${key} ${err.errors[key].message}`;
 
-        return errors;
-      }, {})
-    });
+// Handle sending errors to the client
+router.use(function(err, req, res, next) {
+
+  if (isProperlyFormedError(err)) {
+    return res.status(err.httpCode).send({ message: err.message });
   }
 
-  return next(err);
+  console.log(`LOG IMPROPER ERROR: ${err}`);
+
+  return res.status(500).send({ message: errorMessages.internalServerError });
 });
+
+
+const isProperlyFormedError = (err) => {
+  return (typeof err.httpCode === "number") && (typeof err.message === "string");
+}
+
 
 module.exports = router;
