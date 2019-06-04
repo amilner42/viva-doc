@@ -2,10 +2,9 @@ const mongoose = require('mongoose');
 
 
 const RepoSchema = new mongoose.Schema({
-  repoId: { type: String, required: [true, "can't be blank"], index: true },
-  repoName: { type: String, required: [true, "can't be blank"] },
+  installationId: { type: Number, required: [true, "can't be blank"], index: true },
   owner: { type: String, required: [true, "can't be blank"] },
-  installationId: { type: Number, required: [true, "can't be blank"] }
+  repoIds: { type: [ Number ], required: [true, "can't be blank"], index: true }
 })
 
 

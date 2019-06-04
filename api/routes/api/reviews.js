@@ -1,3 +1,5 @@
+const R = require("ramda")
+
 const router = require('express').Router();
 
 const verify = require("../verify");
@@ -324,6 +326,8 @@ router.post('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/approve
 
     const pullRequestReviewObject = await verify.getPullRequestReviewObject(repoId, pullRequestNumber);
 
+    const repoName = R.last(pullRequestReviewObject.repoFullName.split("/"))
+
     verify.isHeadCommit(pullRequestReviewObject, commitId);
 
     verify.userHasNotApprovedDocs(
@@ -367,7 +371,7 @@ router.post('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/approve
     await githubApp.putSuccessStatusOnCommit(
       repoObject.installationId,
       repoObject.owner,
-      repoObject.repoName,
+      repoName,
       commitId
     );
 

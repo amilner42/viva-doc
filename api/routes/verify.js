@@ -59,7 +59,7 @@ const getCommitReviewObject = async (repoId, pullRequestNumber, commitId) => {
 
 const getRepoObject = async (repoId) => {
 
-  const repo = await RepoModel.findOne({ repoId }).exec();
+  const repo = await RepoModel.findOne({ repoIds: repoId }).exec();
 
   if (repo === null) {
     throw { httpCode: 404, message: errorMessages.noRepo }
