@@ -36,20 +36,20 @@ export = (app: Probot.Application) => {
     const installationId = (payload.installation as any).id
     const owner = (payload.installation as any).account.login // TODO shold this be the id of the owner?
 
-    const repos = R.map((repo) => {
-      return { repoId: repo.id, repoName: repo.name }
+    const repoIds = R.map((repo) => {
+      return repo.id as number
     }, payload.repositories)
 
     const repoObject: Repo = {
       installationId,
       owner,
-      repos
+      repoIds
     }
 
     const repo = new RepoModel(repoObject);
 
     try {
-      await repo.save();
+      await repo.save()
     } catch (err) {
       // TODO LOG ERROR
       console.log(`Error saving new installation: ${installationId}`)
@@ -78,12 +78,12 @@ export = (app: Probot.Application) => {
     const payload = context.payload
     const installationId = (payload.installation as any).id
     const reposToAdd = R.map((repoAdded) => {
-      return { repoId: repoAdded.id, repoName: repoAdded.name }
+      return repoAdded.id as number
     }, payload.repositories_added)
 
     const repoUpdateResult = await RepoModel.update(
       { installationId },
-      { $addToSet: { "repos": { $each: reposToAdd } }}
+      { $addToSet: { "repoIds": { $each: reposToAdd } }}
     )
 
     if (repoUpdateResult.ok === 1 && repoUpdateResult.n === 1 && repoUpdateResult.nModified === 1) {
@@ -99,13 +99,13 @@ export = (app: Probot.Application) => {
 
     const payload = context.payload;
     const installationId = (payload.installation as any).id;
-    const reposToRemove = R.map((repoRemoved) => {
-      return { repoId: repoRemoved.id, repoName: repoRemoved.name };
+    const reposToRemove = R.map((repoToRemove) => {
+      return repoToRemove.id as number
     }, payload.repositories_removed);
 
     const repoUpdateResult = await RepoModel.update(
       { installationId },
-      { $pull: { "repos": { $in: reposToRemove } } }
+      { $pull: { "repoIds": { $in: reposToRemove } } }
     )
 
     if (repoUpdateResult.ok === 1 && repoUpdateResult.n === 1 && repoUpdateResult.nModified === 1) {
