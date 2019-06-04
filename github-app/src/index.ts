@@ -19,13 +19,102 @@ mongoose.connect('mongodb://localhost/viva-doc-dev', { useNewUrlParser: true }, 
 
 require("./models/PullRequestReview")
 require("./models/CommitReview")
+require("./models/Repo")
 
 // All imports to internal modules should be here so that all mongoose schemas have loaded first
 const PullRequestReviewModel = mongoose.model('PullRequestReview')
+const RepoModel = mongoose.model("Repo")
+import { Repo } from "./models/Repo"
 import { PullRequestReview } from "./models/PullRequestReview"
 import * as Analysis from "./analysis"
 
 export = (app: Probot.Application) => {
+
+  app.on("installation.created", async (context) => {
+
+    const payload = context.payload
+    const installationId = (payload.installation as any).id
+    const owner = (payload.installation as any).account.login // TODO shold this be the id of the owner?
+
+    const repos = R.map((repo) => {
+      return { repoId: repo.id, repoName: repo.name }
+    }, payload.repositories)
+
+    const repoObject: Repo = {
+      installationId,
+      owner,
+      repos
+    }
+
+    const repo = new RepoModel(repoObject);
+
+    try {
+      await repo.save();
+    } catch (err) {
+      // TODO LOG ERROR
+      console.log(`Error saving new installation: ${installationId}`)
+    }
+
+  })
+
+  // TODO delete all data for all repos as well
+  app.on("installation.deleted", async (context) => {
+
+    const payload = context.payload
+    const installationId = (payload.installation as any).id
+
+    const deleteRepoResult = await RepoModel.deleteOne({ installationId }) as { ok: number, deletedCount: number, n: number };
+
+    if (deleteRepoResult.ok === 1 && deleteRepoResult.n === 1 && deleteRepoResult.deletedCount === 1) {
+      return;
+    }
+
+    // LOG ERROR
+    console.log(`Error deleting installation with id: ${installationId}`);
+  })
+
+  app.on("installation_repositories.added", async (context) => {
+
+    const payload = context.payload
+    const installationId = (payload.installation as any).id
+    const reposToAdd = R.map((repoAdded) => {
+      return { repoId: repoAdded.id, repoName: repoAdded.name }
+    }, payload.repositories_added)
+
+    const repoUpdateResult = await RepoModel.update(
+      { installationId },
+      { $addToSet: { "repos": { $each: reposToAdd } }}
+    )
+
+    if (repoUpdateResult.ok === 1 && repoUpdateResult.n === 1 && repoUpdateResult.nModified === 1) {
+      return
+    }
+
+    // TODO HANDLE ERROR
+    console.log(`Error: Could not save ${reposToAdd.length} repo(s) to installation ${installationId}`);
+  })
+
+  // TODO delete all repo data as well
+  app.on("installation_repositories.removed", async (context) => {
+
+    const payload = context.payload;
+    const installationId = (payload.installation as any).id;
+    const reposToRemove = R.map((repoRemoved) => {
+      return { repoId: repoRemoved.id, repoName: repoRemoved.name };
+    }, payload.repositories_removed);
+
+    const repoUpdateResult = await RepoModel.update(
+      { installationId },
+      { $pull: { "repos": { $in: reposToRemove } } }
+    )
+
+    if (repoUpdateResult.ok === 1 && repoUpdateResult.n === 1 && repoUpdateResult.nModified === 1) {
+      return
+    }
+
+    // TODO HANDLE ERROR
+    console.log(`Error: Could not remove ${reposToRemove.length} repo(s) from installation ${installationId}`)
+  })
 
   app.on("pull_request.opened", async (context) => {
 
