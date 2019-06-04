@@ -76,7 +76,7 @@ export type Review = ReviewNewTag | ReviewDeletedTag | ReviewModifiedTag
 export type ReviewType = "new" | "deleted" | "modified"
 
 // All Reviews should have these properties.
-export type BaseReview = {
+export type BaseReview = Diff.HasAlteredLines & {
   reviewType: ReviewType;
   tag: Tag.VdTag;
 }
@@ -104,7 +104,7 @@ export type ReviewDeletedTag = BaseReview & {
   The tag annotation would not be red or green in the git diff, only the code/comment changed.
   We include all altered lines that reflect the modification.
 */
-export type ReviewModifiedTag = BaseReview & Diff.HasAlteredLines & {
+export type ReviewModifiedTag = BaseReview & {
   reviewType: "modified";
 }
 
@@ -391,14 +391,16 @@ const reviewsFromTagMapAndAlteredLines = (tagMap: TagMap, alteredLines: Diff.Alt
   const reviewDeletedTags: ReviewDeletedTag[] = R.map<Tag.VdTag, ReviewDeletedTag>((tag) => {
     return {
       reviewType: "deleted",
-      tag
+      tag,
+      alteredLines: R.filter(alteredLineInTagOwnership(tag, "deleted"), alteredLines)
     }
   }, tagMap.deletedTags)
 
   const reviewNewTags: ReviewNewTag[] = R.map<Tag.VdTag, ReviewNewTag>((tag) => {
     return {
       reviewType: "new",
-      tag
+      tag,
+      alteredLines: R.filter(alteredLineInTagOwnership(tag, "new"), alteredLines)
     }
   }, tagMap.newTags)
 
@@ -418,6 +420,12 @@ const reviewsFromTagMapAndAlteredLines = (tagMap: TagMap, alteredLines: Diff.Alt
   return ([] as Review[]).concat(reviewDeletedTags, reviewNewTags, reviewModifiedTags)
 }
 
+
+/** Checking if an `alteredLine` altered a modified tag.
+
+Because we have both the tag before and after it was modified we can be 100% sure whether an `alteredLine` altered
+the tag by checking deleted lines against the previous tag and new lines against the current tag.
+*/
 const alteredLineInTagPairOwnership = R.curry(
   ([previousTag, currentTag]: R.KeyValuePair<Tag.VdTag, Tag.VdTag>, alteredLine: Diff.AlteredLine): boolean => {
 
@@ -432,9 +440,31 @@ const alteredLineInTagPairOwnership = R.curry(
   }
 )
 
+/** Checking if an `alteredLine` altered a new or deleted tag.
+
+Because we don't have the tag both before and after, this could provide more alteredLines than actually relevant for
+certain git diffs (for instance, if the git diff puts 3 functions as deleted and then one new line for the final
+closing paren of your function, it will include all 3 of those removed functions even though they are unrelated because
+they were before the final closing paren).
+*/
+const alteredLineInTagOwnership = R.curry(
+  (tag: Tag.VdTag, tagType: "deleted" | "new", alteredLine: Diff.AlteredLine): boolean => {
+
+    switch (tagType) {
+
+      case "new":
+        return lineNumberInTagOwnership(tag, alteredLine.currentLineNumber)
+
+      case "deleted":
+        return lineNumberInTagOwnership(tag, alteredLine.previousLineNumber)
+    }
+  }
+)
+
 const lineNumberInTagOwnership = (tag: Tag.VdTag, lineNumber: number) => {
   return (lineNumber >= tag.startLine) && (lineNumber <= tag.endLine)
 }
+
 
 const getTags = (fileReview: FileReview): Tag.VdTag[] => {
 
