@@ -34,14 +34,20 @@ type FileReviewType
 type alias Review =
     { reviewType : ReviewType
     , tag : Tag
+    , alteredLines : List AlteredLine
     }
 
 
+{-| The 3 types of reviews.
+
+The `Bool` on new and modified tags allows you to show/hide the diff. It wouldn't make sense to hide the diff on a
+deleted tag (because then what are you showing?) so we don't have a bool on it to allow that.
+
+-}
 type ReviewType
-    = ReviewNewTag
-    | ReviewDeletedTag
-      -- Bool = Show Altered Lines
-    | ReviewModifiedTag Bool (List AlteredLine)
+    = ReviewDeletedTag
+    | ReviewNewTag Bool
+    | ReviewModifiedTag Bool
 
 
 type alias AlteredLine =
@@ -453,26 +459,26 @@ decodeDeletedFileReview tagStates =
 
 decodeReview : ApprovedAndRejectedTags -> Decode.Decoder Review
 decodeReview tagStates =
-    Decode.map2 Review
+    Decode.map3 Review
         (Decode.field "reviewType" Decode.string
             |> Decode.andThen
                 (\reviewType ->
                     case reviewType of
                         "new" ->
-                            Decode.succeed ReviewNewTag
+                            Decode.succeed <| ReviewNewTag True
 
                         "deleted" ->
                             Decode.succeed ReviewDeletedTag
 
                         "modified" ->
-                            Decode.field "alteredLines" (Decode.list decodeAlteredLine)
-                                |> Decode.map (ReviewModifiedTag False)
+                            Decode.succeed <| ReviewModifiedTag True
 
                         _ ->
                             Decode.fail <| "Invalid review type: " ++ reviewType
                 )
         )
         (Decode.field "tag" <| decodeTag tagStates)
+        (Decode.field "alteredLines" <| Decode.list decodeAlteredLine)
 
 
 decodeAlteredLine : Decode.Decoder AlteredLine

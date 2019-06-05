@@ -457,24 +457,33 @@ renderReviews username remainingOwnersToApproveDocs approveDocsState reviews =
                 renderTagOrReview
                     { renderStyle =
                         case review.reviewType of
-                            CommitReview.ReviewNewTag ->
-                                CM.PlainBackground
+                            CommitReview.ReviewNewTag showAlteredLines ->
+                                CM.MixedBackground
+                                    { contentType = CM.Current showAlteredLines
+                                    , alteredLines = review.alteredLines
+                                    }
 
                             CommitReview.ReviewDeletedTag ->
-                                CM.PlainBackground
+                                CM.MixedBackground
+                                    { contentType = CM.Previous
+                                    , alteredLines = review.alteredLines
+                                    }
 
-                            CommitReview.ReviewModifiedTag showAlteredLines alteredLines ->
-                                CM.MixedBackground { showAlteredLines = showAlteredLines, alteredLines = alteredLines }
+                            CommitReview.ReviewModifiedTag showAlteredLines ->
+                                CM.MixedBackground
+                                    { contentType = CM.Current showAlteredLines
+                                    , alteredLines = review.alteredLines
+                                    }
                     , username = username
                     , description =
                         case review.reviewType of
-                            CommitReview.ReviewNewTag ->
+                            CommitReview.ReviewNewTag _ ->
                                 "This tag has been added to an existing file"
 
                             CommitReview.ReviewDeletedTag ->
                                 "This tag has been deleted from an existing file"
 
-                            CommitReview.ReviewModifiedTag _ _ ->
+                            CommitReview.ReviewModifiedTag _ ->
                                 "This tag has been modified"
                     , remainingOwnersToApproveDocs = remainingOwnersToApproveDocs
                     , approveDocsState = approveDocsState
@@ -653,18 +662,23 @@ renderTagOrReview { renderStyle, username, description, remainingOwnersToApprove
                                     ]
                         )
                             ++ [ case renderStyle of
-                                    CM.MixedBackground { showAlteredLines } ->
-                                        button
-                                            [ class "button is-info is-fullwidth"
-                                            , onClick <| SetShowAlteredLines tag.tagId (not showAlteredLines)
-                                            ]
-                                            [ text <|
-                                                if showAlteredLines then
-                                                    "Hide Diff"
+                                    CM.MixedBackground { contentType } ->
+                                        case contentType of
+                                            CM.Previous ->
+                                                div [ class "is-hidden" ] []
 
-                                                else
-                                                    "Show Diff"
-                                            ]
+                                            CM.Current showAlteredLines ->
+                                                button
+                                                    [ class "button is-info is-fullwidth"
+                                                    , onClick <| SetShowAlteredLines tag.tagId (not showAlteredLines)
+                                                    ]
+                                                    [ text <|
+                                                        if showAlteredLines then
+                                                            "Hide Diff"
+
+                                                        else
+                                                            "Show Diff"
+                                                    ]
 
                                     _ ->
                                         div [ class "is-hidden" ] []
@@ -722,11 +736,11 @@ update msg model =
                                     { review
                                         | reviewType =
                                             case review.reviewType of
-                                                CommitReview.ReviewModifiedTag _ alteredLines ->
-                                                    CommitReview.ReviewModifiedTag showAlteredLines alteredLines
+                                                CommitReview.ReviewModifiedTag _ ->
+                                                    CommitReview.ReviewModifiedTag showAlteredLines
 
-                                                CommitReview.ReviewNewTag ->
-                                                    CommitReview.ReviewNewTag
+                                                CommitReview.ReviewNewTag _ ->
+                                                    CommitReview.ReviewNewTag showAlteredLines
 
                                                 CommitReview.ReviewDeletedTag ->
                                                     CommitReview.ReviewDeletedTag

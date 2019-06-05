@@ -1,4 +1,4 @@
-module CustomMarkdown exposing (RenderStyle(..), getMarkdown)
+module CustomMarkdown exposing (ContentType(..), RenderStyle(..), getMarkdown)
 
 {-| Module for handling rendering markdown.
 -}
@@ -12,8 +12,18 @@ import Markdown
 type RenderStyle
     = GreenBackground
     | RedBackground
-    | PlainBackground
-    | MixedBackground { alteredLines : List CommitReview.AlteredLine, showAlteredLines : Bool }
+    | MixedBackground
+        { alteredLines : List CommitReview.AlteredLine
+        , contentType : ContentType
+        }
+
+
+{-| Either rendering content from the previous file in which case we always display the diff or we are rendering
+content from the current file in which case you can toggle whether to show the diff.
+-}
+type ContentType
+    = Previous
+    | Current Bool
 
 
 {-| Get the markdown for some content.
@@ -44,30 +54,25 @@ getMarkdown content startLineNumber language renderStyle =
                 (contentToMarkdownCode language content Minus)
             ]
 
-        PlainBackground ->
-            [ markdownToHtml
-                [ class "is-child" ]
-                (contentToMarkdownCode language content None)
-            ]
-
-        MixedBackground { alteredLines, showAlteredLines } ->
-            if not showAlteredLines then
+        MixedBackground { alteredLines, contentType } ->
+            if contentType == Current False then
                 [ markdownToHtml
                     [ class "is-child" ]
                     (contentToMarkdownCode language content None)
                 ]
 
             else
-                getMarkdownBlocksForAlteredLines content startLineNumber language alteredLines
+                getMarkdownBlocksForAlteredLines contentType content startLineNumber language alteredLines
 
 
 getMarkdownBlocksForAlteredLines :
-    List String
+    ContentType
+    -> List String
     -> Int
     -> String
     -> List CommitReview.AlteredLine
     -> List (Html.Html msg)
-getMarkdownBlocksForAlteredLines content startLineNumber language alteredLines =
+getMarkdownBlocksForAlteredLines contentType content startLineNumber language alteredLines =
     let
         -- Add diffAcc to final result
         addDiffAccToFinalResult :
@@ -97,6 +102,47 @@ getMarkdownBlocksForAlteredLines content startLineNumber language alteredLines =
                     }
                         :: finalResult
 
+        {- Given the ContentType will calculate the next line number. -}
+        calculateNextLineNumber : CommitReview.EditType -> Int -> Int
+        calculateNextLineNumber editType lineNumber =
+            case ( contentType, editType ) of
+                ( Previous, CommitReview.Deletion ) ->
+                    lineNumber + 1
+
+                ( Previous, CommitReview.Insertion ) ->
+                    lineNumber
+
+                ( Current _, CommitReview.Deletion ) ->
+                    lineNumber
+
+                ( Current _, CommitReview.Insertion ) ->
+                    lineNumber + 1
+
+        {- Given the ContentType will calculate the remaining content. -}
+        calculateNextContent : CommitReview.EditType -> List String -> List String
+        calculateNextContent editType remainingContent =
+            case ( contentType, editType ) of
+                ( Previous, CommitReview.Deletion ) ->
+                    List.drop 1 remainingContent
+
+                ( Previous, CommitReview.Insertion ) ->
+                    remainingContent
+
+                ( Current _, CommitReview.Deletion ) ->
+                    remainingContent
+
+                ( Current _, CommitReview.Insertion ) ->
+                    List.drop 1 remainingContent
+
+        isNextLineRenderedAnAlteredLine : CommitReview.AlteredLine -> Int -> Bool
+        isNextLineRenderedAnAlteredLine alteredLine lineNumber =
+            case contentType of
+                Previous ->
+                    alteredLine.previousLineNumber == lineNumber
+
+                Current _ ->
+                    alteredLine.currentLineNumber == lineNumber
+
         -- Get markdown blocks in reverse order (faster to append + reverse)
         go :
             List String
@@ -105,7 +151,7 @@ getMarkdownBlocksForAlteredLines content startLineNumber language alteredLines =
             -> DiffAccumulator
             -> List { cssClass : String, content : String }
             -> List { cssClass : String, content : String }
-        go remainingContent currentLineNumber remainingAlteredLines diffAcc finalResult =
+        go remainingContent lineNumber remainingAlteredLines diffAcc finalResult =
             case ( remainingContent, remainingAlteredLines ) of
                 -- Base Case
                 ( [], [] ) ->
@@ -120,11 +166,15 @@ getMarkdownBlocksForAlteredLines content startLineNumber language alteredLines =
 
                 -- Only altered lines remaining
                 ( [], firstRemainingAlteredLine :: restOfRemainingAlteredLines ) ->
+                    let
+                        nextLineNumber =
+                            calculateNextLineNumber firstRemainingAlteredLine.editType lineNumber
+                    in
                     case ( firstRemainingAlteredLine.editType, diffAcc ) of
                         ( CommitReview.Insertion, Green greenContent ) ->
                             go
                                 []
-                                (currentLineNumber + 1)
+                                nextLineNumber
                                 restOfRemainingAlteredLines
                                 (Green <| greenContent ++ [ firstRemainingAlteredLine.content ])
                                 finalResult
@@ -132,7 +182,7 @@ getMarkdownBlocksForAlteredLines content startLineNumber language alteredLines =
                         ( CommitReview.Insertion, _ ) ->
                             go
                                 []
-                                (currentLineNumber + 1)
+                                nextLineNumber
                                 restOfRemainingAlteredLines
                                 (Green [ firstRemainingAlteredLine.content ])
                                 (addDiffAccToFinalResult diffAcc finalResult)
@@ -140,7 +190,7 @@ getMarkdownBlocksForAlteredLines content startLineNumber language alteredLines =
                         ( CommitReview.Deletion, Red redContent ) ->
                             go
                                 []
-                                currentLineNumber
+                                nextLineNumber
                                 restOfRemainingAlteredLines
                                 (Red <| redContent ++ [ firstRemainingAlteredLine.content ])
                                 finalResult
@@ -148,29 +198,36 @@ getMarkdownBlocksForAlteredLines content startLineNumber language alteredLines =
                         ( CommitReview.Deletion, _ ) ->
                             go
                                 []
-                                currentLineNumber
+                                nextLineNumber
                                 restOfRemainingAlteredLines
                                 (Red <| [ firstRemainingAlteredLine.content ])
                                 (addDiffAccToFinalResult diffAcc finalResult)
 
                 -- Both altered lines and content remain
                 ( firstContentLine :: restOfRemainingContent, firstRemainingAlteredLine :: restOfRemainingAlteredLines ) ->
-                    if firstRemainingAlteredLine.currentLineNumber == currentLineNumber then
+                    if isNextLineRenderedAnAlteredLine firstRemainingAlteredLine lineNumber then
+                        let
+                            nextLineNumber =
+                                calculateNextLineNumber firstRemainingAlteredLine.editType lineNumber
+
+                            nextContent =
+                                calculateNextContent firstRemainingAlteredLine.editType remainingContent
+                        in
                         case firstRemainingAlteredLine.editType of
                             CommitReview.Deletion ->
                                 case diffAcc of
                                     Red redContent ->
                                         go
-                                            remainingContent
-                                            currentLineNumber
+                                            nextContent
+                                            nextLineNumber
                                             restOfRemainingAlteredLines
                                             (Red <| redContent ++ [ firstRemainingAlteredLine.content ])
                                             finalResult
 
                                     _ ->
                                         go
-                                            remainingContent
-                                            currentLineNumber
+                                            nextContent
+                                            nextLineNumber
                                             restOfRemainingAlteredLines
                                             (Red <| [ firstRemainingAlteredLine.content ])
                                             (addDiffAccToFinalResult diffAcc finalResult)
@@ -179,26 +236,30 @@ getMarkdownBlocksForAlteredLines content startLineNumber language alteredLines =
                                 case diffAcc of
                                     Green greenContent ->
                                         go
-                                            restOfRemainingContent
-                                            (currentLineNumber + 1)
+                                            nextContent
+                                            nextLineNumber
                                             restOfRemainingAlteredLines
                                             (Green <| greenContent ++ [ firstRemainingAlteredLine.content ])
                                             finalResult
 
                                     _ ->
                                         go
-                                            restOfRemainingContent
-                                            (currentLineNumber + 1)
+                                            nextContent
+                                            nextLineNumber
                                             restOfRemainingAlteredLines
                                             (Green <| [ firstRemainingAlteredLine.content ])
                                             (addDiffAccToFinalResult diffAcc finalResult)
 
                     else
+                        let
+                            nextLineNumber =
+                                lineNumber + 1
+                        in
                         case diffAcc of
                             Neutral neutralContent ->
                                 go
                                     restOfRemainingContent
-                                    (currentLineNumber + 1)
+                                    nextLineNumber
                                     remainingAlteredLines
                                     (Neutral <| neutralContent ++ [ firstContentLine ])
                                     finalResult
@@ -206,7 +267,7 @@ getMarkdownBlocksForAlteredLines content startLineNumber language alteredLines =
                             _ ->
                                 go
                                     restOfRemainingContent
-                                    (currentLineNumber + 1)
+                                    nextLineNumber
                                     remainingAlteredLines
                                     (Neutral <| [ firstContentLine ])
                                     (addDiffAccToFinalResult diffAcc finalResult)
