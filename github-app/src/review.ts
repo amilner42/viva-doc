@@ -225,34 +225,254 @@ export const getListOfTagsAndOwners =
 
 /** Calculates the reviews for some file modification given all helpful information.
 
+  NOTE: You must provide ALL the previous file tags and ALL the current file tags.
+
   This is the core functionality of the app.
  */
 export const calculateReviewsFromModification =
-    ( previousTags: Tag.VdTag[]
-    , currentTags: Tag.VdTag[]
+    ( allPreviousTags: Tag.VdTag[]
+    , allCurrentTags: Tag.VdTag[]
     , alteredLines: Diff.AlteredLine[]
     ): Review[] => {
 
-  if (previousTags.length === 0 && currentTags.length === 0) { return [] }
+  if (allPreviousTags.length === 0 && allCurrentTags.length === 0) { return [] }
 
-  const tagMap: TagMap = getTagMap(previousTags, currentTags, alteredLines)
+  const tagMap: TagMap = getTagMapBetweenAllTags(allPreviousTags, allCurrentTags, alteredLines)
   return reviewsFromTagMapAndAlteredLines(tagMap, alteredLines)
 }
 
-/** INTERNAL */
 
-// An ID for a reference
-type TagWithMetadata = Tag.VdTag & { tagId: mongoose.Types.ObjectId; }
-
-type ReviewWithMetadata = T.ReplaceType<Review, "tag", TagWithMetadata>
-
-/** A map between old and new tags across a diff.
+/** A map between all old and all new tags across a diff.
 */
-type TagMap = {
+export type TagMap = {
   deletedTags: Tag.VdTag[],
   newTags: Tag.VdTag[],
   tagPairs: R.KeyValuePair<Tag.VdTag, Tag.VdTag>[]
 }
+
+
+/** Creates a map between the old tags and the new tags given the line diffs.
+
+  NOTE: You must provide ALL the previous file tags and ALL the current file tags. If you don't
+        have all the tags consider using the `getTagLinksBetweenSomeTags` function.
+
+  NOTE: The provided tags must be provided in-order for the algorithm to produce correct results.
+
+  NOTE: The alteredLines should be passed in-order.
+*/
+export const getTagMapBetweenAllTags =
+  ( allPreviousTags: Tag.VdTag[]
+  , allCurrentTags: Tag.VdTag[]
+  , alteredLines: Diff.AlteredLine[]
+  ): TagMap => {
+
+  // Initialize tagMap to be entirely `null` for all entries.
+  const partialTagMap: TagMapPartial = {
+    oldTagsToNewTags: R.repeat(undefined, allPreviousTags.length),
+    newTagsToOldTags: R.repeat(undefined, allCurrentTags.length)
+  }
+
+  for (let alteredLine of alteredLines) {
+
+    const matchTag = LangUtil.matchSingleVdTagAnnotation(alteredLine.content)
+
+    switch (matchTag.branchTag) {
+
+      // No VD annotation or just matched an end-block tag
+      case "case-1":
+      case "case-2":
+        continue;
+
+      // Matched a tag
+      case "case-3":
+
+        switch (alteredLine.type) {
+
+          case "added":
+            const indexOfNewTag = Tag.getTagIndexFromAnnotationLine(allCurrentTags, alteredLine.currentLineNumber)
+
+            // TODO When would this happen
+            if (indexOfNewTag === null) {
+              throw new Error("TODO")
+            }
+
+            // Set that tag to be a new tag in the `partialTagMap`
+            partialTagMap.newTagsToOldTags[indexOfNewTag] = null;
+            continue;
+
+          case "deleted":
+            const indexOfDeletedTag = Tag.getTagIndexFromAnnotationLine(allPreviousTags, alteredLine.previousLineNumber)
+
+            // TODO When would this happen
+            if (indexOfDeletedTag === null) {
+              throw new Error("TODO")
+            }
+
+            // Set that tag to be a deleted tag in the `partialTagMap`
+            partialTagMap.oldTagsToNewTags[indexOfDeletedTag] = null;
+            continue;
+
+        } // end switch
+
+    } // end switch
+  } // end for
+
+  return tagMapFromPartial(partialTagMap, allPreviousTags, allCurrentTags)
+}
+
+
+/** Detect links (if any) between some previous tags and some new tags.
+
+  NOTE: This does not require you pass all the tags in the file. Although if you do have all the
+        tags you should use `getTagMapBetweenAllTags`.
+
+  NOTE: This does not require the tags be passed in order.
+
+  NOTE: The alteredLines should be passed in-order.
+
+  RETURNS: An array of length `somePreviousTags.length` with either null representing no link to
+          any of the `someCurrentTags` or a number representing the index of the matching tag in
+          `someCurrentTags`.
+*/
+export const getTagLinksBetweenSomeTags =
+  <BaseTag extends Tag.VdTag>
+  ( somePreviousTags: BaseTag[]
+  , someCurrentTags: BaseTag[]
+  , alteredLines: Diff.AlteredLine[]
+  ): (null | number)[] => {
+
+  const result: (null | number)[] = [];
+
+  for (let previousTag of somePreviousTags) {
+    result.push(getTagLink(previousTag, someCurrentTags, alteredLines));
+  }
+
+  return result;
+}
+
+
+// An ID for a reference
+export type TagWithMetadata = Tag.VdTag & { tagId: mongoose.Types.ObjectId; }
+export type ReviewWithMetadata = T.ReplaceType<Review, "tag", TagWithMetadata>
+
+
+export const getTags = (fileReview: FileReview): Tag.VdTag[] => {
+
+  switch (fileReview.fileReviewType) {
+
+    case "deleted-file":
+    case "new-file":
+      return fileReview.tags;
+
+    case "modified-file":
+    case "renamed-file":
+      return R.map((review) => { return review.tag }, fileReview.reviews)
+
+  }
+}
+
+
+export const getTagsWithMetadata = (fileReview: FileReviewWithMetadata): TagWithMetadata[] => {
+
+  switch (fileReview.fileReviewType) {
+
+    case "deleted-file":
+    case "new-file":
+      return fileReview.tags;
+
+    case "modified-file":
+    case "renamed-file":
+      return R.map((review) => { return review.tag }, fileReview.reviews)
+
+  }
+}
+
+
+export const matchesTagId = R.curry(
+  (tagId: string, tagWithMetadata: TagWithMetadata) => {
+    return tagWithMetadata.tagId.equals(tagId);
+  }
+)
+
+
+export const getTagsPerFile =
+  ( approvedTags: string[]
+  , rejectedTags: string[]
+  , fileReviews: FileReviewWithMetadata[]
+  ) : { [fileName: string]: { approved: string[], rejected: string[], all: TagWithMetadata[] } } => {
+
+  const result: { [fileName: string]: { approved: string[], rejected: string[], all: TagWithMetadata[] } } = { };
+
+  for (let fileReview of fileReviews) {
+
+    const tagsWithMetadata = getTagsWithMetadata(fileReview);
+
+    // Get rejected tags in this file review.
+    const rejected: string[] = R.filter((tagId) => {
+      return R.any(matchesTagId(tagId), tagsWithMetadata);
+    }, rejectedTags)
+
+    // Get approved tags in this file review
+    const approved: string[] = R.filter((tagId) => {
+      return R.any(matchesTagId(tagId), tagsWithMetadata);
+    }, approvedTags);
+
+    result[fileReview.currentFilePath] = {
+      all: tagsWithMetadata,
+      rejected,
+      approved
+    }
+
+  }
+
+  return result;
+}
+
+
+/** Checking if an `alteredLine` altered a new or deleted tag.
+
+Because we don't have the tag both before and after, this could provide more alteredLines than actually relevant for
+certain git diffs (for instance, if the git diff puts 3 functions as deleted and then one new line for the final
+closing paren of your function, it will include all 3 of those removed functions even though they are unrelated because
+they were before the final closing paren).
+*/
+export const alteredLineInTagOwnership = R.curry(
+  (tag: Tag.VdTag, tagType: "deleted" | "new", alteredLine: Diff.AlteredLine): boolean => {
+
+    switch (tagType) {
+
+      case "new":
+        return lineNumberInTagOwnership(tag, alteredLine.currentLineNumber)
+
+      case "deleted":
+        return lineNumberInTagOwnership(tag, alteredLine.previousLineNumber)
+    }
+  }
+)
+
+
+/** Checking if an `alteredLine` altered a modified tag.
+
+Because we have both the tag before and after it was modified we can be 100% sure whether an `alteredLine` altered
+the tag by checking deleted lines against the previous tag and new lines against the current tag.
+*/
+export const alteredLineInTagPairOwnership = R.curry(
+  ([previousTag, currentTag]: R.KeyValuePair<Tag.VdTag, Tag.VdTag>, alteredLine: Diff.AlteredLine): boolean => {
+
+    switch (alteredLine.type) {
+
+      case "added":
+        return lineNumberInTagOwnership(currentTag, alteredLine.currentLineNumber)
+
+      case "deleted":
+        return lineNumberInTagOwnership(previousTag, alteredLine.previousLineNumber)
+    }
+  }
+)
+
+
+/** INTERNAL */
+
 
 /** Used while creating a tag map.
 
@@ -273,62 +493,6 @@ const addMetadataToTag = (tag: Tag.VdTag): TagWithMetadata => {
   return { ...tag, tagId: mongoose.Types.ObjectId() }
 }
 
-/** Creates a map between the old tags and the new tags given the line diffs. */
-const getTagMap = (oldTags: Tag.VdTag[], newTags: Tag.VdTag[], alteredLines: Diff.AlteredLine[]): TagMap => {
-
-  // Initialize tagMap to be entirely `null` for all entries.
-  const partialTagMap: TagMapPartial = {
-    oldTagsToNewTags: R.repeat(undefined, oldTags.length),
-    newTagsToOldTags: R.repeat(undefined, newTags.length)
-  }
-
-  for (let alteredLine of alteredLines) {
-
-    const matchTag = LangUtil.matchSingleVdTagAnnotation(alteredLine.content)
-
-    switch (matchTag.branchTag) {
-
-      // No VD annotation or just matched an end-block tag
-      case "case-1":
-      case "case-2":
-        continue;
-
-      // Matched a tag
-      case "case-3":
-
-        switch (alteredLine.type) {
-
-          case "added":
-            const indexOfNewTag = Tag.getTagIndexFromAnnotationLine(newTags, alteredLine.currentLineNumber)
-
-            // TODO When would this happen
-            if (indexOfNewTag === null) {
-              throw new Error("TODO")
-            }
-
-            // Set that tag to be a new tag in the `partialTagMap`
-            partialTagMap.newTagsToOldTags[indexOfNewTag] = null;
-            continue;
-
-          case "deleted":
-            const indexOfDeletedTag = Tag.getTagIndexFromAnnotationLine(oldTags, alteredLine.previousLineNumber)
-
-            // TODO When would this happen
-            if (indexOfDeletedTag === null) {
-              throw new Error("TODO")
-            }
-
-            // Set that tag to be a deleted tag in the `partialTagMap`
-            partialTagMap.oldTagsToNewTags[indexOfDeletedTag] = null;
-            continue;
-
-        } // end switch
-
-    } // end switch
-  } // end for
-
-  return tagMapFromPartial(partialTagMap, oldTags, newTags)
-}
 
 /** Converts a `PartialTagMap` to a full `TagMap`
 
@@ -336,8 +500,8 @@ const getTagMap = (oldTags: Tag.VdTag[], newTags: Tag.VdTag[], alteredLines: Dif
 */
 const tagMapFromPartial =
     ( partialTagMap: TagMapPartial
-    , previousTags: Tag.VdTag[]
-    , currentTags: Tag.VdTag[]
+    , allPreviousTags: Tag.VdTag[]
+    , allCurrentTags: Tag.VdTag[]
     ): TagMap => {
 
   const tagMap: TagMap = {
@@ -356,16 +520,16 @@ const tagMapFromPartial =
   }
 
   // Add deleted tags to tag map
-  for (let i = 0; i < previousTags.length; i++) {
+  for (let i = 0; i < allPreviousTags.length; i++) {
     if (partialTagMap.oldTagsToNewTags[i] === null) {
-      tagMap.deletedTags.push(previousTags[i])
+      tagMap.deletedTags.push(allPreviousTags[i])
     }
   }
 
   // Add new tags to tag map
-  for (let i = 0; i < currentTags.length; i++) {
+  for (let i = 0; i < allCurrentTags.length; i++) {
     if (partialTagMap.newTagsToOldTags[i] === null) {
-      tagMap.newTags.push(currentTags[i])
+      tagMap.newTags.push(allCurrentTags[i])
     }
   }
 
@@ -378,8 +542,8 @@ const tagMapFromPartial =
   }
 
   tagMap.tagPairs = R.zip(
-    getTagsThatPair(partialTagMap.oldTagsToNewTags, previousTags),
-    getTagsThatPair(partialTagMap.newTagsToOldTags, currentTags)
+    getTagsThatPair(partialTagMap.oldTagsToNewTags, allPreviousTags),
+    getTagsThatPair(partialTagMap.newTagsToOldTags, allCurrentTags)
   )
 
   return tagMap
@@ -421,77 +585,84 @@ const reviewsFromTagMapAndAlteredLines = (tagMap: TagMap, alteredLines: Diff.Alt
 }
 
 
-/** Checking if an `alteredLine` altered a modified tag.
-
-Because we have both the tag before and after it was modified we can be 100% sure whether an `alteredLine` altered
-the tag by checking deleted lines against the previous tag and new lines against the current tag.
-*/
-const alteredLineInTagPairOwnership = R.curry(
-  ([previousTag, currentTag]: R.KeyValuePair<Tag.VdTag, Tag.VdTag>, alteredLine: Diff.AlteredLine): boolean => {
-
-    switch (alteredLine.type) {
-
-      case "added":
-        return lineNumberInTagOwnership(currentTag, alteredLine.currentLineNumber)
-
-      case "deleted":
-        return lineNumberInTagOwnership(previousTag, alteredLine.previousLineNumber)
-    }
-  }
-)
-
-/** Checking if an `alteredLine` altered a new or deleted tag.
-
-Because we don't have the tag both before and after, this could provide more alteredLines than actually relevant for
-certain git diffs (for instance, if the git diff puts 3 functions as deleted and then one new line for the final
-closing paren of your function, it will include all 3 of those removed functions even though they are unrelated because
-they were before the final closing paren).
-*/
-const alteredLineInTagOwnership = R.curry(
-  (tag: Tag.VdTag, tagType: "deleted" | "new", alteredLine: Diff.AlteredLine): boolean => {
-
-    switch (tagType) {
-
-      case "new":
-        return lineNumberInTagOwnership(tag, alteredLine.currentLineNumber)
-
-      case "deleted":
-        return lineNumberInTagOwnership(tag, alteredLine.previousLineNumber)
-    }
-  }
-)
-
 const lineNumberInTagOwnership = (tag: Tag.VdTag, lineNumber: number) => {
   return (lineNumber >= tag.startLine) && (lineNumber <= tag.endLine)
 }
 
 
-const getTags = (fileReview: FileReview): Tag.VdTag[] => {
+const getTagLink =
+  <BaseTag extends Tag.VdTag>
+  ( previousTag: BaseTag
+  , someCurrentTags: BaseTag[]
+  , alteredLines: Diff.AlteredLine[]
+  ) : null | number => {
 
-  switch (fileReview.fileReviewType) {
 
-    case "deleted-file":
-    case "new-file":
-      return fileReview.tags;
+  const previousTagAnnotationLine = previousTag.tagAnnotationLine;
+  const newTagAnnotationLine = getNewTagAnnotationLine(previousTagAnnotationLine, alteredLines);
 
-    case "modified-file":
-    case "renamed-file":
-      return R.map((review) => { return review.tag }, fileReview.reviews)
+  // Was deleted.
+  if (newTagAnnotationLine === null) {
+    return null;
+  }
+
+  // Wasn't deleted, check for possible matches.
+  for (let tagIndex = 0; tagIndex < someCurrentTags.length; tagIndex++) {
+
+    if (someCurrentTags[tagIndex].tagAnnotationLine === newTagAnnotationLine) {
+      return tagIndex;
+    }
 
   }
+
+  return null;
 }
 
-const getTagsWithMetadata = (fileReview: FileReviewWithMetadata): TagWithMetadata[] => {
 
-  switch (fileReview.fileReviewType) {
+const getNewTagAnnotationLine =
+  ( previousTagAnnotationLineNumber: number
+  , alteredLines: Diff.AlteredLine[]
+  ): number | null => {
 
-    case "deleted-file":
-    case "new-file":
-      return fileReview.tags;
+  let newTagAnnotationLineNumber = previousTagAnnotationLineNumber;
 
-    case "modified-file":
-    case "renamed-file":
-      return R.map((review) => { return review.tag }, fileReview.reviews)
+  for (let alteredLine of alteredLines) {
+
+    if (alteredLine.previousLineNumber < previousTagAnnotationLineNumber) {
+
+      switch (alteredLine.type) {
+
+        case "added":
+          newTagAnnotationLineNumber++;
+          continue;
+
+        case "deleted":
+          newTagAnnotationLineNumber--;
+          continue;
+
+      }
+    }
+
+    if (alteredLine.previousLineNumber === previousTagAnnotationLineNumber) {
+
+      switch (alteredLine.type) {
+
+        // Check is this added before or after?
+        case "added":
+          newTagAnnotationLineNumber++;
+          continue;
+
+        // Tag deleted.
+        case "deleted":
+          return null;
+      }
+    }
+
+    if (alteredLine.previousLineNumber > previousTagAnnotationLineNumber) {
+      break;
+    }
 
   }
+
+  return newTagAnnotationLineNumber;
 }
