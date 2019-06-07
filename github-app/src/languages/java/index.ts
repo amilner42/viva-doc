@@ -1,11 +1,10 @@
 // Module for java-specific parsing functionality
 
-import * as LangUtil from "../util";
-import * as Lang from "../index"
+import * as AST from "../ast"
 
-/** Parse the FileAst from the given file content. */
-export const parse = (fileContent: string): Lang.FileAst => {
+
+export const parse = (fileContent: string): AST.ReducedFileAst => {
   throw new Error("NOT IMPLEMENTED")
 }
 
-export const astToTags = LangUtil.standardTagsFromReducedFileAst
+export const astToTags = AST.standardTagsFromReducedFileAst
