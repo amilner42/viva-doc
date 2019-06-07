@@ -20,14 +20,23 @@ const MATCH_VD_COMMENT_PREFIX_REGEX = /(?<=^|\s)@VD(?=\s|$)/g
 
 /** Matching a new tag annotation
 
-  Captures 3 groups:
-    - All space characters (\s) before the annotation, allowing to figure out the annotation offset
+  Captures 4 groups:
+    - All optional characters before the annotation, allowing to figure out the annotation offset
+    - One forced: start of string or newline or space before the tag annotation
     - The username
     - The type of tag annotation
+
+  NOTE: You can pass the full comment to detect matches or even a single line (possibly an AlteredLine) to see if there
+        is an annotation on that specific line of the comment.
 */
-const MATCH_VD_COMMENT_TAG_ANNOTATION_REGEX = /(^|\s+)@VD ([a-zA-Z0-9-]*) (function|block|file|line)(?=\s|$)/
-/** The end of a block tag */
-const MATCH_VD_COMMENT_END_BLOCK_ANNOTATION_REGEX = /\s@VD end-block(?=\s|$)/
+const MATCH_VD_COMMENT_TAG_ANNOTATION_REGEX = /((?:\s|.)*?)(^|\r\n|\r|\n|\s)@VD ([a-zA-Z0-9-]*) (function|block|file|line)(?=\s|$)/
+
+/** The end of a block tag.
+
+  NOTE: You can pass the full comment to detect matches or even a single line (possibly an AlteredLine) to see if there
+        is an annotation on that specific line of the comment.
+*/
+const MATCH_VD_COMMENT_END_BLOCK_ANNOTATION_REGEX = /(^|\s)@VD end-block(?=\s|$)/
 
 /** To keep track of the existance of some error during parsing. */
 export class ErrorHappenedStrategy extends DefaultErrorStrategy {
@@ -85,8 +94,11 @@ export const matchSingleVdTagAnnotation =
 
   // Matched a single tag
   if (hasMatchedTag) {
-    const [ , whiteSpaceBeforeAnnotation, owner, tagType ] = matchTagAnnotation as [ string, string, string, Tag.VdTagType ]
-    const tagAnnotationLineOffset = SH.getNumberOfNewLineTerminators(whiteSpaceBeforeAnnotation)
+    const [ , optionalCharsBeforeAnnotation, newLineOrSpaceBeforeTag, owner, tagType ] =
+      matchTagAnnotation as [ string, string, string, string, Tag.VdTagType ]
+    const tagAnnotationLineOffset =
+      SH.getNumberOfNewLineTerminators(optionalCharsBeforeAnnotation) +
+      SH.getNumberOfNewLineTerminators(newLineOrSpaceBeforeTag);
 
     return F.branch3({ owner, tagType, tagAnnotationLineOffset })
   }
