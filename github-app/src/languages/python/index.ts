@@ -1,13 +1,14 @@
 // Module for python-specific parsing functionality
 
-import * as Lang from "../index"
+import * as AST from "../ast"
 import * as Tag from "../../tag"
 
-/** Parse the FileAst from the given file content. */
-export const parse = (fileContent: string): Lang.FileAst => {
+
+export const parse = (fileContent: string): AST.ReducedFileAst => {
   throw new Error("NOT IMPLEMENTED")
 }
 
-export const astToTags = (fileAst: Lang.ReducedFileAst, fileContent: string): Tag.VdTag[] => {
+
+export const astToTags = (fileAst: AST.ReducedFileAst, fileContent: string): Tag.VdTag[] => {
   throw new Error("NOT IMPLEMENTED")
 }

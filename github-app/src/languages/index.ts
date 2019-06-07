@@ -2,69 +2,19 @@
 
 import R from "ramda"
 
-import * as LangUtil from "./util"
+import * as AST from "./ast"
 import * as AppError from "../error"
 import * as Tag from "../tag"
 
-// Language parsing imports
 import * as cpp from "./cplusplus/index"
 import * as javascript from "./javascript/index"
 import * as java from "./java/index"
 import * as python from "./python/index"
 import * as typescript from "./typescript/index"
 
+
 /** EXTERNAL TYPES */
 
-/** Language-agnostic AST parsed from file content containing all functions and comments.
-
-  This AST does not contain the content of all nodes, only the line numbers. Only comments are parsed to capture the
-  content for VD tag analysis, functions are lexed to ignore many characters - you must use the full files to retrieve
-  the tag from the given line numbers.
- */
-export interface FileAst {
-  // All detected functions
-  functions: {
-    [ startLine: number]: FunctionNode[]
-  };
-  // All comments
-  comments: {
-    [ endLine: number ]: CommentNode[]
-  };
-}
-
-export interface FunctionNode {
-  startLine: number;
-  endLine: number;
-}
-
-export interface CommentNode {
-  startLine: number;
-  endLine: number;
-  content: string;
-}
-
-// Language-agnostic AST slightly more specific than the `FileAst` thereby making it easier to put algorithms on top
-// of it related to VD.
-export interface ReducedFileAst {
-  // All functions detected in file
-  functions: {
-    [ startLine: number]: FunctionNode[]
-  };
-
-  // Only comments that are relevant to VD
-  comments: {
-    [ endLine: number ]: ReducedCommentNode
-  };
-}
-
-/** A ReducedCommentNode must repreent a comment that has some VD information in it. */
-export interface ReducedCommentNode {
-  startLine: number;
-  endLine: number;
-  data:
-    { dataType: "tag-declaration", owner: string, tagType: Tag.VdTagType, tagAnnotationLine: number } |
-    { dataType: "tag-end-block", seen: boolean /** meta-data for whether it's been seen */ }
-}
 
 // Enum of languages we support
 export type Language = "CPlusPlus" | "Java" | "Javascript" | "Python" | "Typescript"
@@ -121,34 +71,9 @@ export const extractFileType = (filePath: string): Language => {
   return getLanguage(extension)
 }
 
-export const newEmptyFileAst = (): FileAst => R.clone({ functions: {}, comments: {} })
-
-export const newEmptyReducedFileAst = (): ReducedFileAst => R.clone({ functions: {}, comments: {} })
-
-// Add a function to the AST
-// @MODIFIES fileAst
-export const addFunctionToAst = (fileAst: FileAst | ReducedFileAst, functionNode: FunctionNode): void => {
-  if (fileAst.functions[functionNode.startLine] === undefined) {
-    fileAst.functions[functionNode.startLine] = [ functionNode ]
-    return
-  }
-
-  fileAst.functions[functionNode.startLine].push(functionNode)
-}
-
-// Add a comment to the AST
-// @MODIFIES fileAst
-export const addCommentToAst = (fileAst: FileAst, commentNode: CommentNode): void => {
-  if (fileAst.comments[commentNode.endLine] === undefined) {
-    fileAst.comments[commentNode.endLine] = [ commentNode ]
-    return
-  }
-
-  fileAst.comments[commentNode.endLine].push(commentNode)
-}
 
 /** Parse the AST from the file given the language. */
-export const parse = (language: Language, fileContent: string): FileAst => {
+export const parse = (language: Language, fileContent: string): AST.ReducedFileAst => {
 
   switch (language) {
 
@@ -170,27 +95,29 @@ export const parse = (language: Language, fileContent: string): FileAst => {
   } // end switch
 }
 
-// Converts ast to VD tags
-export const astToTags = (language: Language, fileAst: FileAst, fileContent: string): Tag.VdTag[] => {
-
-  const reducedAst = LangUtil.reduceFileAst(fileAst)
+// Converts a reduced ast to VD tags
+export const astToTags =
+  ( language: Language
+  , reducedFileAst: AST.ReducedFileAst
+  , fileContent: string
+  ): Tag.VdTag[] => {
 
   switch (language) {
 
     case "CPlusPlus":
-      return cpp.astToTags(reducedAst, fileContent)
+      return cpp.astToTags(reducedFileAst, fileContent)
 
     case "Java":
-      return java.astToTags(reducedAst, fileContent)
+      return java.astToTags(reducedFileAst, fileContent)
 
     case "Javascript":
-      return javascript.astToTags(reducedAst, fileContent)
+      return javascript.astToTags(reducedFileAst, fileContent)
 
     case "Python":
-      return python.astToTags(reducedAst, fileContent)
+      return python.astToTags(reducedFileAst, fileContent)
 
     case "Typescript":
-      return typescript.astToTags(reducedAst, fileContent)
+      return typescript.astToTags(reducedFileAst, fileContent)
 
   } // end switch
 }
