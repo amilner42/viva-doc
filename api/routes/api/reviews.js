@@ -25,7 +25,7 @@ router.get('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId'
     const pullRequestReviewObject = await verify.getPullRequestReviewObject(repoId, pullRequestNumber);
     const commitReviewObject = await verify.getCommitReviewObject(repoId, pullRequestNumber, commitId);
 
-    commitReviewObject.isHeadCommit = commitReviewObject.commitId === pullRequestReviewObject.headCommitId;
+    commitReviewObject.headCommitId = pullRequestReviewObject.headCommitId;
     return res.json(commitReviewObject);
 
   } catch (err) {
