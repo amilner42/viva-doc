@@ -779,20 +779,61 @@ type Msg
     | SetDisplayOnlyTagsNeedingApproval Bool
     | SetShowAlteredLines String Bool
     | ApproveTags (Set.Set String)
-    | CompletedApproveTags (Set.Set String) (Result.Result (Core.HttpError ()) ())
+    | CompletedApproveTags (Set.Set String) (Result.Result (Core.HttpError Api.CommitReviewActionError) ())
     | RemoveApprovalOnTag String
-    | CompletedRemoveApprovalOnTag String (Result.Result (Core.HttpError ()) ())
+    | CompletedRemoveApprovalOnTag String (Result.Result (Core.HttpError Api.CommitReviewActionError) ())
     | RejectTags (Set.Set String)
-    | CompletedRejectTags (Set.Set String) (Result.Result (Core.HttpError ()) ())
+    | CompletedRejectTags (Set.Set String) (Result.Result (Core.HttpError Api.CommitReviewActionError) ())
     | RemoveRejectionOnTag String
-    | CompletedRemoveRejectionOnTag String (Result.Result (Core.HttpError ()) ())
+    | CompletedRemoveRejectionOnTag String (Result.Result (Core.HttpError Api.CommitReviewActionError) ())
     | ApproveDocs String
-    | CompletedApproveDocs String (Result.Result (Core.HttpError ()) ())
+    | CompletedApproveDocs String (Result.Result (Core.HttpError Api.CommitReviewActionError) ())
     | SetModalClosed Bool
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
+    let
+        handleCommitReviewActionErrorOnTag tagIds err =
+            ( case err of
+                Core.BadStatus _ (Api.StaleCommitError newHeadCommitId) ->
+                    { model
+                        | commitReview =
+                            model.commitReview
+                                |> RemoteData.map
+                                    (\commitReview ->
+                                        { commitReview | headCommitId = newHeadCommitId }
+                                    )
+                                |> RemoteData.map
+                                    (CommitReview.updateTags
+                                        (\tag ->
+                                            if Set.member tag.tagId tagIds then
+                                                { tag | approvedState = CommitReview.Neutral }
+
+                                            else
+                                                tag
+                                        )
+                                    )
+                    }
+
+                _ ->
+                    { model
+                        | commitReview =
+                            RemoteData.map
+                                (CommitReview.updateTags
+                                    (\tag ->
+                                        if Set.member tag.tagId tagIds then
+                                            { tag | approvedState = CommitReview.RequestFailed () }
+
+                                        else
+                                            tag
+                                    )
+                                )
+                                model.commitReview
+                    }
+            , Cmd.none
+            )
+    in
     case msg of
         CompletedGetCommitReview (Result.Ok commitReview) ->
             ( { model | commitReview = RemoteData.Success commitReview }, Cmd.none )
@@ -873,24 +914,8 @@ update msg model =
             , Cmd.none
             )
 
-        -- TODO Handle error
-        CompletedApproveTags attemptedApprovedTags _ ->
-            ( { model
-                | commitReview =
-                    RemoteData.map
-                        (CommitReview.updateTags
-                            (\tag ->
-                                if Set.member tag.tagId attemptedApprovedTags then
-                                    { tag | approvedState = CommitReview.RequestFailed () }
-
-                                else
-                                    tag
-                            )
-                        )
-                        model.commitReview
-              }
-            , Cmd.none
-            )
+        CompletedApproveTags attemptedApprovedTags (Result.Err err) ->
+            handleCommitReviewActionErrorOnTag attemptedApprovedTags err
 
         RemoveApprovalOnTag tagId ->
             ( { model
@@ -928,23 +953,8 @@ update msg model =
             , Cmd.none
             )
 
-        CompletedRemoveApprovalOnTag tagId (Result.Err _) ->
-            ( { model
-                | commitReview =
-                    RemoteData.map
-                        (CommitReview.updateTags
-                            (\tag ->
-                                if tag.tagId == tagId then
-                                    { tag | approvedState = CommitReview.RequestFailed () }
-
-                                else
-                                    tag
-                            )
-                        )
-                        model.commitReview
-              }
-            , Cmd.none
-            )
+        CompletedRemoveApprovalOnTag tagId (Result.Err err) ->
+            handleCommitReviewActionErrorOnTag (Set.singleton tagId) err
 
         RejectTags tags ->
             ( { model
@@ -987,24 +997,8 @@ update msg model =
             , Cmd.none
             )
 
-        -- TODO handle errors
-        CompletedRejectTags attemptedRejectTags _ ->
-            ( { model
-                | commitReview =
-                    RemoteData.map
-                        (CommitReview.updateTags
-                            (\tag ->
-                                if Set.member tag.tagId attemptedRejectTags then
-                                    { tag | approvedState = CommitReview.RequestFailed () }
-
-                                else
-                                    tag
-                            )
-                        )
-                        model.commitReview
-              }
-            , Cmd.none
-            )
+        CompletedRejectTags attemptedRejectTags (Result.Err err) ->
+            handleCommitReviewActionErrorOnTag attemptedRejectTags err
 
         RemoveRejectionOnTag tagId ->
             ( { model
@@ -1047,23 +1041,8 @@ update msg model =
             , Cmd.none
             )
 
-        CompletedRemoveRejectionOnTag tagId (Result.Err _) ->
-            ( { model
-                | commitReview =
-                    RemoteData.map
-                        (CommitReview.updateTags
-                            (\tag ->
-                                if tag.tagId == tagId then
-                                    { tag | approvedState = CommitReview.RequestFailed () }
-
-                                else
-                                    tag
-                            )
-                        )
-                        model.commitReview
-              }
-            , Cmd.none
-            )
+        CompletedRemoveRejectionOnTag tagId (Result.Err err) ->
+            handleCommitReviewActionErrorOnTag (Set.singleton tagId) err
 
         ApproveDocs username ->
             ( { model | approveDocsState = RequestingDocApproval }
@@ -1087,8 +1066,22 @@ update msg model =
             )
 
         -- TODO handle error
-        CompletedApproveDocs username (Err _) ->
-            ( { model | approveDocsState = RequestForDocApprovalErrored () }, Cmd.none )
+        CompletedApproveDocs username (Result.Err err) ->
+            case err of
+                Core.BadStatus _ (Api.StaleCommitError newHeadCommitId) ->
+                    ( { model
+                        | commitReview =
+                            RemoteData.map
+                                (\commitReview ->
+                                    { commitReview | headCommitId = newHeadCommitId }
+                                )
+                                model.commitReview
+                      }
+                    , Cmd.none
+                    )
+
+                _ ->
+                    ( { model | approveDocsState = RequestForDocApprovalErrored () }, Cmd.none )
 
         SetModalClosed modalClosed ->
             ( { model | modalClosed = modalClosed }, Cmd.none )

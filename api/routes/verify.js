@@ -7,7 +7,7 @@ const PullRequestReviewModel = mongoose.model('PullRequestReview');
 const RepoModel = mongoose.model('Repo');
 
 const githubApi = require("../github-api");
-const errorMessages = require("./error-messages");
+const errors = require("./errors");
 
 
 // EXTERNAL
@@ -15,7 +15,7 @@ const errorMessages = require("./error-messages");
 
 const getLoggedInUser = (req) => {
   if (!req.user) {
-    throw { httpCode: 401, message: errorMessages.notLoggedInError };
+    throw { httpCode: 401, ...errors.notLoggedInError };
   }
 
   return req.user;
@@ -28,7 +28,7 @@ const hasAccessToRepo = async (user, repoId) => {
   const hasAccessToRepo = githubApi.hasAccessToRepo(basicUserData.repos, repoId);
 
   if (!hasAccessToRepo) {
-    throw { httpCode: 401, message: errorMessages.noAccessToRepoError };
+    throw { httpCode: 401, ...errors.noAccessToRepoError };
   }
 }
 
@@ -38,7 +38,7 @@ const getPullRequestReviewObject = async (repoId, pullRequestNumber) => {
   const pullRequestReview = await PullRequestReviewModel.findOne({ repoId, pullRequestNumber }).exec();
 
   if (pullRequestReview === null) {
-    throw { httpCode: 404, message: errorMessages.noPullRequestReview };
+    throw { httpCode: 404, ...errors.noPullRequestReview };
   }
 
   return pullRequestReview.toObject();
@@ -50,7 +50,7 @@ const getCommitReviewObject = async (repoId, pullRequestNumber, commitId) => {
   const commitReview = await CommitReviewModel.findOne({ repoId, pullRequestNumber, commitId }).exec();
 
   if (commitReview === null) {
-    throw { httpCode: 404, message: errorMessages.noCommitReview };
+    throw { httpCode: 404, ...errors.noCommitReview };
   }
 
   return commitReview.toObject();
@@ -62,7 +62,7 @@ const getRepoObject = async (repoId) => {
   const repo = await RepoModel.findOne({ repoIds: repoId }).exec();
 
   if (repo === null) {
-    throw { httpCode: 404, message: errorMessages.noRepo }
+    throw { httpCode: 404, ...errors.noRepo }
   }
 
   return repo.toObject();
@@ -72,7 +72,7 @@ const getRepoObject = async (repoId) => {
 const isHeadCommit = (pullRequestReviewObject, commitId) => {
 
   if (pullRequestReviewObject.headCommitId !== commitId) {
-    throw { httpCode: 423, message: errorMessages.noUpdatingNonHeadCommit };
+    throw { httpCode: 423, ...errors.noUpdatingNonHeadCommit(pullRequestReviewObject.headCommitId) };
   }
 }
 
@@ -86,62 +86,80 @@ const ownsTags = (tagsAndOwners, tagIds, username) => {
   }, tagIds);
 
   if (!userOwnsTags) {
-    throw { httpCode: 403, message: errorMessages.noModifyingTagsYouDontOwn };
+    throw { httpCode: 403, ...errors.noModifyingTagsYouDontOwn };
   }
 }
 
 
-const tagApproved = (currentlyApprovedTags, tagId, httpCode, errMessage) => {
+const tagApproved = (currentlyApprovedTags, tagId, httpCode, err) => {
 
   if (!R.contains(tagId, currentlyApprovedTags)) {
-    throw { httpCode, message: errMessage };
+    throw { httpCode, ...err };
   }
 }
 
-const tagRejected = (currentlyRejectedTags, tagId, httpCode, errMessage) => {
+
+const tagRejected = (currentlyRejectedTags, tagId, httpCode, err) => {
 
   if (!R.contains(tagId, currentlyRejectedTags)) {
-    throw { httpCode, message: errMessage };
+    throw { httpCode, ...err };
   }
 }
 
 
-const tagsNotAlreadyApproved = (currentlyApprovedTags, tags, errMessage) => {
+const tagsNotAlreadyApproved = (currentlyApprovedTags, tags, err) => {
 
   if (containsAnyTag(currentlyApprovedTags, tags)) {
-    throw { httpCode: 403, message: errMessage };
+    throw { httpCode: 403, ...err };
   }
 }
 
 
-const tagsNotAlreadyRejected = (currentlyRejectedTags, tags, errMessage) => {
+const tagsNotAlreadyRejected = (currentlyRejectedTags, tags, err) => {
 
   if (containsAnyTag(currentlyRejectedTags, tags)) {
-    throw { httpCode: 403, message: errMessage };
+    throw { httpCode: 403, ...err };
   }
 }
 
 
-const userHasNotApprovedDocs = (remainingOwnersToApproveDocs, username, errMessage) => {
+const userHasNotApprovedDocs = (remainingOwnersToApproveDocs, username, err) => {
 
   if (!R.contains(username, remainingOwnersToApproveDocs)) {
-    throw { httpCode: 403, message: errMessage };
+    throw { httpCode: 403, ...err };
   }
 }
 
 
-const updateMatchedOneResult = (updateResult, httpCode, errMessage) => {
+const updateMatchedOneResult = (updateResult, httpCode, err) => {
 
   if (updateResult.n !== 1) {
-    throw { httpCode, message: errMessage };
+    throw { httpCode, ...err };
   }
+}
+
+
+const updateMatchedBecauseHeadCommitHasNotChanged = async (updateResult, repoId, prNumber, commitId) => {
+
+  if (updateResult.n === 1) {
+    return;
+  }
+
+  const pullRequestReviewObject = await getPullRequestReviewObject(repoId, prNumber);
+
+  // Most likely no longer the head commit.
+  isHeadCommit(pullRequestReviewObject, commitId);
+
+  // Otherwise some internal error?
+  throw { httpCode: 500, ...errors.internalServerError };
+
 }
 
 
 const updateModifiedOneResult = (updateResult) => {
 
   if (updateResult.ok !== 1 || updateResult.nModified !== 1) {
-    throw { httpCode: 500, message: errorMessages.internalServerError };
+    throw { httpCode: 500, ...errors.internalServerError };
   }
 }
 
@@ -170,5 +188,6 @@ module.exports = {
   tagsNotAlreadyRejected,
   userHasNotApprovedDocs,
   updateMatchedOneResult,
+  updateMatchedBecauseHeadCommitHasNotChanged,
   updateModifiedOneResult
 }
