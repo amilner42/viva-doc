@@ -1,5 +1,5 @@
 const router = require('express').Router();
-const errorMessages = require('../error-messages');
+const errors = require('../errors');
 
 router.use('/', require('./users'));
 router.use('/', require('./reviews'));
@@ -9,17 +9,20 @@ router.use('/', require('./reviews'));
 router.use(function(err, req, res, next) {
 
   if (isProperlyFormedError(err)) {
-    return res.status(err.httpCode).send({ message: err.message });
+    return res.status(err.httpCode).send(err);
   }
 
   console.log(`LOG IMPROPER ERROR: ${err}`);
 
-  return res.status(500).send({ message: errorMessages.internalServerError });
+  return res.status(500).send(errors.internalServerError);
 });
 
 
+// 3 fields required to be a properly formed error. Other optional fields allowed.
 const isProperlyFormedError = (err) => {
-  return (typeof err.httpCode === "number") && (typeof err.message === "string");
+  return (typeof err.httpCode === "number")
+          && (typeof err.message === "string")
+          && (typeof err.errorCode === "number");
 }
 
 

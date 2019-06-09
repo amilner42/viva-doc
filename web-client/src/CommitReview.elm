@@ -13,6 +13,7 @@ type alias CommitReview =
     , commitId : String
     , fileReviews : List FileReview
     , remainingOwnersToApproveDocs : Set.Set String
+    , headCommitId : String
     }
 
 
@@ -391,7 +392,7 @@ decodeCommitReview =
     decodeApprovedAndRejectedTags
         |> Decode.andThen
             (\tagStates ->
-                Decode.map7 CommitReview
+                Decode.map8 CommitReview
                     (Decode.field "repoId" Decode.string)
                     (Decode.field "repoFullName" Decode.string)
                     (Decode.field "branchName" Decode.string)
@@ -399,6 +400,7 @@ decodeCommitReview =
                     (Decode.field "commitId" Decode.string)
                     (Decode.field "fileReviews" (Decode.list <| decodeFileReview tagStates))
                     (Decode.field "remainingOwnersToApproveDocs" (Decode.list Decode.string |> Decode.map Set.fromList))
+                    (Decode.field "headCommitId" Decode.string)
             )
 
 

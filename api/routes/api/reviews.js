@@ -3,7 +3,7 @@ const R = require("ramda")
 const router = require('express').Router();
 
 const verify = require("../verify");
-const errorMessages = require("../error-messages");
+const errors = require("../errors");
 const githubApp = require("../../github-app");
 
 const mongoose = require('mongoose');
@@ -25,7 +25,7 @@ router.get('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId'
     const pullRequestReviewObject = await verify.getPullRequestReviewObject(repoId, pullRequestNumber);
     const commitReviewObject = await verify.getCommitReviewObject(repoId, pullRequestNumber, commitId);
 
-    commitReviewObject.isHeadCommit = commitReviewObject.commitId === pullRequestReviewObject.headCommitId;
+    commitReviewObject.headCommitId = pullRequestReviewObject.headCommitId;
     return res.json(commitReviewObject);
 
   } catch (err) {
@@ -57,19 +57,19 @@ router.post('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/approve
     verify.tagsNotAlreadyApproved(
       commitReviewObject.approvedTags,
       tagsToApprove,
-      errorMessages.noApprovingAlreadyApprovedTag
+      errors.noApprovingAlreadyApprovedTag
     );
 
     verify.tagsNotAlreadyRejected(
       commitReviewObject.rejectedTags,
       tagsToApprove,
-      errorMessages.noApprovingRejectedTag
+      errors.noApprovingRejectedTag
     );
 
     verify.userHasNotApprovedDocs(
       commitReviewObject.remainingOwnersToApproveDocs,
       username,
-      errorMessages.noModifyingTagsAfterConfirmation
+      errors.noModifyingTagsAfterConfirmation
     );
 
     const pullRequestUpdateResult = await PullRequestReviewModel.update(
@@ -83,9 +83,8 @@ router.post('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/approve
       }
     ).exec();
 
-    verify.updateMatchedOneResult(pullRequestUpdateResult, 423, errorMessages.noUpdatingNonHeadCommit);
+    await verify.updateMatchedBecauseHeadCommitHasNotChanged(pullRequestUpdateResult, repoId, pullRequestNumber, commitId);
     verify.updateModifiedOneResult(pullRequestUpdateResult);
-
 
     const commitReviewUpdateResult = await CommitReviewModel.update(
       {
@@ -98,7 +97,7 @@ router.post('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/approve
       }
     ).exec();
 
-    verify.updateMatchedOneResult(commitReviewUpdateResult, 500, errorMessages.internalServerError);
+    verify.updateMatchedOneResult(commitReviewUpdateResult, 500, errors.internalServerError);
     verify.updateModifiedOneResult(commitReviewUpdateResult);
 
     return res.json({});
@@ -128,12 +127,12 @@ router.delete('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/appro
 
     verify.ownsTags(commitReviewObject.tagsAndOwners, [ tagId ], username);
 
-    verify.tagApproved(commitReviewObject.approvedTags, tagId, 403, errorMessages.noRemovingApprovalOnUnapprovedTag);
+    verify.tagApproved(commitReviewObject.approvedTags, tagId, 403, errors.noRemovingApprovalOnUnapprovedTag);
 
     verify.userHasNotApprovedDocs(
       commitReviewObject.remainingOwnersToApproveDocs,
       username,
-      errorMessages.noModifyingTagsAfterConfirmation
+      errors.noModifyingTagsAfterConfirmation
     );
 
     const pullRequestUpdateResult = await PullRequestReviewModel.update(
@@ -147,7 +146,7 @@ router.delete('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/appro
       }
     ).exec();
 
-    verify.updateMatchedOneResult(pullRequestUpdateResult, 423, errorMessages.noUpdatingNonHeadCommit);
+    await verify.updateMatchedBecauseHeadCommitHasNotChanged(pullRequestUpdateResult, repoId, pullRequestNumber, commitId);
     verify.updateModifiedOneResult(pullRequestUpdateResult);
 
     const commitReviewUpdateResult = await CommitReviewModel.update(
@@ -161,7 +160,7 @@ router.delete('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/appro
       }
     ).exec();
 
-    verify.updateMatchedOneResult(commitReviewUpdateResult, 500, errorMessages.internalServerError);
+    verify.updateMatchedOneResult(commitReviewUpdateResult, 500, errors.internalServerError);
     verify.updateModifiedOneResult(commitReviewUpdateResult);
 
     return res.json({});
@@ -196,19 +195,19 @@ router.post('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/rejecte
     verify.tagsNotAlreadyApproved(
       commitReviewObject.approvedTags,
       tagsToReject,
-      errorMessages.noRejectingApprovedTag
+      errors.noRejectingApprovedTag
     );
 
     verify.tagsNotAlreadyRejected(
       commitReviewObject.rejectedTags,
       tagsToReject,
-      errorMessages.noRejectingAlreadyRejectedTag
+      errors.noRejectingAlreadyRejectedTag
     );
 
     verify.userHasNotApprovedDocs(
       commitReviewObject.remainingOwnersToApproveDocs,
       username,
-      errorMessages.noModifyingTagsAfterConfirmation
+      errors.noModifyingTagsAfterConfirmation
     );
 
     const pullRequestUpdateResult = await PullRequestReviewModel.update(
@@ -222,7 +221,7 @@ router.post('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/rejecte
       }
     ).exec();
 
-    verify.updateMatchedOneResult(pullRequestUpdateResult, 423, errorMessages.noUpdatingNonHeadCommit);
+    await verify.updateMatchedBecauseHeadCommitHasNotChanged(pullRequestUpdateResult, repoId, pullRequestNumber, commitId);
     verify.updateModifiedOneResult(pullRequestUpdateResult);
 
     const commitReviewUpdateResult = await CommitReviewModel.update(
@@ -236,7 +235,7 @@ router.post('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/rejecte
       }
     ).exec();
 
-    verify.updateMatchedOneResult(commitReviewUpdateResult, 500, errorMessages.internalServerError);
+    verify.updateMatchedOneResult(commitReviewUpdateResult, 500, errors.internalServerError);
     verify.updateModifiedOneResult(commitReviewUpdateResult);
 
     return res.json({});
@@ -267,12 +266,12 @@ router.delete('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/rejec
 
     verify.ownsTags(commitReviewObject.tagsAndOwners, [ tagId ], username);
 
-    verify.tagRejected(commitReviewObject.rejectedTags, tagId, 403, errorMessages.noRemovingRejectionOnUnrejectedTag);
+    verify.tagRejected(commitReviewObject.rejectedTags, tagId, 403, errors.noRemovingRejectionOnUnrejectedTag);
 
     verify.userHasNotApprovedDocs(
       commitReviewObject.remainingOwnersToApproveDocs,
       username,
-      errorMessages.noModifyingTagsAfterConfirmation
+      errors.noModifyingTagsAfterConfirmation
     );
 
     const pullRequestUpdateResult = await PullRequestReviewModel.update(
@@ -286,7 +285,7 @@ router.delete('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/rejec
       }
     ).exec();
 
-    verify.updateMatchedOneResult(pullRequestUpdateResult, 423, errorMessages.noUpdatingNonHeadCommit);
+    await verify.updateMatchedBecauseHeadCommitHasNotChanged(pullRequestUpdateResult, repoId, pullRequestNumber, commitId);
     verify.updateModifiedOneResult(pullRequestUpdateResult);
 
     const commitReviewUpdateResult = await CommitReviewModel.update(
@@ -300,7 +299,7 @@ router.delete('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/rejec
       }
     ).exec();
 
-    verify.updateMatchedOneResult(commitReviewUpdateResult, 500, errorMessages.internalServerError);
+    verify.updateMatchedOneResult(commitReviewUpdateResult, 500, errors.internalServerError);
     verify.updateModifiedOneResult(commitReviewUpdateResult);
 
     return res.json({});
@@ -333,7 +332,7 @@ router.post('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/approve
     verify.userHasNotApprovedDocs(
       pullRequestReviewObject.headCommitRemainingOwnersToApproveDocs,
       username,
-      errorMessages.noApprovingDocsIfNotOnRemainingDocApprovalList
+      errors.noApprovingDocsIfNotOnRemainingDocApprovalList
     );
 
     const updatedPullRequestReview = await PullRequestReviewModel.findOneAndUpdate(
@@ -343,7 +342,11 @@ router.post('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/approve
     ).exec();
 
     if (updatedPullRequestReview === null) {
-      throw { httpCode: 423, message: errorMessages.noUpdatingNonHeadCommit };
+      const pullRequestReviewObject = await verify.getPullRequestReviewObject(repoId, pullRequestNumber);
+
+      // Either not head commit or some internal error.
+      verify.isHeadCommit(pullRequestReviewObject, commitId);
+      throw { httpCode: 500, ...errors.internalServerError };
     }
 
     const commitReviewUpdateResult = await CommitReviewModel.update(
@@ -357,7 +360,7 @@ router.post('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/approve
       }
     ).exec();
 
-    verify.updateMatchedOneResult(commitReviewUpdateResult, 500, errorMessages.internalServerError);
+    verify.updateMatchedOneResult(commitReviewUpdateResult, 500, errors.internalServerError);
     verify.updateModifiedOneResult(commitReviewUpdateResult);
 
     // No need for any more work, still people that need to approve their docs.
@@ -383,7 +386,7 @@ router.post('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/approve
       }
     ).exec();
 
-    verify.updateMatchedOneResult(pullRequestUpdateResult, 500, errorMessages.internalServerError);
+    verify.updateMatchedOneResult(pullRequestUpdateResult, 500, errors.internalServerError);
     verify.updateModifiedOneResult(pullRequestUpdateResult);
 
     return res.json({});

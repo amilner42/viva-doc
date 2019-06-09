@@ -4,10 +4,11 @@ import Api.Api as Api
 import Api.Core as Core
 import CommitReview
 import CustomMarkdown as CM
-import Html exposing (Html, button, div, dl, dt, hr, i, p, span, table, tbody, td, text, th, thead, tr)
+import Html exposing (Html, a, button, div, dl, dt, hr, i, p, section, span, table, tbody, td, text, th, thead, tr)
 import Html.Attributes exposing (class, classList, disabled, style)
 import Html.Events exposing (onClick)
 import RemoteData
+import Route
 import Session exposing (Session)
 import Set
 import Viewer
@@ -31,6 +32,7 @@ type alias Model =
     , commitReview : RemoteData.RemoteData () CommitReview.CommitReview
     , displayOnlyUsersTags : Bool
     , displayOnlyTagsNeedingApproval : Bool
+    , modalClosed : Bool
 
     -- TODO actual error type
     , approveDocsState : ApproveDocsState ()
@@ -48,6 +50,7 @@ init session repoId prNumber commitId =
             , commitReview = RemoteData.NotAsked
             , displayOnlyUsersTags = False
             , displayOnlyTagsNeedingApproval = False
+            , modalClosed = False
             , approveDocsState = NotRequesting
             }
     in
@@ -98,13 +101,23 @@ view model =
                             [ text "Uh oh" ]
 
                         RemoteData.Success commitReview ->
-                            renderCommitReview
-                                { username = Viewer.getUsername viewer
-                                , approveDocsState = model.approveDocsState
-                                , displayOnlyUsersTags = model.displayOnlyUsersTags
-                                , displayOnlyTagsNeedingApproval = model.displayOnlyTagsNeedingApproval
-                                }
-                                commitReview
+                            if commitReview.headCommitId == model.commitId || model.modalClosed then
+                                renderCommitReview
+                                    { username = Viewer.getUsername viewer
+                                    , approveDocsState = model.approveDocsState
+                                    , displayOnlyUsersTags = model.displayOnlyUsersTags
+                                    , displayOnlyTagsNeedingApproval = model.displayOnlyTagsNeedingApproval
+                                    , isCommitStale = model.commitId /= commitReview.headCommitId
+                                    }
+                                    commitReview
+
+                            else
+                                renderHeadUpdatedModal
+                                    """This commit is stale! You can continue to browse to see what was previosly
+                                    approved/rejected but if you would like to make changes you must go to the most
+                                    recent commit in the PR.
+                                    """
+                                    (Route.CommitReview model.repoId model.prNumber commitReview.headCommitId)
     }
 
 
@@ -113,20 +126,21 @@ renderCommitReview :
     , approveDocsState : ApproveDocsState err
     , displayOnlyUsersTags : Bool
     , displayOnlyTagsNeedingApproval : Bool
+    , isCommitStale : Bool
     }
     -> CommitReview.CommitReview
     -> List (Html.Html Msg)
-renderCommitReview { username, displayOnlyUsersTags, displayOnlyTagsNeedingApproval, approveDocsState } commitReview =
+renderCommitReview config commitReview =
     let
         fileReviewsToRender =
             CommitReview.filterFileReviews
                 { filterForUser =
-                    if displayOnlyUsersTags then
-                        Just username
+                    if config.displayOnlyUsersTags then
+                        Just config.username
 
                     else
                         Nothing
-                , filterApprovedTags = displayOnlyTagsNeedingApproval
+                , filterApprovedTags = config.displayOnlyTagsNeedingApproval
                 }
                 commitReview.fileReviews
 
@@ -136,18 +150,25 @@ renderCommitReview { username, displayOnlyUsersTags, displayOnlyTagsNeedingAppro
         displayingReviews =
             CommitReview.countTotalReviewsAndTags fileReviewsToRender
     in
-    renderSummaryHeader username approveDocsState commitReview
+    renderSummaryHeader config.username config.approveDocsState config.isCommitStale commitReview
         :: renderCommitReviewHeader
-            displayOnlyUsersTags
-            displayOnlyTagsNeedingApproval
+            config.displayOnlyUsersTags
+            config.displayOnlyTagsNeedingApproval
             displayingReviews
             totalReviews
             commitReview
-        :: List.map (renderFileReview username commitReview.remainingOwnersToApproveDocs approveDocsState) fileReviewsToRender
+        :: List.map
+            (renderFileReview
+                config.username
+                commitReview.remainingOwnersToApproveDocs
+                config.approveDocsState
+                config.isCommitStale
+            )
+            fileReviewsToRender
 
 
-renderSummaryHeader : String -> ApproveDocsState err -> CommitReview.CommitReview -> Html.Html Msg
-renderSummaryHeader username approveDocsState commitReview =
+renderSummaryHeader : String -> ApproveDocsState err -> Bool -> CommitReview.CommitReview -> Html.Html Msg
+renderSummaryHeader username approveDocsState isCommitStale commitReview =
     let
         ownerTagStatuses : List CommitReview.OwnerTagStatus
         ownerTagStatuses =
@@ -264,12 +285,14 @@ renderSummaryHeader username approveDocsState commitReview =
                                       )
                                     ]
                                 , disabled <|
-                                    case approveDocsState of
-                                        RequestForDocApprovalErrored _ ->
-                                            True
+                                    isCommitStale
+                                        || (case approveDocsState of
+                                                RequestForDocApprovalErrored _ ->
+                                                    True
 
-                                        _ ->
-                                            False
+                                                _ ->
+                                                    False
+                                           )
                                 , style "height" "52px"
                                 , onClick <| ApproveDocs username
                                 ]
@@ -367,8 +390,8 @@ renderCommitReviewHeader displayOnlyUsersTags displayOnlyTagsNeedingApproval dis
         ]
 
 
-renderFileReview : String -> Set.Set String -> ApproveDocsState err -> CommitReview.FileReview -> Html.Html Msg
-renderFileReview username remainingOwnersToApproveDocs approveDocsState fileReview =
+renderFileReview : String -> Set.Set String -> ApproveDocsState err -> Bool -> CommitReview.FileReview -> Html.Html Msg
+renderFileReview username remainingOwnersToApproveDocs approveDocsState isCommitStale fileReview =
     div [ class "section" ] <|
         [ renderFileReviewHeader fileReview
         , case fileReview.fileReviewType of
@@ -379,6 +402,7 @@ renderFileReview username remainingOwnersToApproveDocs approveDocsState fileRevi
                     remainingOwnersToApproveDocs
                     CM.GreenBackground
                     approveDocsState
+                    isCommitStale
                     tags
 
             CommitReview.DeletedFileReview tags ->
@@ -388,6 +412,7 @@ renderFileReview username remainingOwnersToApproveDocs approveDocsState fileRevi
                     remainingOwnersToApproveDocs
                     CM.RedBackground
                     approveDocsState
+                    isCommitStale
                     tags
 
             CommitReview.ModifiedFileReview reviews ->
@@ -395,6 +420,7 @@ renderFileReview username remainingOwnersToApproveDocs approveDocsState fileRevi
                     username
                     remainingOwnersToApproveDocs
                     approveDocsState
+                    isCommitStale
                     reviews
 
             CommitReview.RenamedFileReview _ reviews ->
@@ -402,6 +428,7 @@ renderFileReview username remainingOwnersToApproveDocs approveDocsState fileRevi
                     username
                     remainingOwnersToApproveDocs
                     approveDocsState
+                    isCommitStale
                     reviews
         ]
 
@@ -434,8 +461,16 @@ renderFileReviewHeader fileReview =
         ]
 
 
-renderTags : String -> String -> Set.Set String -> CM.RenderStyle -> ApproveDocsState err -> List CommitReview.Tag -> Html.Html Msg
-renderTags username description remainingOwnersToApproveDocs renderStyle approveDocsState tags =
+renderTags :
+    String
+    -> String
+    -> Set.Set String
+    -> CM.RenderStyle
+    -> ApproveDocsState err
+    -> Bool
+    -> List CommitReview.Tag
+    -> Html.Html Msg
+renderTags username description remainingOwnersToApproveDocs renderStyle approveDocsState isCommitStale tags =
     div [ class "tile is-ancestor is-vertical" ] <|
         List.map
             (renderTagOrReview
@@ -444,13 +479,20 @@ renderTags username description remainingOwnersToApproveDocs renderStyle approve
                 , description = description
                 , remainingOwnersToApproveDocs = remainingOwnersToApproveDocs
                 , approveDocsState = approveDocsState
+                , isCommitStale = isCommitStale
                 }
             )
             tags
 
 
-renderReviews : String -> Set.Set String -> ApproveDocsState err -> List CommitReview.Review -> Html.Html Msg
-renderReviews username remainingOwnersToApproveDocs approveDocsState reviews =
+renderReviews :
+    String
+    -> Set.Set String
+    -> ApproveDocsState err
+    -> Bool
+    -> List CommitReview.Review
+    -> Html.Html Msg
+renderReviews username remainingOwnersToApproveDocs approveDocsState isCommitStale reviews =
     div [ class "tile is-ancestor is-vertical" ] <|
         List.map
             (\review ->
@@ -487,6 +529,7 @@ renderReviews username remainingOwnersToApproveDocs approveDocsState reviews =
                                 "This tag has been modified"
                     , remainingOwnersToApproveDocs = remainingOwnersToApproveDocs
                     , approveDocsState = approveDocsState
+                    , isCommitStale = isCommitStale
                     }
                     review.tag
             )
@@ -499,14 +542,15 @@ renderTagOrReview :
     , description : String
     , approveDocsState : ApproveDocsState err
     , remainingOwnersToApproveDocs : Set.Set String
+    , isCommitStale : Bool
     }
     -> CommitReview.Tag
     -> Html.Html Msg
-renderTagOrReview { renderStyle, username, description, remainingOwnersToApproveDocs, approveDocsState } tag =
+renderTagOrReview config tag =
     div [ class "tile is-parent" ]
         [ div
             [ class "tile is-8 is-child" ]
-            (CM.getMarkdown tag.content tag.startLine "javascript" renderStyle)
+            (CM.getMarkdown tag.content tag.startLine "javascript" config.renderStyle)
         , div
             [ class "tile is-4"
             ]
@@ -568,16 +612,19 @@ renderTagOrReview { renderStyle, username, description, remainingOwnersToApprove
                                 ]
                             , dt [] [ text <| "Owner: " ++ tag.owner ]
                             ]
-                        , p [] [ text description ]
+                        , p [] [ text config.description ]
                         ]
                     , div [ class "buttons" ] <|
-                        (if username /= tag.owner || (not <| Set.member username remainingOwnersToApproveDocs) then
+                        (if
+                            (config.username /= tag.owner)
+                                || (not <| Set.member config.username config.remainingOwnersToApproveDocs)
+                         then
                             []
 
                          else
                             let
                                 requestingDocApproval =
-                                    case approveDocsState of
+                                    case config.approveDocsState of
                                         RequestingDocApproval ->
                                             True
 
@@ -589,13 +636,13 @@ renderTagOrReview { renderStyle, username, description, remainingOwnersToApprove
                                     [ button
                                         [ class "button is-success is-fullwidth has-text-white"
                                         , onClick <| ApproveTags <| Set.singleton tag.tagId
-                                        , disabled <| requestingDocApproval
+                                        , disabled <| requestingDocApproval || config.isCommitStale
                                         ]
                                         [ text "Approve" ]
                                     , button
                                         [ class "button is-danger is-fullwidth has-text-white"
                                         , onClick <| RejectTags <| Set.singleton tag.tagId
-                                        , disabled <| requestingDocApproval
+                                        , disabled <| requestingDocApproval || config.isCommitStale
                                         ]
                                         [ text "Reject" ]
                                     ]
@@ -603,7 +650,7 @@ renderTagOrReview { renderStyle, username, description, remainingOwnersToApprove
                                 CommitReview.Approved ->
                                     [ button
                                         [ class "button is-success is-fullwidth is-outlined"
-                                        , disabled <| requestingDocApproval
+                                        , disabled <| requestingDocApproval || config.isCommitStale
                                         , onClick <| RemoveApprovalOnTag tag.tagId
                                         ]
                                         [ text "Undo Approval" ]
@@ -612,7 +659,7 @@ renderTagOrReview { renderStyle, username, description, remainingOwnersToApprove
                                 CommitReview.Rejected ->
                                     [ button
                                         [ class "button is-fullwidth is-danger is-outlined"
-                                        , disabled <| requestingDocApproval
+                                        , disabled <| requestingDocApproval || config.isCommitStale
                                         , onClick <| RemoveRejectionOnTag tag.tagId
                                         ]
                                         [ text "Undo Rejection" ]
@@ -661,7 +708,7 @@ renderTagOrReview { renderStyle, username, description, remainingOwnersToApprove
                                         [ text "Internal Error" ]
                                     ]
                         )
-                            ++ [ case renderStyle of
+                            ++ [ case config.renderStyle of
                                     CM.MixedBackground { contentType } ->
                                         case contentType of
                                             CM.Previous ->
@@ -689,6 +736,39 @@ renderTagOrReview { renderStyle, username, description, remainingOwnersToApprove
         ]
 
 
+renderHeadUpdatedModal : String -> Route.Route -> List (Html.Html Msg)
+renderHeadUpdatedModal modalText headCommitRoute =
+    [ div
+        [ class "modal is-active" ]
+        [ div [ class "modal-background" ] []
+        , div
+            [ class "modal-card" ]
+            [ section
+                [ class "modal-card-body"
+                , style "border-radius" "10px"
+                ]
+                [ div
+                    [ class "content" ]
+                    [ text modalText ]
+                , div
+                    [ class "buttons are-large is-centered" ]
+                    [ button
+                        [ class "button is-info is-fullwidth"
+                        , onClick <| SetModalClosed True
+                        ]
+                        [ text "browse stale commit" ]
+                    , a
+                        [ class "button is-link is-fullwidth"
+                        , Route.href headCommitRoute
+                        ]
+                        [ text "jump to most recent commit" ]
+                    ]
+                ]
+            ]
+        ]
+    ]
+
+
 
 -- UPDATE
 
@@ -699,19 +779,61 @@ type Msg
     | SetDisplayOnlyTagsNeedingApproval Bool
     | SetShowAlteredLines String Bool
     | ApproveTags (Set.Set String)
-    | CompletedApproveTags (Set.Set String) (Result.Result (Core.HttpError ()) ())
+    | CompletedApproveTags (Set.Set String) (Result.Result (Core.HttpError Api.CommitReviewActionError) ())
     | RemoveApprovalOnTag String
-    | CompletedRemoveApprovalOnTag String (Result.Result (Core.HttpError ()) ())
+    | CompletedRemoveApprovalOnTag String (Result.Result (Core.HttpError Api.CommitReviewActionError) ())
     | RejectTags (Set.Set String)
-    | CompletedRejectTags (Set.Set String) (Result.Result (Core.HttpError ()) ())
+    | CompletedRejectTags (Set.Set String) (Result.Result (Core.HttpError Api.CommitReviewActionError) ())
     | RemoveRejectionOnTag String
-    | CompletedRemoveRejectionOnTag String (Result.Result (Core.HttpError ()) ())
+    | CompletedRemoveRejectionOnTag String (Result.Result (Core.HttpError Api.CommitReviewActionError) ())
     | ApproveDocs String
-    | CompletedApproveDocs String (Result.Result (Core.HttpError ()) ())
+    | CompletedApproveDocs String (Result.Result (Core.HttpError Api.CommitReviewActionError) ())
+    | SetModalClosed Bool
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
+    let
+        handleCommitReviewActionErrorOnTag tagIds err =
+            ( case err of
+                Core.BadStatus _ (Api.StaleCommitError newHeadCommitId) ->
+                    { model
+                        | commitReview =
+                            model.commitReview
+                                |> RemoteData.map
+                                    (\commitReview ->
+                                        { commitReview | headCommitId = newHeadCommitId }
+                                    )
+                                |> RemoteData.map
+                                    (CommitReview.updateTags
+                                        (\tag ->
+                                            if Set.member tag.tagId tagIds then
+                                                { tag | approvedState = CommitReview.Neutral }
+
+                                            else
+                                                tag
+                                        )
+                                    )
+                    }
+
+                _ ->
+                    { model
+                        | commitReview =
+                            RemoteData.map
+                                (CommitReview.updateTags
+                                    (\tag ->
+                                        if Set.member tag.tagId tagIds then
+                                            { tag | approvedState = CommitReview.RequestFailed () }
+
+                                        else
+                                            tag
+                                    )
+                                )
+                                model.commitReview
+                    }
+            , Cmd.none
+            )
+    in
     case msg of
         CompletedGetCommitReview (Result.Ok commitReview) ->
             ( { model | commitReview = RemoteData.Success commitReview }, Cmd.none )
@@ -792,24 +914,8 @@ update msg model =
             , Cmd.none
             )
 
-        -- TODO Handle error
-        CompletedApproveTags attemptedApprovedTags _ ->
-            ( { model
-                | commitReview =
-                    RemoteData.map
-                        (CommitReview.updateTags
-                            (\tag ->
-                                if Set.member tag.tagId attemptedApprovedTags then
-                                    { tag | approvedState = CommitReview.RequestFailed () }
-
-                                else
-                                    tag
-                            )
-                        )
-                        model.commitReview
-              }
-            , Cmd.none
-            )
+        CompletedApproveTags attemptedApprovedTags (Result.Err err) ->
+            handleCommitReviewActionErrorOnTag attemptedApprovedTags err
 
         RemoveApprovalOnTag tagId ->
             ( { model
@@ -847,23 +953,8 @@ update msg model =
             , Cmd.none
             )
 
-        CompletedRemoveApprovalOnTag tagId (Result.Err _) ->
-            ( { model
-                | commitReview =
-                    RemoteData.map
-                        (CommitReview.updateTags
-                            (\tag ->
-                                if tag.tagId == tagId then
-                                    { tag | approvedState = CommitReview.RequestFailed () }
-
-                                else
-                                    tag
-                            )
-                        )
-                        model.commitReview
-              }
-            , Cmd.none
-            )
+        CompletedRemoveApprovalOnTag tagId (Result.Err err) ->
+            handleCommitReviewActionErrorOnTag (Set.singleton tagId) err
 
         RejectTags tags ->
             ( { model
@@ -906,24 +997,8 @@ update msg model =
             , Cmd.none
             )
 
-        -- TODO handle errors
-        CompletedRejectTags attemptedRejectTags _ ->
-            ( { model
-                | commitReview =
-                    RemoteData.map
-                        (CommitReview.updateTags
-                            (\tag ->
-                                if Set.member tag.tagId attemptedRejectTags then
-                                    { tag | approvedState = CommitReview.RequestFailed () }
-
-                                else
-                                    tag
-                            )
-                        )
-                        model.commitReview
-              }
-            , Cmd.none
-            )
+        CompletedRejectTags attemptedRejectTags (Result.Err err) ->
+            handleCommitReviewActionErrorOnTag attemptedRejectTags err
 
         RemoveRejectionOnTag tagId ->
             ( { model
@@ -966,23 +1041,8 @@ update msg model =
             , Cmd.none
             )
 
-        CompletedRemoveRejectionOnTag tagId (Result.Err _) ->
-            ( { model
-                | commitReview =
-                    RemoteData.map
-                        (CommitReview.updateTags
-                            (\tag ->
-                                if tag.tagId == tagId then
-                                    { tag | approvedState = CommitReview.RequestFailed () }
-
-                                else
-                                    tag
-                            )
-                        )
-                        model.commitReview
-              }
-            , Cmd.none
-            )
+        CompletedRemoveRejectionOnTag tagId (Result.Err err) ->
+            handleCommitReviewActionErrorOnTag (Set.singleton tagId) err
 
         ApproveDocs username ->
             ( { model | approveDocsState = RequestingDocApproval }
@@ -1006,8 +1066,25 @@ update msg model =
             )
 
         -- TODO handle error
-        CompletedApproveDocs username (Err _) ->
-            ( { model | approveDocsState = RequestForDocApprovalErrored () }, Cmd.none )
+        CompletedApproveDocs username (Result.Err err) ->
+            case err of
+                Core.BadStatus _ (Api.StaleCommitError newHeadCommitId) ->
+                    ( { model
+                        | commitReview =
+                            RemoteData.map
+                                (\commitReview ->
+                                    { commitReview | headCommitId = newHeadCommitId }
+                                )
+                                model.commitReview
+                      }
+                    , Cmd.none
+                    )
+
+                _ ->
+                    ( { model | approveDocsState = RequestForDocApprovalErrored () }, Cmd.none )
+
+        SetModalClosed modalClosed ->
+            ( { model | modalClosed = modalClosed }, Cmd.none )
 
 
 
