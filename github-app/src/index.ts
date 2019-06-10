@@ -24,6 +24,7 @@ require("./models/Repo")
 // All imports to internal modules should be here so that all mongoose schemas have loaded first
 const PullRequestReviewModel = mongoose.model('PullRequestReview')
 const RepoModel = mongoose.model("Repo")
+const CommitReviewModel = mongoose.model('CommitReview')
 import { Repo } from "./models/Repo"
 import { PullRequestReview } from "./models/PullRequestReview"
 import * as Analysis from "./analysis"
@@ -145,7 +146,8 @@ export = (app: Probot.Application) => {
       headCommitTagsAndOwners: null,
       pendingAnalysisForCommits: [ headCommitId ],
       currentAnalysisLastCommitWithSuccessStatus: baseCommitId,
-      currentAnalysisLastAnalyzedCommit: null
+      currentAnalysisLastAnalyzedCommit: null,
+      loadingHeadAnalysis: true
     }
 
     const pullRequestReview = new PullRequestReviewModel(pullRequestReviewObject)
@@ -184,7 +186,7 @@ export = (app: Probot.Application) => {
     const prNumbers = await getOpenPullRequestsForBranch(context, repoName, branchName, owner)
 
     // Perform analysis on all relevant open PRs.
-    await R.map( async (pullRequestNumber) => {
+    R.map( async (pullRequestNumber) => {
 
       const pullRequestReview = await PullRequestReviewModel.findOneAndUpdate(
         { repoId, pullRequestNumber },
@@ -194,10 +196,11 @@ export = (app: Probot.Application) => {
           headCommitApprovedTags: null,
           headCommitRejectedTags: null,
           headCommitRemainingOwnersToApproveDocs: null,
-          headCommitTagsAndOwners: null
+          headCommitTagsAndOwners: null,
+          loadingHeadAnalysis: true
         },
         {
-          new: true
+          new: false
         }
       ).exec();
 
@@ -209,24 +212,64 @@ export = (app: Probot.Application) => {
         return;
       }
 
-      const pullRequestReviewObject: PullRequestReview = pullRequestReview.toObject();
+      const previousPullRequestReviewObject: PullRequestReview = pullRequestReview.toObject();
 
-      if (pullRequestReviewObject.pendingAnalysisForCommits.length === 1) {
-        await Analysis.pipeline(
-          pullRequestReviewObject,
-          getClientUrlForCommitReview(repoId, pullRequestNumber),
-          retrieveDiff(context, owner, repoName),
-          retrieveFile(context, owner, repoName),
-          setCommitStatus(context, owner, repoName)
-        ).catch((err) => {
-          console.log(`Analysis Pipeline Error: ${err} --- ${JSON.stringify(err)}`)
-        })
-        return
+      // If there are already commits being analyzed in the pipeline, so there is no need to trigger the pipeline or
+      // save a previous CommitReviewObject.
+      if (previousPullRequestReviewObject.pendingAnalysisForCommits.length !== 0) {
+        return;
       }
 
-      // Otherwise there is already something being analyzed and this will be analyzed in order when all other
-      // commits finish being analyzed.
-      return
+      // Otherwise we need to save the old CommitReviewObject and trigger the analysis pipeline.
+
+      const commitReviewUpdateResult = await CommitReviewModel.update(
+        { repoId, pullRequestNumber, commitId: previousPullRequestReviewObject.headCommitId },
+        {
+          approvedTags: previousPullRequestReviewObject.headCommitApprovedTags,
+          rejectedTags: previousPullRequestReviewObject.headCommitRejectedTags,
+          remainingOwnersToApproveDocs: previousPullRequestReviewObject.headCommitRemainingOwnersToApproveDocs,
+          frozen: true
+        }
+      );
+
+      // TODO HANDLE ERROR better
+      if (commitReviewUpdateResult.n !== 1 || commitReviewUpdateResult.nModified !== 1) {
+        const errMessage = `Failed to update previous commit: ${JSON.stringify({ repoId, pullRequestNumber, commitId: previousPullRequestReviewObject.headCommitId },)}`;
+        console.log(errMessage);
+      }
+
+      // Construct the new PRO from previous one.
+      const pullRequestReviewObject: PullRequestReview =
+        { ...previousPullRequestReviewObject,
+          ...{
+            headCommitId,
+            pendingAnalysisForCommits: [ headCommitId ],
+            headCommitApprovedTags: null,
+            headCommitRejectedTags: null,
+            headCommitRemainingOwnersToApproveDocs: null,
+            headCommitTagsAndOwners: null,
+            loadingHeadAnalysis: true
+          },
+        ...{
+            // An unlikely race condition, but just in case, if the last commit had no remaining owners to approve dos
+            // then it is the last success commit. Because first that is pulled and then only after is success set
+            // there is a chance this runs between the 2 db operations.
+            currentAnalysisLastCommitWithSuccessStatus:
+              (previousPullRequestReviewObject.headCommitRemainingOwnersToApproveDocs === [])
+                ? previousPullRequestReviewObject.headCommitId
+                : previousPullRequestReviewObject.currentAnalysisLastCommitWithSuccessStatus
+          }
+        }
+
+      await Analysis.pipeline(
+        pullRequestReviewObject,
+        getClientUrlForCommitReview(repoId, pullRequestNumber),
+        retrieveDiff(context, owner, repoName),
+        retrieveFile(context, owner, repoName),
+        setCommitStatus(context, owner, repoName)
+      ).catch((err) => {
+        console.log(`Analysis Pipeline Error: ${err} --- ${JSON.stringify(err)}`)
+      })
 
     }, prNumbers)
 
