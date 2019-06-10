@@ -1,4 +1,4 @@
-module Api.Api exposing (CommitReviewActionError(..), GithubLoginBody, deleteApprovedTag, deleteRejectedTag, getCommitReview, getLogout, getUser, githubLoginFromCode, postApproveDocs, postApproveTags, postRejectTags)
+module Api.Api exposing (GithubLoginBody, deleteApprovedTag, deleteRejectedTag, getCommitReview, getLogout, getUser, githubLoginFromCode, postApproveDocs, postApproveTags, postRejectTags)
 
 {-| This module strictly contains the routes to the API and their respective errors.
 
@@ -9,6 +9,8 @@ likely be put in `Api.Core`.
 
 import Api.Core as Core
 import Api.Endpoint as Endpoint
+import Api.Errors.CommitReviewAction as CraError
+import Api.Errors.GetCommitReview as GcrError
 import CommitReview
 import Http
 import Json.Decode as Decode
@@ -58,19 +60,14 @@ getCommitReview :
     Int
     -> Int
     -> String
-    -> (Result.Result (Core.HttpError ()) CommitReview.CommitReview -> msg)
+    -> (Result.Result (Core.HttpError GcrError.GetCommitReviewError) CommitReview.CommitReview -> msg)
     -> Cmd.Cmd msg
 getCommitReview repoId prNumber commitId handleResult =
     Core.get
         (Endpoint.commitReview repoId prNumber commitId)
         standardTimeout
         Nothing
-        (Core.expectJson handleResult CommitReview.decodeCommitReview (Decode.succeed ()))
-
-
-type CommitReviewActionError
-    = UnknownError
-    | StaleCommitError String
+        (Core.expectJson handleResult CommitReview.decodeCommitReview GcrError.decodeGetCommitReviewError)
 
 
 {-| TODO handle errors.
@@ -80,7 +77,7 @@ postApproveTags :
     -> Int
     -> String
     -> Set.Set String
-    -> (Result.Result (Core.HttpError CommitReviewActionError) () -> msg)
+    -> (Result.Result (Core.HttpError CraError.CommitReviewActionError) () -> msg)
     -> Cmd.Cmd msg
 postApproveTags repoId prNumber commitId tags handleResult =
     let
@@ -92,7 +89,7 @@ postApproveTags repoId prNumber commitId tags handleResult =
         standardTimeout
         Nothing
         (Http.jsonBody encodedTags)
-        (Core.expectJson handleResult (Decode.succeed ()) decodeCommitReviewActionError)
+        (Core.expectJson handleResult (Decode.succeed ()) CraError.decodeCommitReviewActionError)
 
 
 {-| TODO handle errors.
@@ -102,7 +99,7 @@ deleteApprovedTag :
     -> Int
     -> String
     -> String
-    -> (Result.Result (Core.HttpError CommitReviewActionError) () -> msg)
+    -> (Result.Result (Core.HttpError CraError.CommitReviewActionError) () -> msg)
     -> Cmd.Cmd msg
 deleteApprovedTag repoId prNumber commitId tagId handleResult =
     Core.delete
@@ -110,7 +107,7 @@ deleteApprovedTag repoId prNumber commitId tagId handleResult =
         standardTimeout
         Nothing
         Http.emptyBody
-        (Core.expectJson handleResult (Decode.succeed ()) decodeCommitReviewActionError)
+        (Core.expectJson handleResult (Decode.succeed ()) CraError.decodeCommitReviewActionError)
 
 
 {-| TODO handle errors.
@@ -120,7 +117,7 @@ postRejectTags :
     -> Int
     -> String
     -> Set.Set String
-    -> (Result.Result (Core.HttpError CommitReviewActionError) () -> msg)
+    -> (Result.Result (Core.HttpError CraError.CommitReviewActionError) () -> msg)
     -> Cmd.Cmd msg
 postRejectTags repoId prNumber commitId tags handleResult =
     let
@@ -132,7 +129,7 @@ postRejectTags repoId prNumber commitId tags handleResult =
         standardTimeout
         Nothing
         (Http.jsonBody encodedTags)
-        (Core.expectJson handleResult (Decode.succeed ()) decodeCommitReviewActionError)
+        (Core.expectJson handleResult (Decode.succeed ()) CraError.decodeCommitReviewActionError)
 
 
 {-| TODO handle errors.
@@ -142,7 +139,7 @@ deleteRejectedTag :
     -> Int
     -> String
     -> String
-    -> (Result.Result (Core.HttpError CommitReviewActionError) () -> msg)
+    -> (Result.Result (Core.HttpError CraError.CommitReviewActionError) () -> msg)
     -> Cmd.Cmd msg
 deleteRejectedTag repoId prNumber commitId tagId handleResult =
     Core.delete
@@ -150,14 +147,14 @@ deleteRejectedTag repoId prNumber commitId tagId handleResult =
         standardTimeout
         Nothing
         Http.emptyBody
-        (Core.expectJson handleResult (Decode.succeed ()) decodeCommitReviewActionError)
+        (Core.expectJson handleResult (Decode.succeed ()) CraError.decodeCommitReviewActionError)
 
 
 postApproveDocs :
     Int
     -> Int
     -> String
-    -> (Result.Result (Core.HttpError CommitReviewActionError) () -> msg)
+    -> (Result.Result (Core.HttpError CraError.CommitReviewActionError) () -> msg)
     -> Cmd.Cmd msg
 postApproveDocs repoId prNumber commitId handleResult =
     Core.post
@@ -165,7 +162,7 @@ postApproveDocs repoId prNumber commitId handleResult =
         standardTimeout
         Nothing
         Http.emptyBody
-        (Core.expectJson handleResult (Decode.succeed ()) decodeCommitReviewActionError)
+        (Core.expectJson handleResult (Decode.succeed ()) CraError.decodeCommitReviewActionError)
 
 
 {-| TODO care about the results beyond success/error (aka unit types).
@@ -203,24 +200,3 @@ decodeFieldError =
 decodeFieldErrors : Decode.Decoder (List String)
 decodeFieldErrors =
     Decode.list Decode.string
-
-
-decodeCommitReviewActionError : Decode.Decoder CommitReviewActionError
-decodeCommitReviewActionError =
-    Decode.oneOf
-        [ decodeCommitStaleError |> Decode.map StaleCommitError
-        , Decode.succeed UnknownError
-        ]
-
-
-decodeCommitStaleError : Decode.Decoder String
-decodeCommitStaleError =
-    Decode.field "errorCode" Decode.int
-        |> Decode.andThen
-            (\errorCode ->
-                if errorCode == 10 then
-                    Decode.field "newHeadCommitId" Decode.string
-
-                else
-                    Decode.fail "wrong error code"
-            )

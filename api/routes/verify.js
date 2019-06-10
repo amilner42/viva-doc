@@ -77,6 +77,18 @@ const isHeadCommit = (pullRequestReviewObject, commitId) => {
 }
 
 
+const isLoadedHeadCommit = (pullRequestReviewObject, commitId) => {
+
+  if (pullRequestReviewObject.headCommitId !== commitId) {
+    throw { httpCode: 423, ...errors.noUpdatingNonHeadCommit(pullRequestReviewObject.headCommitId) };
+  }
+
+  if (pullRequestReviewObject.loadingHeadAnalysis) {
+    throw { httpCode: 423, ...errors.commitStillLoading }
+  }
+}
+
+
 const ownsTags = (tagsAndOwners, tagIds, username) => {
 
   const userOwnsTags = R.all((tagId) => {
@@ -181,6 +193,7 @@ module.exports = {
   getCommitReviewObject,
   getRepoObject,
   isHeadCommit,
+  isLoadedHeadCommit,
   ownsTags,
   tagApproved,
   tagRejected,

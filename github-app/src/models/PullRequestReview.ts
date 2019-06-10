@@ -2,6 +2,7 @@ import mongoose = require("mongoose")
 
 import { TagAndOwner } from "../review";
 
+
 export interface PullRequestReview {
   repoId: string,
   repoFullName: string,
@@ -16,7 +17,8 @@ export interface PullRequestReview {
   headCommitTagsAndOwners: TagAndOwner[] | null,
   pendingAnalysisForCommits: string[],
   currentAnalysisLastCommitWithSuccessStatus: string,
-  currentAnalysisLastAnalyzedCommit: string | null
+  currentAnalysisLastAnalyzedCommit: string | null,
+  loadingHeadAnalysis: boolean
 }
 
 const PullRequestReviewSchema = new mongoose.Schema({
@@ -33,7 +35,9 @@ const PullRequestReviewSchema = new mongoose.Schema({
   headCommitTagsAndOwners: { type: [ { owner: String, tagId: String }]},
   pendingAnalysisForCommits: { type: [ String ], required: [ true, "can't be blank"] },
   currentAnalysisLastCommitWithSuccessStatus: { type: String, required: [ true, "can't be blank" ] },
-  currentAnalysisLastAnalyzedCommit: { type: String }
-})
+  currentAnalysisLastAnalyzedCommit: { type: String },
+  loadingHeadAnalysis: { type: Boolean, required: [true, "can't be blank"] }
+});
+
 
 mongoose.model("PullRequestReview", PullRequestReviewSchema)

@@ -50,8 +50,6 @@ export const pipeline = async (
       }
     )
 
-  // The following 5 steps should be performed in this order.
-
   // 1. Calculate carry overs and see if current
 
   const owners = Review.getAllOwners(fileReviewsNeedingApproval)
@@ -107,7 +105,7 @@ export const pipeline = async (
     ({ approvedTags, rejectedTags, remainingOwnersToApproveDocs, lastCommitWithSuccessStatus } = carryOverData);
   }
 
-  // 2. Save new CommitReview
+  // 2. Save new CommitReview with frozen set to false.
 
   const commitReviewObject: CommitReview = {
     repoId: pullRequestReview.repoId,
@@ -119,7 +117,8 @@ export const pipeline = async (
     approvedTags,
     rejectedTags,
     remainingOwnersToApproveDocs,
-    tagsAndOwners
+    tagsAndOwners,
+    frozen: false
   }
 
   const commitReview = new CommitReviewModel(commitReviewObject)
@@ -127,10 +126,8 @@ export const pipeline = async (
 
   // 3. Update PullRequestReview
 
-  let updatedPullRequestReview: mongoose.Document | null;
-
   // First attempt to atomically update assuming this commit is still the most recent commit in the PR.
-  updatedPullRequestReview = await PullRequestReviewModel.findOneAndUpdate(
+  const updatePullRequestReviewResult = await PullRequestReviewModel.update(
     {
       repoId: pullRequestReview.repoId,
       pullRequestNumber: pullRequestReview.pullRequestNumber,
@@ -143,37 +140,69 @@ export const pipeline = async (
       headCommitTagsAndOwners: tagsAndOwners,
       $pull: { pendingAnalysisForCommits: analyzingCommitId },
       currentAnalysisLastCommitWithSuccessStatus: lastCommitWithSuccessStatus,
+      currentAnalysisLastAnalyzedCommit: analyzingCommitId,
+      loadingHeadAnalysis: false
+    }
+  ).exec()
+
+  // We are done, no need to re-trigger pipeline as this is the head commit so there are no more things to analyze.
+  if (updatePullRequestReviewResult.n === 1 && updatePullRequestReviewResult.nModified === 1) {
+
+    if (lastCommitWithSuccessStatus === analyzingCommitId) {
+      await setCommitStatus(analyzingCommitId, "success", { description: "No tags required approval" })
+    } else {
+      await setCommitStatus(
+        analyzingCommitId,
+        "failure",
+        { description: "Tags require approval", target_url: getClientUrlForCommitReview(analyzingCommitId) }
+      )
+    }
+
+    return;
+  }
+
+  // Otherwise, the atomic update failed because this is no longer the head commit
+  // This means we must:
+  //   - unfreeze the relevant CommitReview
+  //   - update PR with non headXXX fields
+  //   - set commit status
+  //   - retrigger pipeline
+
+  const commitReviewUpdateResult = await CommitReviewModel.update(
+    {
+      repoId: pullRequestReview.repoId,
+      pullRequestNumber: pullRequestReview.pullRequestNumber,
+      commitId: analyzingCommitId
+    },
+    {
+      frozen: true
+    }
+  ).exec();
+
+  // TODO Handle error
+  if (commitReviewUpdateResult.n !== 1 || commitReviewUpdateResult.nModified !== 1) {
+    console.log(`Could not freeze commit: ${analyzingCommitId}`)
+  }
+
+  const updatedPullRequestReview = await PullRequestReviewModel.findOneAndUpdate(
+    {
+      repoId: pullRequestReview.repoId,
+      pullRequestNumber: pullRequestReview.pullRequestNumber
+    },
+    {
+      $pull: { pendingAnalysisForCommits: analyzingCommitId },
+      currentAnalysisLastCommitWithSuccessStatus: lastCommitWithSuccessStatus,
       currentAnalysisLastAnalyzedCommit: analyzingCommitId
     },
     {
       new: true
     }
-  ).exec()
+  ).exec();
 
-  // Atomic update failed because this is no longer the head commit, perform update on non headCommitXXX fields.
-  if (updatedPullRequestReview === null) {
-
-    updatedPullRequestReview = await PullRequestReviewModel.findOneAndUpdate(
-      {
-        repoId: pullRequestReview.repoId,
-        pullRequestNumber: pullRequestReview.pullRequestNumber
-      },
-      {
-        $pull: { pendingAnalysisForCommits: analyzingCommitId },
-        currentAnalysisLastCommitWithSuccessStatus: lastCommitWithSuccessStatus,
-        currentAnalysisLastAnalyzedCommit: analyzingCommitId
-      },
-      {
-        new: true
-      }
-    ).exec()
-  }
-
+  // TODO handle error better.
   if (updatedPullRequestReview === null) {
     throw new Error(`Error : Could not update pull request review with fields --- repoId : ${pullRequestReview.repoId}, pullRequestNumber: ${pullRequestReview.pullRequestNumber}`)
   }
-
-  // 4. Set commit status
 
   if (lastCommitWithSuccessStatus === analyzingCommitId) {
     await setCommitStatus(analyzingCommitId, "success", { description: "No tags required approval" })
@@ -185,19 +214,15 @@ export const pipeline = async (
     )
   }
 
-  // 5. Recurse pipeline if needed
-
   const updatedPullRequestReviewObject: PullRequestReview = updatedPullRequestReview.toObject()
 
-  if (updatedPullRequestReviewObject.pendingAnalysisForCommits.length > 0) {
-    pipeline(
-      updatedPullRequestReviewObject,
-      getClientUrlForCommitReview,
-      retrieveDiff,
-      retrieveFile,
-      setCommitStatus
-    )
-  }
+  pipeline(
+    updatedPullRequestReviewObject,
+    getClientUrlForCommitReview,
+    retrieveDiff,
+    retrieveFile,
+    setCommitStatus
+  )
 
 }
 
@@ -407,12 +432,12 @@ export const calculateCarryOversFromLastAnalyzedCommit = async (
   const nextLastCommitWithSuccessStatus =
     remainingOwnersToApproveDocs.length === 0 ? currentCommitId : lastCommitWithSuccessStatus;
 
-  // TODO
+
   return {
     approvedTags: carryOverApprovedTags,
     rejectedTags: carryOverRejectedTags,
     remainingOwnersToApproveDocs,
-    lastCommitWithSuccessStatus
+    lastCommitWithSuccessStatus: nextLastCommitWithSuccessStatus
   };
 
 }

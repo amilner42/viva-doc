@@ -65,6 +65,9 @@ const noRemovingApprovalOnUnapprovedTag =
 const noRemovingRejectionOnUnrejectedTag =
   createErrorObject(17, "You cannot remove rejection on a tag that wasn't rejected...");
 
+const commitStillLoading =
+  createErrorObject(18, "The analysis for the commit is still being calculated");
+
 
 module.exports = {
   notLoggedInError,
@@ -83,5 +86,6 @@ module.exports = {
   noApprovingRejectedTag,
   noRejectingApprovedTag,
   noRemovingApprovalOnUnapprovedTag,
-  noRemovingRejectionOnUnrejectedTag
+  noRemovingRejectionOnUnrejectedTag,
+  commitStillLoading
 }

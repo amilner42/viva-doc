@@ -7,10 +7,11 @@ const errors = require("../errors");
 const githubApp = require("../../github-app");
 
 const mongoose = require('mongoose');
-const CommitReviewModel = mongoose.model('CommitReview');
 const PullRequestReviewModel = mongoose.model('PullRequestReview');
 
-// TODO endpoints here need to be midnful of race conditions / mid way updates. Should probably all only update PullRequest...
+
+const SUCCESS_EMPTY = { success: 1 };
+
 
 router.get('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId'
 , async function (req, res, next) {
@@ -23,9 +24,43 @@ router.get('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId'
     await verify.hasAccessToRepo(user, repoId);
 
     const pullRequestReviewObject = await verify.getPullRequestReviewObject(repoId, pullRequestNumber);
+
+    // Commit is head commit.
+    if (pullRequestReviewObject.headCommitId === commitId) {
+
+      // Commit still being analyzed.
+      if (pullRequestReviewObject.loadingHeadAnalysis) {
+        throw { httpCode: 423, ...errors.commitStillLoading };
+      }
+
+      // Commit analyzed and ready for retrieval, merge newest data from PullRequestReviewObject.
+      const commitReviewObject = await verify.getCommitReviewObject(repoId, pullRequestNumber, commitId);
+
+      commitReviewObject.approvedTags = pullRequestReviewObject.headCommitApprovedTags;
+      commitReviewObject.rejectTags = pullRequestReviewObject.headCommitRejectedTags;
+      commitReviewObject.remainingOwnersToApproveDocs = pullRequestReviewObject.headCommitRemainingOwnersToApproveDocs;
+
+      // Add head commit for web client.
+      commitReviewObject.headCommitId = commitId;
+
+      return res.json(commitReviewObject);
+    }
+
+    // Otherwise commit is not head commit.
+
+    if (R.contains(commitId, pullRequestReviewObject.pendingAnalysisForCommits)) {
+      throw { httpCode: 423, ...errors.commitStillLoading }
+    }
+
     const commitReviewObject = await verify.getCommitReviewObject(repoId, pullRequestNumber, commitId);
 
+    if (commitReviewObject.frozen === false) {
+      // TODO this could be a sep error although it's so likely to occur it's not a big deal.
+      throw { httpCode: 423, ...errors.commitStillLoading }
+    }
+
     commitReviewObject.headCommitId = pullRequestReviewObject.headCommitId;
+
     return res.json(commitReviewObject);
 
   } catch (err) {
@@ -46,28 +81,27 @@ router.post('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/approve
     await verify.hasAccessToRepo(user, repoId);
 
     const pullRequestReviewObject = await verify.getPullRequestReviewObject(repoId, pullRequestNumber);
-    const commitReviewObject = await verify.getCommitReviewObject(repoId, pullRequestNumber, commitId);
 
     const username = user.username;
 
-    verify.isHeadCommit(pullRequestReviewObject, commitId);
+    verify.isLoadedHeadCommit(pullRequestReviewObject, commitId);
 
-    verify.ownsTags(commitReviewObject.tagsAndOwners, tagsToApprove, username);
+    verify.ownsTags(pullRequestReviewObject.headCommitTagsAndOwners, tagsToApprove, username);
 
     verify.tagsNotAlreadyApproved(
-      commitReviewObject.approvedTags,
+      pullRequestReviewObject.headCommitApprovedTags,
       tagsToApprove,
       errors.noApprovingAlreadyApprovedTag
     );
 
     verify.tagsNotAlreadyRejected(
-      commitReviewObject.rejectedTags,
+      pullRequestReviewObject.headCommitRejectedTags,
       tagsToApprove,
       errors.noApprovingRejectedTag
     );
 
     verify.userHasNotApprovedDocs(
-      commitReviewObject.remainingOwnersToApproveDocs,
+      pullRequestReviewObject.headCommitRemainingOwnersToApproveDocs,
       username,
       errors.noModifyingTagsAfterConfirmation
     );
@@ -86,21 +120,7 @@ router.post('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/approve
     await verify.updateMatchedBecauseHeadCommitHasNotChanged(pullRequestUpdateResult, repoId, pullRequestNumber, commitId);
     verify.updateModifiedOneResult(pullRequestUpdateResult);
 
-    const commitReviewUpdateResult = await CommitReviewModel.update(
-      {
-        repoId,
-        pullRequestNumber,
-        commitId
-      },
-      {
-        $addToSet: { "approvedTags": { $each: tagsToApprove } }
-      }
-    ).exec();
-
-    verify.updateMatchedOneResult(commitReviewUpdateResult, 500, errors.internalServerError);
-    verify.updateModifiedOneResult(commitReviewUpdateResult);
-
-    return res.json({});
+    return res.json(SUCCESS_EMPTY);
 
   } catch (err) {
     next(err);
@@ -121,16 +141,20 @@ router.delete('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/appro
     const username = user.username;
 
     const pullRequestReviewObject = await verify.getPullRequestReviewObject(repoId, pullRequestNumber);
-    const commitReviewObject = await verify.getCommitReviewObject(repoId, pullRequestNumber, commitId);
 
-    verify.isHeadCommit(pullRequestReviewObject, commitId);
+    verify.isLoadedHeadCommit(pullRequestReviewObject, commitId);
 
-    verify.ownsTags(commitReviewObject.tagsAndOwners, [ tagId ], username);
+    verify.ownsTags(pullRequestReviewObject.headCommitTagsAndOwners, [ tagId ], username);
 
-    verify.tagApproved(commitReviewObject.approvedTags, tagId, 403, errors.noRemovingApprovalOnUnapprovedTag);
+    verify.tagApproved(
+      pullRequestReviewObject.headCommitApprovedTags,
+      tagId,
+      403,
+      errors.noRemovingApprovalOnUnapprovedTag
+    );
 
     verify.userHasNotApprovedDocs(
-      commitReviewObject.remainingOwnersToApproveDocs,
+      pullRequestReviewObject.headCommitRemainingOwnersToApproveDocs,
       username,
       errors.noModifyingTagsAfterConfirmation
     );
@@ -149,21 +173,7 @@ router.delete('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/appro
     await verify.updateMatchedBecauseHeadCommitHasNotChanged(pullRequestUpdateResult, repoId, pullRequestNumber, commitId);
     verify.updateModifiedOneResult(pullRequestUpdateResult);
 
-    const commitReviewUpdateResult = await CommitReviewModel.update(
-      {
-        repoId,
-        pullRequestNumber,
-        commitId
-      },
-      {
-        $pull: { "approvedTags": tagId }
-      }
-    ).exec();
-
-    verify.updateMatchedOneResult(commitReviewUpdateResult, 500, errors.internalServerError);
-    verify.updateModifiedOneResult(commitReviewUpdateResult);
-
-    return res.json({});
+    return res.json(SUCCESS_EMPTY);
 
   } catch (err) {
     next(err);
@@ -186,26 +196,25 @@ router.post('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/rejecte
     const username = user.username;
 
     const pullRequestReviewObject = await verify.getPullRequestReviewObject(repoId, pullRequestNumber);
-    const commitReviewObject = await verify.getCommitReviewObject(repoId, pullRequestNumber, commitId);
 
-    verify.isHeadCommit(pullRequestReviewObject, commitId);
+    verify.isLoadedHeadCommit(pullRequestReviewObject, commitId);
 
-    verify.ownsTags(commitReviewObject.tagsAndOwners, tagsToReject, username);
+    verify.ownsTags(pullRequestReviewObject.headCommitTagsAndOwners, tagsToReject, username);
 
     verify.tagsNotAlreadyApproved(
-      commitReviewObject.approvedTags,
+      pullRequestReviewObject.headCommitApprovedTags,
       tagsToReject,
       errors.noRejectingApprovedTag
     );
 
     verify.tagsNotAlreadyRejected(
-      commitReviewObject.rejectedTags,
+      pullRequestReviewObject.headCommitRejectedTags,
       tagsToReject,
       errors.noRejectingAlreadyRejectedTag
     );
 
     verify.userHasNotApprovedDocs(
-      commitReviewObject.remainingOwnersToApproveDocs,
+      pullRequestReviewObject.headCommitRemainingOwnersToApproveDocs,
       username,
       errors.noModifyingTagsAfterConfirmation
     );
@@ -224,21 +233,7 @@ router.post('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/rejecte
     await verify.updateMatchedBecauseHeadCommitHasNotChanged(pullRequestUpdateResult, repoId, pullRequestNumber, commitId);
     verify.updateModifiedOneResult(pullRequestUpdateResult);
 
-    const commitReviewUpdateResult = await CommitReviewModel.update(
-      {
-        repoId,
-        pullRequestNumber,
-        commitId
-      },
-      {
-        $addToSet: { "rejectedTags": { $each: tagsToReject } }
-      }
-    ).exec();
-
-    verify.updateMatchedOneResult(commitReviewUpdateResult, 500, errors.internalServerError);
-    verify.updateModifiedOneResult(commitReviewUpdateResult);
-
-    return res.json({});
+    return res.json(SUCCESS_EMPTY);
 
   } catch (err) {
     next(err);
@@ -260,16 +255,20 @@ router.delete('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/rejec
     const username = user.username;
 
     const pullRequestReviewObject = await verify.getPullRequestReviewObject(repoId, pullRequestNumber);
-    const commitReviewObject = await verify.getCommitReviewObject(repoId, pullRequestNumber, commitId);
 
-    verify.isHeadCommit(pullRequestReviewObject, commitId);
+    verify.isLoadedHeadCommit(pullRequestReviewObject, commitId);
 
-    verify.ownsTags(commitReviewObject.tagsAndOwners, [ tagId ], username);
+    verify.ownsTags(pullRequestReviewObject.headCommitTagsAndOwners, [ tagId ], username);
 
-    verify.tagRejected(commitReviewObject.rejectedTags, tagId, 403, errors.noRemovingRejectionOnUnrejectedTag);
+    verify.tagRejected(
+      pullRequestReviewObject.headCommitRejectedTags,
+      tagId,
+      403,
+      errors.noRemovingRejectionOnUnrejectedTag
+    );
 
     verify.userHasNotApprovedDocs(
-      commitReviewObject.remainingOwnersToApproveDocs,
+      pullRequestReviewObject.headCommitRemainingOwnersToApproveDocs,
       username,
       errors.noModifyingTagsAfterConfirmation
     );
@@ -288,21 +287,7 @@ router.delete('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/rejec
     await verify.updateMatchedBecauseHeadCommitHasNotChanged(pullRequestUpdateResult, repoId, pullRequestNumber, commitId);
     verify.updateModifiedOneResult(pullRequestUpdateResult);
 
-    const commitReviewUpdateResult = await CommitReviewModel.update(
-      {
-        repoId,
-        pullRequestNumber,
-        commitId
-      },
-      {
-        $pull: { "rejectedTags": tagId }
-      }
-    ).exec();
-
-    verify.updateMatchedOneResult(commitReviewUpdateResult, 500, errors.internalServerError);
-    verify.updateModifiedOneResult(commitReviewUpdateResult);
-
-    return res.json({});
+    return res.json(SUCCESS_EMPTY);
 
   } catch (err) {
     next(err);
@@ -327,7 +312,7 @@ router.post('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/approve
 
     const repoName = R.last(pullRequestReviewObject.repoFullName.split("/"))
 
-    verify.isHeadCommit(pullRequestReviewObject, commitId);
+    verify.isLoadedHeadCommit(pullRequestReviewObject, commitId);
 
     verify.userHasNotApprovedDocs(
       pullRequestReviewObject.headCommitRemainingOwnersToApproveDocs,
@@ -349,24 +334,12 @@ router.post('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/approve
       throw { httpCode: 500, ...errors.internalServerError };
     }
 
-    const commitReviewUpdateResult = await CommitReviewModel.update(
-      {
-        repoId,
-        pullRequestNumber,
-        commitId
-      },
-      {
-        $pull: { "remainingOwnersToApproveDocs": username }
-      }
-    ).exec();
-
-    verify.updateMatchedOneResult(commitReviewUpdateResult, 500, errors.internalServerError);
-    verify.updateModifiedOneResult(commitReviewUpdateResult);
-
     // No need for any more work, still people that need to approve their docs.
     if (updatedPullRequestReview.headCommitRemainingOwnersToApproveDocs.length > 0) {
-      return res.json({});
+      return res.json(SUCCESS_EMPTY);
     }
+
+    // Otherwise everyone has approved the docs, we must set the commit status.
 
     const repoObject = await verify.getRepoObject(repoId);
 
@@ -389,7 +362,7 @@ router.post('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/approve
     verify.updateMatchedOneResult(pullRequestUpdateResult, 500, errors.internalServerError);
     verify.updateModifiedOneResult(pullRequestUpdateResult);
 
-    return res.json({});
+    return res.json(SUCCESS_EMPTY);
 
   } catch (err) {
     next(err);
