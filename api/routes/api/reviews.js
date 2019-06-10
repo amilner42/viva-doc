@@ -15,8 +15,6 @@ const LOADING_TRANSFER = { loading: 2 };
 const SUCCESS_EMPTY = { success: 1 };
 
 
-// TODO CONTINUE IS LOADED HEAD COMMIT on endpoints
-
 router.get('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId'
 , async function (req, res, next) {
 
@@ -87,7 +85,7 @@ router.post('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/approve
 
     const username = user.username;
 
-    verify.isHeadCommit(pullRequestReviewObject, commitId);
+    verify.isLoadedHeadCommit(pullRequestReviewObject, commitId);
 
     verify.ownsTags(pullRequestReviewObject.headCommitTagsAndOwners, tagsToApprove, username);
 
@@ -145,7 +143,7 @@ router.delete('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/appro
 
     const pullRequestReviewObject = await verify.getPullRequestReviewObject(repoId, pullRequestNumber);
 
-    verify.isHeadCommit(pullRequestReviewObject, commitId);
+    verify.isLoadedHeadCommit(pullRequestReviewObject, commitId);
 
     verify.ownsTags(pullRequestReviewObject.headCommitTagsAndOwners, [ tagId ], username);
 
@@ -200,7 +198,7 @@ router.post('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/rejecte
 
     const pullRequestReviewObject = await verify.getPullRequestReviewObject(repoId, pullRequestNumber);
 
-    verify.isHeadCommit(pullRequestReviewObject, commitId);
+    verify.isLoadedHeadCommit(pullRequestReviewObject, commitId);
 
     verify.ownsTags(pullRequestReviewObject.headCommitTagsAndOwners, tagsToReject, username);
 
@@ -259,7 +257,7 @@ router.delete('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/rejec
 
     const pullRequestReviewObject = await verify.getPullRequestReviewObject(repoId, pullRequestNumber);
 
-    verify.isHeadCommit(pullRequestReviewObject, commitId);
+    verify.isLoadedHeadCommit(pullRequestReviewObject, commitId);
 
     verify.ownsTags(pullRequestReviewObject.headCommitTagsAndOwners, [ tagId ], username);
 
@@ -315,7 +313,7 @@ router.post('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/approve
 
     const repoName = R.last(pullRequestReviewObject.repoFullName.split("/"))
 
-    verify.isHeadCommit(pullRequestReviewObject, commitId);
+    verify.isLoadedHeadCommit(pullRequestReviewObject, commitId);
 
     verify.userHasNotApprovedDocs(
       pullRequestReviewObject.headCommitRemainingOwnersToApproveDocs,
