@@ -2,6 +2,8 @@ module Page.CommitReview exposing (Model, Msg, init, subscriptions, toSession, u
 
 import Api.Api as Api
 import Api.Core as Core
+import Api.Errors.CommitReviewAction as CraError
+import Api.Errors.GetCommitReview as GcrError
 import CommitReview
 import CustomMarkdown as CM
 import Html exposing (Html, a, button, div, dl, dt, hr, i, p, section, span, table, tbody, td, text, th, thead, tr)
@@ -29,7 +31,7 @@ type alias Model =
     , repoId : Int
     , prNumber : Int
     , commitId : String
-    , commitReview : RemoteData.RemoteData () CommitReview.CommitReview
+    , commitReview : RemoteData.RemoteData (Core.HttpError GcrError.GetCommitReviewError) CommitReview.CommitReview
     , displayOnlyUsersTags : Bool
     , displayOnlyTagsNeedingApproval : Bool
     , modalClosed : Bool
@@ -97,8 +99,8 @@ view model =
                         RemoteData.Loading ->
                             [ text "Loading review..." ]
 
-                        RemoteData.Failure _ ->
-                            [ text "Uh oh" ]
+                        RemoteData.Failure err ->
+                            renderGetCommitReviewErrorModal err
 
                         RemoteData.Success commitReview ->
                             if commitReview.headCommitId == model.commitId || model.modalClosed then
@@ -769,25 +771,76 @@ renderHeadUpdatedModal modalText headCommitRoute =
     ]
 
 
+renderGetCommitReviewErrorModal : Core.HttpError GcrError.GetCommitReviewError -> List (Html.Html Msg)
+renderGetCommitReviewErrorModal httpError =
+    let
+        internalErrorText =
+            "Internal Error...try to refresh the page in a bit!"
+
+        modalText =
+            case httpError of
+                Core.BadUrl string ->
+                    internalErrorText
+
+                Core.Timeout ->
+                    "There was a timeout trying to retrieve the commit analysis...try again in a bit."
+
+                Core.NetworkError ->
+                    "There seems to be a network error, are you connected to the internet? Refresh the page once you are."
+
+                Core.BadSuccessBody string ->
+                    internalErrorText
+
+                Core.BadErrorBody string ->
+                    internalErrorText
+
+                Core.BadStatus int getCommitReviewErrorGcrError ->
+                    case getCommitReviewErrorGcrError of
+                        GcrError.UnknownError ->
+                            internalErrorText
+
+                        GcrError.CommitAnalysisPending ->
+                            """The analysis for this commit is currently being computed, refresh the page in a little
+                                bit. Once the status for this commit is set on Github, you can be sure you can find the
+                                commit here."""
+    in
+    [ div
+        [ class "modal is-active" ]
+        [ div [ class "modal-background" ] []
+        , div
+            [ class "modal-card" ]
+            [ section
+                [ class "modal-card-body"
+                , style "border-radius" "10px"
+                ]
+                [ div
+                    [ class "content" ]
+                    [ text modalText ]
+                ]
+            ]
+        ]
+    ]
+
+
 
 -- UPDATE
 
 
 type Msg
-    = CompletedGetCommitReview (Result.Result (Core.HttpError ()) CommitReview.CommitReview)
+    = CompletedGetCommitReview (Result.Result (Core.HttpError GcrError.GetCommitReviewError) CommitReview.CommitReview)
     | SetDisplayOnlyUsersTags Bool
     | SetDisplayOnlyTagsNeedingApproval Bool
     | SetShowAlteredLines String Bool
     | ApproveTags (Set.Set String)
-    | CompletedApproveTags (Set.Set String) (Result.Result (Core.HttpError Api.CommitReviewActionError) ())
+    | CompletedApproveTags (Set.Set String) (Result.Result (Core.HttpError CraError.CommitReviewActionError) ())
     | RemoveApprovalOnTag String
-    | CompletedRemoveApprovalOnTag String (Result.Result (Core.HttpError Api.CommitReviewActionError) ())
+    | CompletedRemoveApprovalOnTag String (Result.Result (Core.HttpError CraError.CommitReviewActionError) ())
     | RejectTags (Set.Set String)
-    | CompletedRejectTags (Set.Set String) (Result.Result (Core.HttpError Api.CommitReviewActionError) ())
+    | CompletedRejectTags (Set.Set String) (Result.Result (Core.HttpError CraError.CommitReviewActionError) ())
     | RemoveRejectionOnTag String
-    | CompletedRemoveRejectionOnTag String (Result.Result (Core.HttpError Api.CommitReviewActionError) ())
+    | CompletedRemoveRejectionOnTag String (Result.Result (Core.HttpError CraError.CommitReviewActionError) ())
     | ApproveDocs String
-    | CompletedApproveDocs String (Result.Result (Core.HttpError Api.CommitReviewActionError) ())
+    | CompletedApproveDocs String (Result.Result (Core.HttpError CraError.CommitReviewActionError) ())
     | SetModalClosed Bool
 
 
@@ -796,7 +849,7 @@ update msg model =
     let
         handleCommitReviewActionErrorOnTag tagIds err =
             ( case err of
-                Core.BadStatus _ (Api.StaleCommitError newHeadCommitId) ->
+                Core.BadStatus _ (CraError.StaleCommitError newHeadCommitId) ->
                     { model
                         | commitReview =
                             model.commitReview
@@ -840,7 +893,7 @@ update msg model =
 
         -- TODO handle error
         CompletedGetCommitReview (Result.Err err) ->
-            ( { model | commitReview = RemoteData.Failure () }, Cmd.none )
+            ( { model | commitReview = RemoteData.Failure err }, Cmd.none )
 
         SetDisplayOnlyUsersTags displayOnlyUsersTags ->
             ( { model | displayOnlyUsersTags = displayOnlyUsersTags }, Cmd.none )
@@ -1068,7 +1121,7 @@ update msg model =
         -- TODO handle error
         CompletedApproveDocs username (Result.Err err) ->
             case err of
-                Core.BadStatus _ (Api.StaleCommitError newHeadCommitId) ->
+                Core.BadStatus _ (CraError.StaleCommitError newHeadCommitId) ->
                     ( { model
                         | commitReview =
                             RemoteData.map

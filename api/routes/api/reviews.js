@@ -10,8 +10,6 @@ const mongoose = require('mongoose');
 const PullRequestReviewModel = mongoose.model('PullRequestReview');
 
 
-const LOADING_ANALYSIS = { loading: 1 };
-const LOADING_TRANSFER = { loading: 2 };
 const SUCCESS_EMPTY = { success: 1 };
 
 
@@ -32,7 +30,7 @@ router.get('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId'
 
       // Commit still being analyzed.
       if (pullRequestReviewObject.loadingHeadAnalysis) {
-        return res.json(LOADING_ANALYSIS);
+        throw { httpCode: 423, ...errors.commitStillLoading };
       }
 
       // Commit analyzed and ready for retrieval, merge newest data from PullRequestReviewObject.
@@ -51,13 +49,14 @@ router.get('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId'
     // Otherwise commit is not head commit.
 
     if (R.contains(commitId, pullRequestReviewObject.pendingAnalysisForCommits)) {
-      return res.json(LOADING_ANALYSIS);
+      throw { httpCode: 423, ...errors.commitStillLoading }
     }
 
     const commitReviewObject = await verify.getCommitReviewObject(repoId, pullRequestNumber, commitId);
 
     if (commitReviewObject.frozen === false) {
-      return res.json(LOADING_TRANSFER);
+      // TODO this could be a sep error although it's so likely to occur it's not a big deal.
+      throw { httpCode: 423, ...errors.commitStillLoading }
     }
 
     commitReviewObject.headCommitId = pullRequestReviewObject.headCommitId;
