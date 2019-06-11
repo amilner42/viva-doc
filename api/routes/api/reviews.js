@@ -18,7 +18,8 @@ router.get('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId'
 
   try {
 
-    const { repoId, pullRequestNumber, commitId } = req.params;
+    const { pullRequestNumber, commitId } = req.params;
+    const repoId = parseInt(req.params.repoId, 10);
 
     const user = verify.getLoggedInUser(req);
     await verify.hasAccessToRepo(user, repoId);
@@ -74,7 +75,8 @@ router.post('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/approve
 
   try {
 
-    const { repoId, pullRequestNumber, commitId } = req.params;
+    const { pullRequestNumber, commitId } = req.params;
+    const repoId = parseInt(req.params.repoId, 10);
     const tagsToApprove = req.body.approveTags;
 
     const user = verify.getLoggedInUser(req);
@@ -133,7 +135,8 @@ router.delete('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/appro
 , async function (req, res, next) {
 
   try {
-    const { repoId, pullRequestNumber, commitId, tagId } = req.params;
+    const { pullRequestNumber, commitId, tagId } = req.params;
+    const repoId = parseInt(req.params.repoId, 10);
 
     const user = verify.getLoggedInUser(req);
     await verify.hasAccessToRepo(user, repoId);
@@ -187,7 +190,8 @@ router.post('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/rejecte
 
   try {
 
-    const { repoId, pullRequestNumber, commitId } = req.params;
+    const { pullRequestNumber, commitId } = req.params;
+    const repoId = parseInt(req.params.repoId, 10);
     const tagsToReject = req.body.rejectTags; // TODO Validate this?
 
     const user = verify.getLoggedInUser(req);
@@ -247,7 +251,8 @@ router.delete('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/rejec
 
   try {
 
-    const { repoId, pullRequestNumber, commitId, tagId } = req.params;
+    const { pullRequestNumber, commitId, tagId } = req.params;
+    const repoId = parseInt(req.params.repoId, 10);
 
     const user = verify.getLoggedInUser(req);
     await verify.hasAccessToRepo(user, repoId);
@@ -301,7 +306,8 @@ router.post('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/approve
 
   try {
 
-    const { repoId, pullRequestNumber, commitId } = req.params;
+    const { pullRequestNumber, commitId } = req.params;
+    const repoId = parseInt(req.params.repoId, 10);
 
     const user = verify.getLoggedInUser(req);
     await verify.hasAccessToRepo(user, repoId);
