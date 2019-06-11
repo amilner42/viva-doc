@@ -4,7 +4,7 @@ import { TagAndOwner } from "../review";
 
 
 export interface PullRequestReview {
-  repoId: string,
+  repoId: number,
   repoFullName: string,
   branchName: string,
   baseBranchName: string,
@@ -22,7 +22,7 @@ export interface PullRequestReview {
 }
 
 const PullRequestReviewSchema = new mongoose.Schema({
-  repoId: { type: String, required: [true, "can't be blank"], index: true },
+  repoId: { type: Number, required: [true, "can't be blank"], index: true },
   repoFullName: { type: String, required: [true, "can't be blank"] },
   branchName: { type: String, required: [true, "can't be blank"] },
   baseBranchName: { type: String, required: [true, "can't be blank"] },

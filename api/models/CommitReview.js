@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 
 const CommitReviewSchema = new mongoose.Schema({
-  repoId: { type: String, required: [true, "can't be blank"], index: true },
+  repoId: { type: Number, required: [true, "can't be blank"], index: true },
   repoFullName: { type: String, required: [true, "can't be blank"], index: true },
   branchName: { type: String, required: [true, "can't be blank"], index: true },
   commitId: { type: String, required: [true, "can't be blank"], index: true },

@@ -6,7 +6,7 @@ import Set
 
 
 type alias CommitReview =
-    { repoId : String
+    { repoId : Int
     , repoFullName : String
     , branchName : String
     , pullRequestNumber : Int
@@ -393,7 +393,7 @@ decodeCommitReview =
         |> Decode.andThen
             (\tagStates ->
                 Decode.map8 CommitReview
-                    (Decode.field "repoId" Decode.string)
+                    (Decode.field "repoId" Decode.int)
                     (Decode.field "repoFullName" Decode.string)
                     (Decode.field "branchName" Decode.string)
                     (Decode.field "pullRequestNumber" Decode.int)
