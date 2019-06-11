@@ -116,7 +116,7 @@ export = (app: Probot.Application) => {
     const payload = context.payload;
     const installationId = (payload.installation as any).id;
     const reposToRemove = R.map((repoToRemove) => {
-      return repoToRemove.id as number
+      return repoToRemove.id
     }, payload.repositories_removed);
 
     const repoUpdateResult = await RepoModel.update(
@@ -177,7 +177,7 @@ export = (app: Probot.Application) => {
       return;
     }
 
-    const repoId: string = (pushPayload.repository as any).id
+    const repoId: number = (pushPayload.repository as any).id
     const repoName: string = (pushPayload.repository as any).name
     const branchName: string = (R.last(pushPayload.ref.split("/")) as any) // TODO errors?
     const { owner } = context.repo()
@@ -296,7 +296,7 @@ const initializeRepoModel = async (installationId: number, owner: string, repoId
 const analyzeNewPullRequest =
   async ( context: Probot.Context
   , owner: string
-  , repoId: string
+  , repoId: number
   , repoName: string
   , repoFullName: string
   , branchName: string
@@ -358,7 +358,7 @@ const analyzeAlreadyOpenPrs = async (context: Probot.Context, owner: string, rep
 
   for (let openPr of openPrs) {
 
-    const repoId = openPr.head.repo.id as any as string; // TODO fix when we fix prId string -> number
+    const repoId = openPr.head.repo.id;
     const repoName = openPr.head.repo.name;
     const repoFullName = openPr.head.repo.full_name;
     const branchName = openPr.head.ref;
@@ -488,6 +488,6 @@ const setCommitStatus = R.curry(
 
 
 // TODO add env for prod.
-const getClientUrlForCommitReview = R.curry((repoId: string, prNumber: number, commitId: string): string => {
+const getClientUrlForCommitReview = R.curry((repoId: number, prNumber: number, commitId: string): string => {
   return `http://localhost:8080/review/repo/${repoId}/pr/${prNumber}/commit/${commitId}`
 })

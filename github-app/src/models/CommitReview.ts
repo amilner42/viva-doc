@@ -4,7 +4,7 @@ import { FileReviewWithMetadata, TagAndOwner } from "../review";
 
 
 export interface CommitReview {
-  repoId: string,
+  repoId: number,
   repoFullName: string,
   branchName: string,
   commitId: string,
@@ -18,7 +18,7 @@ export interface CommitReview {
 }
 
 const CommitReviewSchema = new mongoose.Schema({
-  repoId: { type: String, required: [true, "can't be blank"], index: true },
+  repoId: { type: Number, required: [true, "can't be blank"], index: true },
   repoFullName: { type: String, required: [true, "can't be blank"], index: true },
   branchName: { type: String, required: [true, "can't be blank"], index: true },
   commitId: { type: String, required: [true, "can't be blank"], index: true },
