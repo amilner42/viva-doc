@@ -174,9 +174,14 @@ export = (app: Probot.Application) => {
 
   app.on("push", async (context) => {
 
-    // TODO check if this push is for tags / branches to prevent errors below.
-
     const pushPayload = context.payload
+
+    // The push was for a tag or a new branch (set upstream...), couldn't be for an open PR, no need for analysis.
+    if (pushPayload.before === "0000000000000000000000000000000000000000") {
+      console.log("skipped");
+      return;
+    }
+
     const repoId: string = (pushPayload.repository as any).id
     const repoName: string = (pushPayload.repository as any).name
     const branchName: string = (R.last(pushPayload.ref.split("/")) as any) // TODO errors?
