@@ -4,7 +4,15 @@ import * as Probot from 'probot' // eslint-disable-line no-unused-vars
 import R from "ramda"
 import mongoose = require("mongoose")
 
+
+interface RepoIdAndName {
+  repoId: number;
+  repoName: string;
+}
+
+
 const VIVA_DOC_STATUS_NAME = "continuous-documentation/viva-doc"
+
 
 // TODO add prod env for mongo uri
 mongoose.connect('mongodb://localhost/viva-doc-dev', { useNewUrlParser: true }, (err) => {
@@ -17,9 +25,11 @@ mongoose.connect('mongodb://localhost/viva-doc-dev', { useNewUrlParser: true }, 
   }
 })
 
+
 require("./models/PullRequestReview")
 require("./models/CommitReview")
 require("./models/Repo")
+
 
 // All imports to internal modules should be here so that all mongoose schemas have loaded first
 const PullRequestReviewModel = mongoose.model('PullRequestReview')
@@ -29,36 +39,31 @@ import { Repo } from "./models/Repo"
 import { PullRequestReview } from "./models/PullRequestReview"
 import * as Analysis from "./analysis"
 
+
 export = (app: Probot.Application) => {
 
+
+  // TODO handle errors.
   app.on("installation.created", async (context) => {
 
     const payload = context.payload
     const installationId = (payload.installation as any).id
     const owner = (payload.installation as any).account.login // TODO shold this be the id of the owner?
 
-    const repoIds = R.map((repo) => {
-      return repo.id as number
-    }, payload.repositories)
+    const repoIdsAndNames: RepoIdAndName[] = R.map((repo) => {
+      return { repoName: repo.name, repoId: repo.id };
+    }, payload.repositories);
 
-    const repoObject: Repo = {
-      installationId,
-      owner,
-      repoIds
-    }
+    const repoIds = R.map(({ repoId }) => repoId, repoIdsAndNames);
 
-    const repo = new RepoModel(repoObject);
+    await initializeRepoModel(installationId, owner, repoIds);
+    await analyzeAlreadyOpenPrsForRepos(context, owner, repoIdsAndNames);
 
-    try {
-      await repo.save()
-    } catch (err) {
-      // TODO LOG ERROR
-      console.log(`Error saving new installation: ${installationId}`)
-    }
+  });
 
-  })
 
   // TODO delete all data for all repos as well
+  // TODO handle errors
   app.on("installation.deleted", async (context) => {
 
     const payload = context.payload
@@ -72,30 +77,40 @@ export = (app: Probot.Application) => {
 
     // LOG ERROR
     console.log(`Error deleting installation with id: ${installationId}`);
-  })
+  });
 
+
+  // TODO handle errors.
   app.on("installation_repositories.added", async (context) => {
 
     const payload = context.payload
     const installationId = (payload.installation as any).id
-    const reposToAdd = R.map((repoAdded) => {
-      return repoAdded.id as number
+    const owner = (payload.installation as any).account.login // TODO shold this be the id of the owner?
+
+    const repoIdsAndNames: RepoIdAndName[] = R.map((repoAdded) => {
+      return { repoName: repoAdded.name, repoId: repoAdded.id };
     }, payload.repositories_added)
+
+    const repoIds = R.map(({ repoId }) => repoId, repoIdsAndNames);
 
     const repoUpdateResult = await RepoModel.update(
       { installationId },
-      { $addToSet: { "repoIds": { $each: reposToAdd } }}
+      { $addToSet: { "repoIds": { $each: repoIds } }}
     )
 
-    if (repoUpdateResult.ok === 1 && repoUpdateResult.n === 1 && repoUpdateResult.nModified === 1) {
-      return
+    // TODO HANDLE ERROR better? (also wrap in try-catch)
+    if (repoUpdateResult.ok !== 1 || repoUpdateResult.n !== 1 || repoUpdateResult.nModified !== 1) {
+      console.log(`Error: Could not save ${repoIds.length} repo(s) to installation ${installationId}`);
+      return;
     }
 
-    // TODO HANDLE ERROR
-    console.log(`Error: Could not save ${reposToAdd.length} repo(s) to installation ${installationId}`);
-  })
+    await analyzeAlreadyOpenPrsForRepos(context, owner, repoIdsAndNames);
+
+  });
+
 
   // TODO delete all repo data as well
+  // TODO handle errors.
   app.on("installation_repositories.removed", async (context) => {
 
     const payload = context.payload;
@@ -115,8 +130,10 @@ export = (app: Probot.Application) => {
 
     // TODO HANDLE ERROR
     console.log(`Error: Could not remove ${reposToRemove.length} repo(s) from installation ${installationId}`)
-  })
+  });
 
+
+  // TODO handle errors.
   app.on("pull_request.opened", async (context) => {
 
     const prPayload = context.payload
@@ -132,46 +149,24 @@ export = (app: Probot.Application) => {
     const baseBranchName = (prPayload.pull_request as any).base.ref
     const baseCommitId = (prPayload.pull_request as any).base.sha
 
-    const pullRequestReviewObject: PullRequestReview = {
+    await analyzeNewPullRequest(
+      context,
+      owner,
       repoId,
+      repoName,
       repoFullName,
       branchName,
       baseBranchName,
       pullRequestId,
       pullRequestNumber,
       headCommitId,
-      headCommitApprovedTags: null,
-      headCommitRejectedTags: null,
-      headCommitRemainingOwnersToApproveDocs: null,
-      headCommitTagsAndOwners: null,
-      pendingAnalysisForCommits: [ headCommitId ],
-      currentAnalysisLastCommitWithSuccessStatus: baseCommitId,
-      currentAnalysisLastAnalyzedCommit: null,
-      loadingHeadAnalysis: true
-    }
+      baseCommitId
+    );
 
-    const pullRequestReview = new PullRequestReviewModel(pullRequestReviewObject)
+  });
 
-    try {
-      await pullRequestReview.save();
-    } catch (err) {
-      // TODO Handle error
-      console.log(`Error saving pull request review: ${err} - ${JSON.stringify(err)}`)
-    }
 
-    await Analysis.pipeline(
-      pullRequestReviewObject,
-      getClientUrlForCommitReview(repoId, pullRequestNumber),
-      retrieveDiff(context, owner, repoName),
-      retrieveFile(context, owner, repoName),
-      setCommitStatus(context, owner, repoName)
-    ).catch((err) => {
-      console.log(`Analysis Pipeline Error: ${err} --- ${JSON.stringify(err)}`)
-    })
-
-    return
-  })
-
+  // TODO handle errors.
   app.on("push", async (context) => {
 
     const pushPayload = context.payload
@@ -188,7 +183,7 @@ export = (app: Probot.Application) => {
     const { owner } = context.repo()
     const headCommitId: string = pushPayload.after
 
-    const prNumbers = await getOpenPullRequestsForBranch(context, repoName, branchName, owner)
+    const prNumbers = await getOpenPullRequestNumbersForBranch(context, repoName, branchName, owner)
 
     // Perform analysis on all relevant open PRs.
     R.map( async (pullRequestNumber) => {
@@ -278,17 +273,134 @@ export = (app: Probot.Application) => {
 
     }, prNumbers)
 
-   })
+  });
+
 }
 
 
-/** Return an array of pull request numbers representing open pull requests for that branch.
+const initializeRepoModel = async (installationId: number, owner: string, repoIds: number[]) => {
 
-TODO Check can we ever even get more than one? I think maybe if the same branch has 2 PRs for 2 dif base branches?
+  const repoObject: Repo = {
+    installationId,
+    owner,
+    repoIds
+  }
 
-TODO handle errors?
-*/
-const getOpenPullRequestsForBranch =
+  const repo = new RepoModel(repoObject);
+
+  await repo.save()
+
+}
+
+
+const analyzeNewPullRequest =
+  async ( context: Probot.Context
+  , owner: string
+  , repoId: string
+  , repoName: string
+  , repoFullName: string
+  , branchName: string
+  , baseBranchName: string
+  , pullRequestId: number
+  , pullRequestNumber: number
+  , headCommitId : string
+  , baseCommitId : string
+  ) : Promise<void> => {
+
+  const pullRequestReviewObject: PullRequestReview = {
+    repoId,
+    repoFullName,
+    branchName,
+    baseBranchName,
+    pullRequestId,
+    pullRequestNumber,
+    headCommitId,
+    headCommitApprovedTags: null,
+    headCommitRejectedTags: null,
+    headCommitRemainingOwnersToApproveDocs: null,
+    headCommitTagsAndOwners: null,
+    pendingAnalysisForCommits: [ headCommitId ],
+    currentAnalysisLastCommitWithSuccessStatus: baseCommitId,
+    currentAnalysisLastAnalyzedCommit: null,
+    loadingHeadAnalysis: true
+  }
+
+  const pullRequestReview = new PullRequestReviewModel(pullRequestReviewObject)
+
+  await pullRequestReview.save();
+
+  await Analysis.pipeline(
+    pullRequestReviewObject,
+    getClientUrlForCommitReview(repoId, pullRequestNumber),
+    retrieveDiff(context, owner, repoName),
+    retrieveFile(context, owner, repoName),
+    setCommitStatus(context, owner, repoName)
+  ).catch((err) => {
+    console.log(`Analysis Pipeline Error: ${err} --- ${JSON.stringify(err)}`)
+  })
+
+  return;
+}
+
+
+const analyzeAlreadyOpenPrsForRepos = async (context: Probot.Context, owner: string, repoIdsAndNames: RepoIdAndName[]) => {
+
+  for (let repoIdAndName of repoIdsAndNames) {
+    await analyzeAlreadyOpenPrs(context, owner, repoIdAndName);
+  }
+
+}
+
+
+const analyzeAlreadyOpenPrs = async (context: Probot.Context, owner: string, repoIdAndName: RepoIdAndName) => {
+
+  const openPrs = await getOpenPullRequests(context, owner, repoIdAndName);
+
+  for (let openPr of openPrs) {
+
+    const repoId = openPr.head.repo.id as any as string; // TODO fix when we fix prId string -> number
+    const repoName = openPr.head.repo.name;
+    const repoFullName = openPr.head.repo.full_name;
+    const branchName = openPr.head.ref;
+    const baseBranchName = openPr.base.ref;
+    const pullRequestId = openPr.id;
+    const pullRequestNumber = openPr.number;
+    const headCommitId = openPr.head.sha;
+    const baseCommitId = openPr.base.sha;
+
+    await analyzeNewPullRequest(
+      context,
+      owner,
+      repoId,
+      repoName,
+      repoFullName,
+      branchName,
+      baseBranchName,
+      pullRequestId,
+      pullRequestNumber,
+      headCommitId,
+      baseCommitId
+    );
+
+  }
+
+}
+
+
+const getOpenPullRequests = async (context: Probot.Context, owner: string, { repoName }: RepoIdAndName) => {
+
+  const response = await context.github.pulls.list({
+    repo: repoName,
+    owner,
+    state: "open"
+  })
+
+  return response.data;
+
+}
+
+
+const getOpenPullRequestNumbersForBranch =
   async (context: Probot.Context, repoName: string, branchName: string, owner: string)
   : Promise<number[]> => {
 
