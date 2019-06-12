@@ -309,6 +309,7 @@ const analyzeNewPullRequest =
 
   const pullRequestReviewObject: PullRequestReview = {
     repoId,
+    repoName,
     repoFullName,
     branchName,
     baseBranchName,

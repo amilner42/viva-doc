@@ -316,7 +316,7 @@ router.post('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/approve
 
     const pullRequestReviewObject = await verify.getPullRequestReviewObject(repoId, pullRequestNumber);
 
-    const repoName = R.last(pullRequestReviewObject.repoFullName.split("/"))
+    const repoName = pullRequestReviewObject.repoName;
 
     verify.isLoadedHeadCommit(pullRequestReviewObject, commitId);
 

@@ -109,6 +109,7 @@ export const pipeline = async (
 
   const commitReviewObject: CommitReview = {
     repoId: pullRequestReview.repoId,
+    repoName: pullRequestReview.repoName,
     repoFullName: pullRequestReview.repoFullName,
     branchName: pullRequestReview.branchName,
     commitId: analyzingCommitId,
