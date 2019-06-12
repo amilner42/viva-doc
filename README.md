@@ -7,10 +7,14 @@
 
 | file | description |
 | ---- | ----------- |
-| README | General information |
+| this file | General information |
 | [DEV](/DEV.md)    | Starting point for new developers |
 | [PITCH](/PITCH.md)  | Information related to pitching this idea |
 | [APP](/APP.md) | Brainstorming on the app and it's precise features and goals. More detailed than PITCH.md |
+| [Server README](/api/README.md) | Information about the server |
+| [Web client README](/web-client/README.md) | Information about the web client |
+| [Github App README](/github-app/README.md) | Information about the github app |
+| [Language Parsing](/github-app/src/languages/README.md) | Information for working with the parsers |
 
 ### Local Dependencies
 
@@ -52,7 +56,7 @@ npm install;
 
 ```bash
 cd web-client;
-npm start;
+npm run dev;
 ```
 
 ###### Server
@@ -62,28 +66,31 @@ cd api;
 npm run dev;
 ```
 
-###### Probot App
+###### Github App
 
 ```bash
 cd github-app;
-npm run build; # build the typescript
+npm run build; # build the typescript, you'll need to rebuild every time
 npm run dev;
 ```
 
-If you are working on new grammars, you'll need to compile those grammars:
+If you are working on new grammars, you'll need to compile those grammars, refer to the
+[nested README](/github-app/src/languages/README.md) for information.
 
-```bash
-# Refer to the package.json to see how exactly it compiles grammars
-npm run grammar:javascript
-```
 
 ### Production
+
+###### Web-client
 
 ```bash
 cd web-client;
 npm run prod;
-cd ../api;
-# Make sure env variables are set
-npm run build;
-# TODO Add prod build for probot app
 ```
+
+###### Server
+
+TODO
+
+###### Github App
+
+TODO
