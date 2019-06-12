@@ -27,7 +27,7 @@ const MATCH_VD_COMMENT_PREFIX_REGEX = /(?<=^|\s)@VD(?=\s|$)/g
   NOTE: You can pass the full comment to detect matches or even a single line (possibly an AlteredLine) to see if there
         is an annotation on that specific line of the comment.
 */
-const MATCH_VD_COMMENT_TAG_ANNOTATION_REGEX = /((?:\s|.)*?)(^|\r\n|\r|\n|\s)@VD ([a-zA-Z0-9-]*) (function|block|file|line)(?=\s|$)/
+const MATCH_VD_COMMENT_TAG_ANNOTATION_REGEX = /((?:\s|.)*?)(^|\r\n|\r|\n|\s)@VD ([a-zA-Z0-9-]*) (block|file|line)(?=\s|$)/
 
 /** The end of a block tag.
 

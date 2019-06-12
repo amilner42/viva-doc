@@ -8,7 +8,7 @@ import { ANTLRInputStream, CommonTokenStream } from 'antlr4ts'
 import { ParseTreeWalker } from "antlr4ts/tree/ParseTreeWalker"
 
 import { JavascriptLexer } from "./JavascriptLexer"
-import { JavascriptParser, FunctionDeclarationContext, ProgramContext, SingleLineCommentContext, MultiLineCommentContext } from "./JavascriptParser"
+import { JavascriptParser, SingleLineCommentContext, MultiLineCommentContext } from "./JavascriptParser"
 import { JavascriptParserListener } from "./JavascriptParserListener"
 
 
@@ -48,14 +48,6 @@ class ExtractCommentsAndFunctionsListener implements JavascriptParserListener {
 
   constructor() {
     this.rawFileAst = AST.newEmptyRawFileAst()
-  }
-
-  enterFunctionDeclaration(ctx: FunctionDeclarationContext) {
-    if (ctx._stop === undefined) {
-        throw new Error("TODO - Function Declaration Context Undefined")
-    }
-
-    AST.addFunctionToRawAst(this.rawFileAst, { startLine: ctx._start.line, endLine: ctx._stop.line })
   }
 
   enterSingleLineComment(ctx: SingleLineCommentContext) {

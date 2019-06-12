@@ -7,51 +7,12 @@ import * as Tag from "../tag"
 import * as LangUtil from "./util"
 
 
-/** Language-agnostic AST containing comments (including content) and function line numbers.
-
-  NOTE: You should create this from the `RawFileAst`.
-
-  NOTE: This AST does not contain the content of all nodes, only the line numbers. Only comments are parsed to capture
-  the content for VD tag analysis, functions are lexed to ignore many characters - you must use the full files to
-  retrieve the tag from the given line numbers.
-
-  NOTE: This is used to create `ReducedFileAst`.
-*/
-export interface FileAst {
-  // All detected functions
-  functions: {
-    [ startLine: number]: FunctionNode[]
-  };
-  // All comments
-  comments: {
-    [ endLine: number ]: CommentNode[]
-  };
-}
-
-
-export interface FunctionNode {
-  startLine: number;
-  endLine: number;
-}
-
-
-export interface CommentNode {
-  startLine: number;
-  endLine: number;
-  content: string;
-}
-
-
-/** Language-agnostic AST containing seperate comments (single/multi) and function line numbers.
+/** Language-agnostic AST containing seperate comments (single/multi).
 
   REFER: `FileAst`. This is used to create a `FileAst`. This is a useful step because of the feature of merging
           single line comments.
  */
 export interface RawFileAst {
-  // All detected functions.
-  functions: {
-    [ startLine: number]: FunctionNode[]
-  };
 
   singleLineComments: {
     [endLine: number]: RawCommentNode; // Can only have 1 on a single line
@@ -68,18 +29,36 @@ export type RawCommentNode = CommentNode & {
 }
 
 
+/** Language-agnostic AST containing comments.
+
+  NOTE: You should create this from the `RawFileAst`.
+
+  NOTE: This is used to create `ReducedFileAst`.
+*/
+export interface FileAst {
+  // All comments
+  comments: {
+    [ endLine: number ]: CommentNode[]
+  };
+}
+
+
+export interface CommentNode {
+  startLine: number;
+  endLine: number;
+  content: string;
+}
+
+
 // Language-agnostic AST slightly more specific than the `FileAst` thereby making it easier to put algorithms on top
 // of it related to VD.
 export interface ReducedFileAst {
-  // All functions detected in file
-  functions: {
-    [ startLine: number]: FunctionNode[]
-  };
 
   // Only comments that are relevant to VD
   comments: {
     [ endLine: number ]: ReducedCommentNode
   };
+
 }
 
 
@@ -95,7 +74,6 @@ export interface ReducedCommentNode {
 
 export const newEmptyRawFileAst = (): RawFileAst => {
   return {
-    functions: { },
     singleLineComments: { },
     multiLineComments: { }
   }
@@ -104,7 +82,6 @@ export const newEmptyRawFileAst = (): RawFileAst => {
 
 export const newEmptyFileAst = (): FileAst => {
   return {
-    functions: { },
     comments: { }
   }
 }
@@ -112,26 +89,11 @@ export const newEmptyFileAst = (): FileAst => {
 
 export const newEmptyReducedFileAst = (): ReducedFileAst => {
   return {
-    functions: { },
     comments: { }
   }
 }
 
 
-// Add a function to the RawAST
-// @MODIFIES fileAst
-export const addFunctionToRawAst = (fileAst: RawFileAst, functionNode: FunctionNode): void => {
-  if (fileAst.functions[functionNode.startLine] === undefined) {
-    fileAst.functions[functionNode.startLine] = [ functionNode ]
-    return
-  }
-
-  fileAst.functions[functionNode.startLine].push(functionNode)
-}
-
-
-// Add a single-line comment to the RawAST
-// @MODIFIES fileAst
 export const addSingleLineCommentToRawAst = (rawFileAst: RawFileAst, rawCommentNode: RawCommentNode): void => {
   rawFileAst.singleLineComments[rawCommentNode.endLine] = rawCommentNode;
 }
@@ -151,8 +113,6 @@ export const addMultilineCommentToRawAst = (rawFileAst: RawFileAst, commentNode:
 export const getFileAstFromRawFileAst = (rawFileAst: RawFileAst): FileAst => {
 
   const fileAst = newEmptyFileAst();
-
-  fileAst.functions = rawFileAst.functions;
 
   for (let endLine in rawFileAst.multiLineComments) {
     fileAst.comments[endLine] = rawFileAst.multiLineComments[endLine];
@@ -177,10 +137,8 @@ export const getFileAstFromRawFileAst = (rawFileAst: RawFileAst): FileAst => {
 /** Reduce an AST to only contain relevant information.
  */
 export const getReducedFileAstFromFileAst = (fileAst: FileAst): ReducedFileAst => {
-  const reducedFileAst = newEmptyReducedFileAst()
 
-  // Functions all deep-copied
-  reducedFileAst.functions = R.clone(fileAst.functions)
+  const reducedFileAst = newEmptyReducedFileAst()
 
   // Comments must be parsed to include only comments with data
   for (let commentLineNumber in fileAst.comments) {
@@ -268,34 +226,6 @@ export const standardTagsFromReducedFileAst = (reducedFileAst: ReducedFileAst, f
               owner: reducedCommentNode.data.owner,
               startLine,
               endLine,
-              tagAnnotationLine: reducedCommentNode.data.tagAnnotationLine,
-              content: LangUtil.getContentByLineNumbers(fileContent, startLine, endLine)
-            })
-            continue
-          }
-
-          case "function": {
-            const functionNodes = reducedFileAst.functions[reducedCommentNode.endLine + 1]
-
-            // No function
-            if (functionNodes === undefined) {
-              throw new Error("TODO - No function")
-            }
-
-            // More than one function on that line, how to handle?
-            if (functionNodes.length > 1) {
-              throw new Error("TODO - Multiple functions on one line?")
-            }
-
-            const functionNode = functionNodes[0]
-            const startLine = reducedCommentNode.startLine
-            const endLine = functionNode.endLine
-
-            vdTags.push({
-              tagType: "function",
-              startLine,
-              endLine,
-              owner: reducedCommentNode.data.owner,
               tagAnnotationLine: reducedCommentNode.data.tagAnnotationLine,
               content: LangUtil.getContentByLineNumbers(fileContent, startLine, endLine)
             })

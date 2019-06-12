@@ -8,13 +8,6 @@ import { SourceElementsContext } from "./JavascriptParser";
 import { SourceElementContext } from "./JavascriptParser";
 import { MultiLineCommentContext } from "./JavascriptParser";
 import { SingleLineCommentContext } from "./JavascriptParser";
-import { FunctionDeclarationContext } from "./JavascriptParser";
-import { FunctionParamsContext } from "./JavascriptParser";
-import { FunctionParamContext } from "./JavascriptParser";
-import { ParenPairContext } from "./JavascriptParser";
-import { BracePairContext } from "./JavascriptParser";
-import { ParenPairInFunctionParamContext } from "./JavascriptParser";
-import { BracePairInFunctionParamContext } from "./JavascriptParser";
 
 
 /**
@@ -76,82 +69,5 @@ export interface JavascriptParserListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	exitSingleLineComment?: (ctx: SingleLineCommentContext) => void;
-
-	/**
-	 * Enter a parse tree produced by `JavascriptParser.functionDeclaration`.
-	 * @param ctx the parse tree
-	 */
-	enterFunctionDeclaration?: (ctx: FunctionDeclarationContext) => void;
-	/**
-	 * Exit a parse tree produced by `JavascriptParser.functionDeclaration`.
-	 * @param ctx the parse tree
-	 */
-	exitFunctionDeclaration?: (ctx: FunctionDeclarationContext) => void;
-
-	/**
-	 * Enter a parse tree produced by `JavascriptParser.functionParams`.
-	 * @param ctx the parse tree
-	 */
-	enterFunctionParams?: (ctx: FunctionParamsContext) => void;
-	/**
-	 * Exit a parse tree produced by `JavascriptParser.functionParams`.
-	 * @param ctx the parse tree
-	 */
-	exitFunctionParams?: (ctx: FunctionParamsContext) => void;
-
-	/**
-	 * Enter a parse tree produced by `JavascriptParser.functionParam`.
-	 * @param ctx the parse tree
-	 */
-	enterFunctionParam?: (ctx: FunctionParamContext) => void;
-	/**
-	 * Exit a parse tree produced by `JavascriptParser.functionParam`.
-	 * @param ctx the parse tree
-	 */
-	exitFunctionParam?: (ctx: FunctionParamContext) => void;
-
-	/**
-	 * Enter a parse tree produced by `JavascriptParser.parenPair`.
-	 * @param ctx the parse tree
-	 */
-	enterParenPair?: (ctx: ParenPairContext) => void;
-	/**
-	 * Exit a parse tree produced by `JavascriptParser.parenPair`.
-	 * @param ctx the parse tree
-	 */
-	exitParenPair?: (ctx: ParenPairContext) => void;
-
-	/**
-	 * Enter a parse tree produced by `JavascriptParser.bracePair`.
-	 * @param ctx the parse tree
-	 */
-	enterBracePair?: (ctx: BracePairContext) => void;
-	/**
-	 * Exit a parse tree produced by `JavascriptParser.bracePair`.
-	 * @param ctx the parse tree
-	 */
-	exitBracePair?: (ctx: BracePairContext) => void;
-
-	/**
-	 * Enter a parse tree produced by `JavascriptParser.parenPairInFunctionParam`.
-	 * @param ctx the parse tree
-	 */
-	enterParenPairInFunctionParam?: (ctx: ParenPairInFunctionParamContext) => void;
-	/**
-	 * Exit a parse tree produced by `JavascriptParser.parenPairInFunctionParam`.
-	 * @param ctx the parse tree
-	 */
-	exitParenPairInFunctionParam?: (ctx: ParenPairInFunctionParamContext) => void;
-
-	/**
-	 * Enter a parse tree produced by `JavascriptParser.bracePairInFunctionParam`.
-	 * @param ctx the parse tree
-	 */
-	enterBracePairInFunctionParam?: (ctx: BracePairInFunctionParamContext) => void;
-	/**
-	 * Exit a parse tree produced by `JavascriptParser.bracePairInFunctionParam`.
-	 * @param ctx the parse tree
-	 */
-	exitBracePairInFunctionParam?: (ctx: BracePairInFunctionParamContext) => void;
 }
 
