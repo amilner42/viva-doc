@@ -16,7 +16,9 @@ oAuthSignInLink clientID =
     UB.crossOrigin
         githubURL
         [ "login", "oauth", "authorize" ]
-        [ UB.string "client_id" clientID, UB.string "scope" "repo" ]
+        [ UB.string "client_id" clientID
+        , UB.string "scope" "repo read:org"
+        ]
 
 
 oauthClientId : String
