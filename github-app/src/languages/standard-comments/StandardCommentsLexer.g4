@@ -1,4 +1,4 @@
-lexer grammar JavascriptLexer;
+lexer grammar StandardCommentsLexer;
 
 channels { ERROR }
 

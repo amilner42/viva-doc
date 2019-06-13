@@ -1,8 +1,8 @@
-parser grammar JavaParser;
+parser grammar StandardCommentsParser;
 
 
 options {
-    tokenVocab=JavaLexer;
+    tokenVocab=StandardCommentsLexer;
 }
 
 

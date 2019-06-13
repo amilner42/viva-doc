@@ -1,4 +1,4 @@
-// Generated from ./JavaLexer.g4 by ANTLR 4.6-SNAPSHOT
+// Generated from ./StandardCommentsLexer.g4 by ANTLR 4.6-SNAPSHOT
 
 
 import { ATN } from "antlr4ts/atn/ATN";
@@ -15,7 +15,7 @@ import { VocabularyImpl } from "antlr4ts/VocabularyImpl";
 import * as Utils from "antlr4ts/misc/Utils";
 
 
-export class JavaLexer extends Lexer {
+export class StandardCommentsLexer extends Lexer {
 	public static readonly MultiLineComment = 1;
 	public static readonly SingleLineComment = 2;
 	public static readonly IrrelevantChar = 3;
@@ -34,32 +34,32 @@ export class JavaLexer extends Lexer {
 	private static readonly _SYMBOLIC_NAMES: Array<string | undefined> = [
 		undefined, "MultiLineComment", "SingleLineComment", "IrrelevantChar",
 	];
-	public static readonly VOCABULARY: Vocabulary = new VocabularyImpl(JavaLexer._LITERAL_NAMES, JavaLexer._SYMBOLIC_NAMES, []);
+	public static readonly VOCABULARY: Vocabulary = new VocabularyImpl(StandardCommentsLexer._LITERAL_NAMES, StandardCommentsLexer._SYMBOLIC_NAMES, []);
 
 	// @Override
 	// @NotNull
 	public get vocabulary(): Vocabulary {
-		return JavaLexer.VOCABULARY;
+		return StandardCommentsLexer.VOCABULARY;
 	}
 	// tslint:enable:no-trailing-whitespace
 
 
 	constructor(input: CharStream) {
 		super(input);
-		this._interp = new LexerATNSimulator(JavaLexer._ATN, this);
+		this._interp = new LexerATNSimulator(StandardCommentsLexer._ATN, this);
 	}
 
 	// @Override
-	public get grammarFileName(): string { return "JavaLexer.g4"; }
+	public get grammarFileName(): string { return "StandardCommentsLexer.g4"; }
 
 	// @Override
-	public get ruleNames(): string[] { return JavaLexer.ruleNames; }
+	public get ruleNames(): string[] { return StandardCommentsLexer.ruleNames; }
 
 	// @Override
-	public get serializedATN(): string { return JavaLexer._serializedATN; }
+	public get serializedATN(): string { return StandardCommentsLexer._serializedATN; }
 
 	// @Override
-	public get modeNames(): string[] { return JavaLexer.modeNames; }
+	public get modeNames(): string[] { return StandardCommentsLexer.modeNames; }
 
 	public static readonly _serializedATN: string =
 		"\x03\uAF6F\u8320\u479D\uB75C\u4880\u1605\u191C\uAB37\x02\x05\"\b\x01\x04" +
@@ -81,11 +81,11 @@ export class JavaLexer extends Lexer {
 		"\x03\x02\x02\x02\x05\x02\x0F\x1B\x03\x02\x03\x02";
 	public static __ATN: ATN;
 	public static get _ATN(): ATN {
-		if (!JavaLexer.__ATN) {
-			JavaLexer.__ATN = new ATNDeserializer().deserialize(Utils.toCharArray(JavaLexer._serializedATN));
+		if (!StandardCommentsLexer.__ATN) {
+			StandardCommentsLexer.__ATN = new ATNDeserializer().deserialize(Utils.toCharArray(StandardCommentsLexer._serializedATN));
 		}
 
-		return JavaLexer.__ATN;
+		return StandardCommentsLexer.__ATN;
 	}
 
 }

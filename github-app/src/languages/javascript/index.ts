@@ -1,12 +1,8 @@
-// Module for javascript-specific parsing functionality
+// The Javascript parser follows the standard comments format.
 
 import * as AST from "../ast"
-import * as GenericCommentParser from "../generic-comment-parser"
-
-import { JavascriptLexer } from "./JavascriptLexer"
-import { JavascriptParser} from "./JavascriptParser"
+import * as StandardComments from "../standard-comments"
 
 
-export const parse = GenericCommentParser.createCommentParser(JavascriptLexer, JavascriptParser);
-
+export const parse = StandardComments.parse
 export const astToTags = AST.standardTagsFromReducedFileAst;

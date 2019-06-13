@@ -1,4 +1,4 @@
-// Generated from ./JavascriptParser.g4 by ANTLR 4.6-SNAPSHOT
+// Generated from ./StandardCommentsParser.g4 by ANTLR 4.6-SNAPSHOT
 
 
 import { ATN } from "antlr4ts/atn/ATN";
@@ -23,11 +23,11 @@ import { VocabularyImpl } from "antlr4ts/VocabularyImpl";
 
 import * as Utils from "antlr4ts/misc/Utils";
 
-import { JavascriptParserListener } from "./JavascriptParserListener";
-import { JavascriptParserVisitor } from "./JavascriptParserVisitor";
+import { StandardCommentsParserListener } from "./StandardCommentsParserListener";
+import { StandardCommentsParserVisitor } from "./StandardCommentsParserVisitor";
 
 
-export class JavascriptParser extends Parser {
+export class StandardCommentsParser extends Parser {
 	public static readonly MultiLineComment = 1;
 	public static readonly SingleLineComment = 2;
 	public static readonly IrrelevantChar = 3;
@@ -46,32 +46,32 @@ export class JavascriptParser extends Parser {
 	private static readonly _SYMBOLIC_NAMES: Array<string | undefined> = [
 		undefined, "MultiLineComment", "SingleLineComment", "IrrelevantChar",
 	];
-	public static readonly VOCABULARY: Vocabulary = new VocabularyImpl(JavascriptParser._LITERAL_NAMES, JavascriptParser._SYMBOLIC_NAMES, []);
+	public static readonly VOCABULARY: Vocabulary = new VocabularyImpl(StandardCommentsParser._LITERAL_NAMES, StandardCommentsParser._SYMBOLIC_NAMES, []);
 
 	// @Override
 	// @NotNull
 	public get vocabulary(): Vocabulary {
-		return JavascriptParser.VOCABULARY;
+		return StandardCommentsParser.VOCABULARY;
 	}
 	// tslint:enable:no-trailing-whitespace
 
 	// @Override
-	public get grammarFileName(): string { return "JavascriptParser.g4"; }
+	public get grammarFileName(): string { return "StandardCommentsParser.g4"; }
 
 	// @Override
-	public get ruleNames(): string[] { return JavascriptParser.ruleNames; }
+	public get ruleNames(): string[] { return StandardCommentsParser.ruleNames; }
 
 	// @Override
-	public get serializedATN(): string { return JavascriptParser._serializedATN; }
+	public get serializedATN(): string { return StandardCommentsParser._serializedATN; }
 
 	constructor(input: TokenStream) {
 		super(input);
-		this._interp = new ParserATNSimulator(JavascriptParser._ATN, this);
+		this._interp = new ParserATNSimulator(StandardCommentsParser._ATN, this);
 	}
 	// @RuleVersion(0)
 	public program(): ProgramContext {
 		let _localctx: ProgramContext = new ProgramContext(this._ctx, this.state);
-		this.enterRule(_localctx, 0, JavascriptParser.RULE_program);
+		this.enterRule(_localctx, 0, StandardCommentsParser.RULE_program);
 		let _la: number;
 		try {
 			this.enterOuterAlt(_localctx, 1);
@@ -79,7 +79,7 @@ export class JavascriptParser extends Parser {
 			this.state = 11;
 			this._errHandler.sync(this);
 			_la = this._input.LA(1);
-			if (_la === JavascriptParser.MultiLineComment || _la === JavascriptParser.SingleLineComment) {
+			if (_la === StandardCommentsParser.MultiLineComment || _la === StandardCommentsParser.SingleLineComment) {
 				{
 				this.state = 10;
 				this.sourceElements();
@@ -87,7 +87,7 @@ export class JavascriptParser extends Parser {
 			}
 
 			this.state = 13;
-			this.match(JavascriptParser.EOF);
+			this.match(StandardCommentsParser.EOF);
 			}
 		}
 		catch (re) {
@@ -107,7 +107,7 @@ export class JavascriptParser extends Parser {
 	// @RuleVersion(0)
 	public sourceElements(): SourceElementsContext {
 		let _localctx: SourceElementsContext = new SourceElementsContext(this._ctx, this.state);
-		this.enterRule(_localctx, 2, JavascriptParser.RULE_sourceElements);
+		this.enterRule(_localctx, 2, StandardCommentsParser.RULE_sourceElements);
 		let _la: number;
 		try {
 			this.enterOuterAlt(_localctx, 1);
@@ -125,7 +125,7 @@ export class JavascriptParser extends Parser {
 				this.state = 18;
 				this._errHandler.sync(this);
 				_la = this._input.LA(1);
-			} while (_la === JavascriptParser.MultiLineComment || _la === JavascriptParser.SingleLineComment);
+			} while (_la === StandardCommentsParser.MultiLineComment || _la === StandardCommentsParser.SingleLineComment);
 			}
 		}
 		catch (re) {
@@ -145,19 +145,19 @@ export class JavascriptParser extends Parser {
 	// @RuleVersion(0)
 	public sourceElement(): SourceElementContext {
 		let _localctx: SourceElementContext = new SourceElementContext(this._ctx, this.state);
-		this.enterRule(_localctx, 4, JavascriptParser.RULE_sourceElement);
+		this.enterRule(_localctx, 4, StandardCommentsParser.RULE_sourceElement);
 		try {
 			this.state = 22;
 			this._errHandler.sync(this);
 			switch (this._input.LA(1)) {
-			case JavascriptParser.MultiLineComment:
+			case StandardCommentsParser.MultiLineComment:
 				this.enterOuterAlt(_localctx, 1);
 				{
 				this.state = 20;
 				this.multiLineComment();
 				}
 				break;
-			case JavascriptParser.SingleLineComment:
+			case StandardCommentsParser.SingleLineComment:
 				this.enterOuterAlt(_localctx, 2);
 				{
 				this.state = 21;
@@ -185,12 +185,12 @@ export class JavascriptParser extends Parser {
 	// @RuleVersion(0)
 	public multiLineComment(): MultiLineCommentContext {
 		let _localctx: MultiLineCommentContext = new MultiLineCommentContext(this._ctx, this.state);
-		this.enterRule(_localctx, 6, JavascriptParser.RULE_multiLineComment);
+		this.enterRule(_localctx, 6, StandardCommentsParser.RULE_multiLineComment);
 		try {
 			this.enterOuterAlt(_localctx, 1);
 			{
 			this.state = 24;
-			this.match(JavascriptParser.MultiLineComment);
+			this.match(StandardCommentsParser.MultiLineComment);
 			}
 		}
 		catch (re) {
@@ -210,12 +210,12 @@ export class JavascriptParser extends Parser {
 	// @RuleVersion(0)
 	public singleLineComment(): SingleLineCommentContext {
 		let _localctx: SingleLineCommentContext = new SingleLineCommentContext(this._ctx, this.state);
-		this.enterRule(_localctx, 8, JavascriptParser.RULE_singleLineComment);
+		this.enterRule(_localctx, 8, StandardCommentsParser.RULE_singleLineComment);
 		try {
 			this.enterOuterAlt(_localctx, 1);
 			{
 			this.state = 26;
-			this.match(JavascriptParser.SingleLineComment);
+			this.match(StandardCommentsParser.SingleLineComment);
 			}
 		}
 		catch (re) {
@@ -250,17 +250,17 @@ export class JavascriptParser extends Parser {
 		"\x1D\x07\x04\x02\x02\x1D\v\x03\x02\x02\x02\x05\r\x14\x18";
 	public static __ATN: ATN;
 	public static get _ATN(): ATN {
-		if (!JavascriptParser.__ATN) {
-			JavascriptParser.__ATN = new ATNDeserializer().deserialize(Utils.toCharArray(JavascriptParser._serializedATN));
+		if (!StandardCommentsParser.__ATN) {
+			StandardCommentsParser.__ATN = new ATNDeserializer().deserialize(Utils.toCharArray(StandardCommentsParser._serializedATN));
 		}
 
-		return JavascriptParser.__ATN;
+		return StandardCommentsParser.__ATN;
 	}
 
 }
 
 export class ProgramContext extends ParserRuleContext {
-	public EOF(): TerminalNode { return this.getToken(JavascriptParser.EOF, 0); }
+	public EOF(): TerminalNode { return this.getToken(StandardCommentsParser.EOF, 0); }
 	public sourceElements(): SourceElementsContext | undefined {
 		return this.tryGetRuleContext(0, SourceElementsContext);
 	}
@@ -268,21 +268,21 @@ export class ProgramContext extends ParserRuleContext {
 		super(parent, invokingState);
 	}
 	// @Override
-	public get ruleIndex(): number { return JavascriptParser.RULE_program; }
+	public get ruleIndex(): number { return StandardCommentsParser.RULE_program; }
 	// @Override
-	public enterRule(listener: JavascriptParserListener): void {
+	public enterRule(listener: StandardCommentsParserListener): void {
 		if (listener.enterProgram) {
 			listener.enterProgram(this);
 		}
 	}
 	// @Override
-	public exitRule(listener: JavascriptParserListener): void {
+	public exitRule(listener: StandardCommentsParserListener): void {
 		if (listener.exitProgram) {
 			listener.exitProgram(this);
 		}
 	}
 	// @Override
-	public accept<Result>(visitor: JavascriptParserVisitor<Result>): Result {
+	public accept<Result>(visitor: StandardCommentsParserVisitor<Result>): Result {
 		if (visitor.visitProgram) {
 			return visitor.visitProgram(this);
 		} else {
@@ -306,21 +306,21 @@ export class SourceElementsContext extends ParserRuleContext {
 		super(parent, invokingState);
 	}
 	// @Override
-	public get ruleIndex(): number { return JavascriptParser.RULE_sourceElements; }
+	public get ruleIndex(): number { return StandardCommentsParser.RULE_sourceElements; }
 	// @Override
-	public enterRule(listener: JavascriptParserListener): void {
+	public enterRule(listener: StandardCommentsParserListener): void {
 		if (listener.enterSourceElements) {
 			listener.enterSourceElements(this);
 		}
 	}
 	// @Override
-	public exitRule(listener: JavascriptParserListener): void {
+	public exitRule(listener: StandardCommentsParserListener): void {
 		if (listener.exitSourceElements) {
 			listener.exitSourceElements(this);
 		}
 	}
 	// @Override
-	public accept<Result>(visitor: JavascriptParserVisitor<Result>): Result {
+	public accept<Result>(visitor: StandardCommentsParserVisitor<Result>): Result {
 		if (visitor.visitSourceElements) {
 			return visitor.visitSourceElements(this);
 		} else {
@@ -341,21 +341,21 @@ export class SourceElementContext extends ParserRuleContext {
 		super(parent, invokingState);
 	}
 	// @Override
-	public get ruleIndex(): number { return JavascriptParser.RULE_sourceElement; }
+	public get ruleIndex(): number { return StandardCommentsParser.RULE_sourceElement; }
 	// @Override
-	public enterRule(listener: JavascriptParserListener): void {
+	public enterRule(listener: StandardCommentsParserListener): void {
 		if (listener.enterSourceElement) {
 			listener.enterSourceElement(this);
 		}
 	}
 	// @Override
-	public exitRule(listener: JavascriptParserListener): void {
+	public exitRule(listener: StandardCommentsParserListener): void {
 		if (listener.exitSourceElement) {
 			listener.exitSourceElement(this);
 		}
 	}
 	// @Override
-	public accept<Result>(visitor: JavascriptParserVisitor<Result>): Result {
+	public accept<Result>(visitor: StandardCommentsParserVisitor<Result>): Result {
 		if (visitor.visitSourceElement) {
 			return visitor.visitSourceElement(this);
 		} else {
@@ -366,26 +366,26 @@ export class SourceElementContext extends ParserRuleContext {
 
 
 export class MultiLineCommentContext extends ParserRuleContext {
-	public MultiLineComment(): TerminalNode { return this.getToken(JavascriptParser.MultiLineComment, 0); }
+	public MultiLineComment(): TerminalNode { return this.getToken(StandardCommentsParser.MultiLineComment, 0); }
 	constructor(parent: ParserRuleContext | undefined, invokingState: number) {
 		super(parent, invokingState);
 	}
 	// @Override
-	public get ruleIndex(): number { return JavascriptParser.RULE_multiLineComment; }
+	public get ruleIndex(): number { return StandardCommentsParser.RULE_multiLineComment; }
 	// @Override
-	public enterRule(listener: JavascriptParserListener): void {
+	public enterRule(listener: StandardCommentsParserListener): void {
 		if (listener.enterMultiLineComment) {
 			listener.enterMultiLineComment(this);
 		}
 	}
 	// @Override
-	public exitRule(listener: JavascriptParserListener): void {
+	public exitRule(listener: StandardCommentsParserListener): void {
 		if (listener.exitMultiLineComment) {
 			listener.exitMultiLineComment(this);
 		}
 	}
 	// @Override
-	public accept<Result>(visitor: JavascriptParserVisitor<Result>): Result {
+	public accept<Result>(visitor: StandardCommentsParserVisitor<Result>): Result {
 		if (visitor.visitMultiLineComment) {
 			return visitor.visitMultiLineComment(this);
 		} else {
@@ -396,26 +396,26 @@ export class MultiLineCommentContext extends ParserRuleContext {
 
 
 export class SingleLineCommentContext extends ParserRuleContext {
-	public SingleLineComment(): TerminalNode { return this.getToken(JavascriptParser.SingleLineComment, 0); }
+	public SingleLineComment(): TerminalNode { return this.getToken(StandardCommentsParser.SingleLineComment, 0); }
 	constructor(parent: ParserRuleContext | undefined, invokingState: number) {
 		super(parent, invokingState);
 	}
 	// @Override
-	public get ruleIndex(): number { return JavascriptParser.RULE_singleLineComment; }
+	public get ruleIndex(): number { return StandardCommentsParser.RULE_singleLineComment; }
 	// @Override
-	public enterRule(listener: JavascriptParserListener): void {
+	public enterRule(listener: StandardCommentsParserListener): void {
 		if (listener.enterSingleLineComment) {
 			listener.enterSingleLineComment(this);
 		}
 	}
 	// @Override
-	public exitRule(listener: JavascriptParserListener): void {
+	public exitRule(listener: StandardCommentsParserListener): void {
 		if (listener.exitSingleLineComment) {
 			listener.exitSingleLineComment(this);
 		}
 	}
 	// @Override
-	public accept<Result>(visitor: JavascriptParserVisitor<Result>): Result {
+	public accept<Result>(visitor: StandardCommentsParserVisitor<Result>): Result {
 		if (visitor.visitSingleLineComment) {
 			return visitor.visitSingleLineComment(this);
 		} else {

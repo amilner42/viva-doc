@@ -1,8 +1,6 @@
-import * as JS from "../javascript";
 import * as AST from "../ast";
+import * as StandardComments from "../standard-comments"
 
 
-// Because typescript has identical comments, we can just snag the JS parsers.
-export const parse = JS.parse
-
+export const parse = StandardComments.parse
 export const astToTags = AST.standardTagsFromReducedFileAst
