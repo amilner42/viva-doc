@@ -6,18 +6,26 @@ import * as AST from "./ast"
 import * as AppError from "../error"
 import * as Tag from "../tag"
 
-import * as cpp from "./cplusplus/index"
-import * as javascript from "./javascript/index"
-import * as java from "./java/index"
-import * as python from "./python/index"
-import * as typescript from "./typescript/index"
+import * as c from "./c"
+import * as cplusplus from "./cplusplus"
+import * as header from "./header"
+import * as java from "./java"
+import * as javascript from "./javascript"
+import * as typescript from "./typescript"
 
 
 /** EXTERNAL TYPES */
 
 
 // Enum of languages we support
-export type Language = "CPlusPlus" | "Java" | "Javascript" | "Python" | "Typescript"
+export type Language
+  = "C"
+  | "CPlusPlus"
+  | "Header"
+  | "Java"
+  | "Javascript"
+  | "Typescript"
+
 
 // All possible error types
 export type LanguageParserErrorType = "unsupported-file" | "unsupported-extension"
@@ -32,31 +40,35 @@ export class LanguageParserError extends AppError.ProbotAppError {
   }
 }
 
+
 /** EXTERNAL FUNCTIONS */
+
 
 // TODO DOC
 // TODO probably need the file content to get language as well for cases like SQL or c/c++ header files
 export const getLanguage = (extension: string): Language => {
   switch(extension) {
-    case "cc":
-    case "cpp":
-      return "CPlusPlus"
+    case "js":
+      return "Javascript"
+
+    case "ts":
+      return "Typescript"
 
     case "java":
       return "Java"
 
-    case "js":
-      return "Javascript"
+    case "h":
+      return "Header"
 
-    case "py":
-      return "Python"
+    case "cpp":
+    case "cc":
+      return "CPlusPlus"
 
-    case "ts":
-      return "Typescript"
   }
 
   throw new LanguageParserError("unsupported-extension", `No language for file extension: ${extension}`)
 }
+
 
 // Extract the language from the extension or throw an error if we don't support that language.
 export const extractFileType = (filePath: string): Language => {
@@ -77,23 +89,27 @@ export const parse = (language: Language, fileContent: string): AST.ReducedFileA
 
   switch (language) {
 
-    case "CPlusPlus":
-      return cpp.parse(fileContent)
-
-    case "Java":
-      return java.parse(fileContent)
-
     case "Javascript":
       return javascript.parse(fileContent)
-
-    case "Python":
-      return python.parse(fileContent)
 
     case "Typescript":
       return typescript.parse(fileContent)
 
-  } // end switch
+    case "Java":
+      return java.parse(fileContent)
+
+    case "CPlusPlus":
+      return cplusplus.parse(fileContent)
+
+    case "C":
+      return c.parse(fileContent)
+
+    case "Header":
+      return header.parse(fileContent)
+
+  }
 }
+
 
 // Converts a reduced ast to VD tags
 export const astToTags =
@@ -104,20 +120,23 @@ export const astToTags =
 
   switch (language) {
 
-    case "CPlusPlus":
-      return cpp.astToTags(reducedFileAst, fileContent)
-
-    case "Java":
-      return java.astToTags(reducedFileAst, fileContent)
-
     case "Javascript":
       return javascript.astToTags(reducedFileAst, fileContent)
-
-    case "Python":
-      return python.astToTags(reducedFileAst, fileContent)
 
     case "Typescript":
       return typescript.astToTags(reducedFileAst, fileContent)
 
-  } // end switch
+    case "Java":
+      return java.astToTags(reducedFileAst, fileContent)
+
+    case "CPlusPlus":
+      return cplusplus.astToTags(reducedFileAst, fileContent)
+
+    case "C":
+      return c.astToTags(reducedFileAst, fileContent)
+
+    case "Header":
+      return header.astToTags(reducedFileAst, fileContent)
+
+  }
 }

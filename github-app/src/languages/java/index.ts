@@ -1,10 +1,8 @@
-// Module for java-specific parsing functionality
+// The Java parser follows the standard comments parser.
 
 import * as AST from "../ast"
+import * as StandardComments from "../standard-comments"
 
 
-export const parse = (fileContent: string): AST.ReducedFileAst => {
-  throw new Error("NOT IMPLEMENTED")
-}
-
-export const astToTags = AST.standardTagsFromReducedFileAst
+export const parse = StandardComments.parse
+export const astToTags = AST.standardTagsFromReducedFileAst;

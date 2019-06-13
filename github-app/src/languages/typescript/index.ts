@@ -1,12 +1,6 @@
-// Module for typescript-specific parsing functionality
-
-import * as AST from "../ast"
-
-
-/** Parse the FileAst from the given file content. */
-export const parse = (fileContent: string): AST.ReducedFileAst => {
-  throw new Error("NOT IMPLEMENTED")
-}
+import * as AST from "../ast";
+import * as StandardComments from "../standard-comments"
 
 
+export const parse = StandardComments.parse
 export const astToTags = AST.standardTagsFromReducedFileAst

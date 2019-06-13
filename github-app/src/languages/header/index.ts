@@ -1,4 +1,4 @@
-// The Javascript parser follows the standard comments format.
+// C/C++ header file parser follow the standard comments parser.
 
 import * as AST from "../ast"
 import * as StandardComments from "../standard-comments"

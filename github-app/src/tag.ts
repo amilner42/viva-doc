@@ -60,10 +60,10 @@ export type DeletedFileDiffWithCodeAndTags= DeletedFileDiffWithCode & HasCurrent
  *
  * Tags are the core of VivaDoc, allowing the user to tag some documentation that they'd like to be responsible for.
  */
-export type VdTag = VdFileTag | VdBlockTag | VdFunctionTag | VdLineTag
+export type VdTag = VdFileTag | VdBlockTag | VdLineTag
 
 // All tag types.
-export type VdTagType = "file" | "block" | "function" | "line"
+export type VdTagType = "file" | "block" | "line"
 
 // All tags should have these properties.
 export interface BaseTag {
@@ -78,11 +78,6 @@ export interface BaseTag {
 // A tag representing documentation ownership of an entire file.
 export type VdFileTag = BaseTag & {
   tagType: "file";
-}
-
-// A tag representing documentation ownership of a function.
-export type VdFunctionTag = BaseTag & {
-  tagType: "function";
 }
 
 // A tag representing documentation ownership of a explicitly specified block.

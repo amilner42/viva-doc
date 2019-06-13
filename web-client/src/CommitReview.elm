@@ -93,7 +93,6 @@ type TagType
     = FileTag
     | BlockTag
     | LineTag
-    | FunctionTag
 
 
 type alias OwnerTagStatus =
@@ -218,9 +217,6 @@ readableTagType tagType =
 
         BlockTag ->
             "Block Tag"
-
-        FunctionTag ->
-            "Function Tag"
 
 
 {-| Update all tags in a commit review.
@@ -520,9 +516,6 @@ decodeTag { approvedTags, rejectedTags } =
 
                                     "block" ->
                                         Decode.succeed BlockTag
-
-                                    "function" ->
-                                        Decode.succeed FunctionTag
 
                                     "line" ->
                                         Decode.succeed LineTag
