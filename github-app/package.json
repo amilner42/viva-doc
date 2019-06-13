@@ -13,7 +13,8 @@
     "lint": "standard **/*.ts --fix",
     "test": "jest",
     "test:watch": "jest --watch --notify --notifyMode=change --coverage",
-    "grammar:javascript": "cd src/languages/javascript/ && antlr4ts -visitor ./*.g4"
+    "grammar:javascript": "cd src/languages/javascript/ && antlr4ts -visitor ./*.g4",
+    "grammar:java": "cd src/languages/java/ && antlr4ts -visitor ./*.g4"
   },
   "dependencies": {
     "@types/mongoose": "^5.5.0",

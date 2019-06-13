@@ -8,13 +8,14 @@ import * as Tag from "../tag"
 
 import * as javascript from "./javascript"
 import * as typescript from "./typescript"
+import * as java from "./java"
 
 
 /** EXTERNAL TYPES */
 
 
 // Enum of languages we support
-export type Language =  "Javascript" | "Typescript"
+export type Language =  "Javascript" | "Typescript" | "Java"
 
 // All possible error types
 export type LanguageParserErrorType = "unsupported-file" | "unsupported-extension"
@@ -42,6 +43,9 @@ export const getLanguage = (extension: string): Language => {
 
     case "ts":
       return "Typescript"
+
+    case "java":
+      return "Java"
   }
 
   throw new LanguageParserError("unsupported-extension", `No language for file extension: ${extension}`)
@@ -73,6 +77,9 @@ export const parse = (language: Language, fileContent: string): AST.ReducedFileA
     case "Typescript":
       return typescript.parse(fileContent)
 
+    case "Java":
+      return java.parse(fileContent)
+
   }
 }
 
@@ -91,6 +98,9 @@ export const astToTags =
 
     case "Typescript":
       return typescript.astToTags(reducedFileAst, fileContent)
+
+    case "Java":
+      return java.astToTags(reducedFileAst, fileContent)
 
   }
 }
