@@ -307,7 +307,7 @@ const squishSingleLineComments =
     const finalCommentAbove = result[endLine - 1];
     delete result[endLine - 1];
     result[endLine] = {
-      content: `${finalCommentAbove.content}${currentComment.content}`,
+      content: `${finalCommentAbove.content}\n${currentComment.content}`,
       endLine: endLine,
       startLine: finalCommentAbove.startLine
     }
