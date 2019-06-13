@@ -11,7 +11,7 @@ type TestTable = [ string, Lang.Language, string, null | Tag.VdTag[] ][]
 const JAVASCRIPT_MANY_TAGS_TEXT = `// @VD amilner42 line
 const a = 5;
 
-// @VD amilner42 function
+// doo doo
 export const func = () => {
   ...
   ...
@@ -28,7 +28,7 @@ const JAVASCRIPT_MANY_MULTILINE_COMMENT_TAGS_TEXT = `/*
 */
 const a = 5;
 
-/* @VD amilner42 function
+/* @VD amilner42 line
 */
 export const func = () => {
   ...
@@ -75,25 +75,6 @@ const VALID_JAVASCRIPT_TESTS: TestTable = [
       },
       {
         "content": [
-          "// @VD amilner42 function",
-          "export const func = () => {",
-          "  ...",
-          "  ...",
-          "  // @VD amilner42 block",
-          "  a = 2",
-          "  b = 3",
-          "  // @VD end-block",
-          "  ...",
-          "}"
-        ],
-        "endLine": 13,
-        "owner": "amilner42",
-        "startLine": 4,
-        "tagAnnotationLine": 4,
-        "tagType": "function"
-      },
-      {
-        "content": [
           "  // @VD amilner42 block",
           "  a = 2",
           "  b = 3",
@@ -127,26 +108,15 @@ const VALID_JAVASCRIPT_TESTS: TestTable = [
       },
       {
         "content": [
-          "/* @VD amilner42 function",
+          "/* @VD amilner42 line",
           "*/",
           "export const func = () => {",
-          "  ...",
-          "  ...",
-          "  /*",
-          "  @VD amilner42 block",
-          "  */",
-          "  a = 2",
-          "  b = 3",
-          "  /* @VD end-block",
-          "   */",
-          "  ...",
-          "}"
         ],
-        "endLine": 19,
+        "endLine": 8,
         "owner": "amilner42",
         "startLine": 6,
         "tagAnnotationLine": 6,
-        "tagType": "function"
+        "tagType": "line"
       },
       {
         "content": [
@@ -173,21 +143,6 @@ const VALID_FILE_TESTS: TestTable = VALID_JAVASCRIPT_TESTS
 
 /** Tests for invalid files */
 
-const JAVASCRIPT_FUNCTION_TAG_WITH_NO_FUNCTION_TEXT = `const a = 5;
-
-// bla
-
-/* @VD amilner42 function */
-const j = 10
-`
-
-const JAVASCRIPT_FUNCTION_NOT_ON_NEXT_LINE = `// @VD somegithubusername function
-
-const a = () => {
-  booooop
-}
-`
-
 const JAVASCRIPT_BLOCKS_END_IN_SAME_END_BLOCK_TEXT = `// @VD amilner42 block
 some code
 
@@ -212,12 +167,6 @@ some code
 
 const INVALID_JAVASCRIPT_TESTS: TestTable = [
   [
-    "Invalid JS with unclosed parens",
-    "Javascript",
-    "(",
-    null
-  ],
-  [
     "Invalid @VD block tag - no end-block",
     "Javascript",
     `// @VD amilner42 block
@@ -241,18 +190,6 @@ const INVALID_JAVASCRIPT_TESTS: TestTable = [
     "Invalid @VD annotation with improper tag type lines",
     "Javascript",
     "// @VD amilner42 lines ",
-    null
-  ],
-  [
-    "Invalid @VD function annotation due to no function",
-    "Javascript",
-    JAVASCRIPT_FUNCTION_TAG_WITH_NO_FUNCTION_TEXT,
-    null
-  ],
-  [
-    "Invalid - function must be defined on the next line",
-    "Javascript",
-    JAVASCRIPT_FUNCTION_NOT_ON_NEXT_LINE,
     null
   ],
   [
