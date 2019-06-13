@@ -6,16 +6,26 @@ import * as AST from "./ast"
 import * as AppError from "../error"
 import * as Tag from "../tag"
 
+import * as c from "./c"
+import * as cplusplus from "./cplusplus"
+import * as header from "./header"
+import * as java from "./java"
 import * as javascript from "./javascript"
 import * as typescript from "./typescript"
-import * as java from "./java"
 
 
 /** EXTERNAL TYPES */
 
 
 // Enum of languages we support
-export type Language =  "Javascript" | "Typescript" | "Java"
+export type Language
+  = "C"
+  | "CPlusPlus"
+  | "Header"
+  | "Java"
+  | "Javascript"
+  | "Typescript"
+
 
 // All possible error types
 export type LanguageParserErrorType = "unsupported-file" | "unsupported-extension"
@@ -46,6 +56,14 @@ export const getLanguage = (extension: string): Language => {
 
     case "java":
       return "Java"
+
+    case "h":
+      return "Header"
+
+    case "cpp":
+    case "cc":
+      return "CPlusPlus"
+
   }
 
   throw new LanguageParserError("unsupported-extension", `No language for file extension: ${extension}`)
@@ -80,6 +98,15 @@ export const parse = (language: Language, fileContent: string): AST.ReducedFileA
     case "Java":
       return java.parse(fileContent)
 
+    case "CPlusPlus":
+      return cplusplus.parse(fileContent)
+
+    case "C":
+      return c.parse(fileContent)
+
+    case "Header":
+      return header.parse(fileContent)
+
   }
 }
 
@@ -101,6 +128,15 @@ export const astToTags =
 
     case "Java":
       return java.astToTags(reducedFileAst, fileContent)
+
+    case "CPlusPlus":
+      return cplusplus.astToTags(reducedFileAst, fileContent)
+
+    case "C":
+      return c.astToTags(reducedFileAst, fileContent)
+
+    case "Header":
+      return header.astToTags(reducedFileAst, fileContent)
 
   }
 }
