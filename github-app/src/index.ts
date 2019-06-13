@@ -62,21 +62,48 @@ export = (app: Probot.Application) => {
   });
 
 
-  // TODO delete all data for all repos as well
   // TODO handle errors
   app.on("installation.deleted", async (context) => {
 
     const payload = context.payload
     const installationId = (payload.installation as any).id
 
-    const deleteRepoResult = await RepoModel.deleteOne({ installationId }) as { ok: number, deletedCount: number, n: number };
+    const clearAllData = async () => {
 
-    if (deleteRepoResult.ok === 1 && deleteRepoResult.n === 1 && deleteRepoResult.deletedCount === 1) {
-      return;
+      const deleteRepoResult =
+        await RepoModel.findOneAndDelete({ installationId }).exec();
+
+      if (deleteRepoResult === null) {
+        throw "ERROR : 1285732919";
+      }
+
+      const repoIds = (deleteRepoResult.toObject() as Repo).repoIds;
+
+      const deleteCommitReviewsResult =
+        await CommitReviewModel.deleteMany({ repoId: { $in: repoIds } }).exec();
+
+      if (deleteCommitReviewsResult.ok !== 1) {
+        throw "ERROR";
+      }
+
+      const deletePullRequestReviewsResult =
+        await PullRequestReviewModel.deleteMany({ repoId: { $in: repoIds } }).exec();
+
+      if (deletePullRequestReviewsResult.ok !== 1) {
+        throw "ERROR";
+      }
+
     }
 
-    // LOG ERROR
-    console.log(`Error deleting installation with id: ${installationId}`);
+    try {
+
+      await clearAllData();
+
+    } catch (err) {
+
+      console.log(`Error deleting installation with id: ${installationId}`);
+    }
+
   });
 
 
@@ -109,27 +136,52 @@ export = (app: Probot.Application) => {
   });
 
 
-  // TODO delete all repo data as well
   // TODO handle errors.
   app.on("installation_repositories.removed", async (context) => {
 
     const payload = context.payload;
     const installationId = (payload.installation as any).id;
-    const reposToRemove = R.map((repoToRemove) => {
+    const reposToRemove: number[] = R.map((repoToRemove) => {
       return repoToRemove.id
     }, payload.repositories_removed);
 
-    const repoUpdateResult = await RepoModel.update(
-      { installationId },
-      { $pull: { "repoIds": { $in: reposToRemove } } }
-    )
 
-    if (repoUpdateResult.ok === 1 && repoUpdateResult.n === 1 && repoUpdateResult.nModified === 1) {
-      return
+    const clearRemovedRepoData = async () => {
+
+      const repoUpdateResult = await RepoModel.update(
+        { installationId },
+        { $pull: { "repoIds": { $in: reposToRemove } } }
+      );
+
+      if (repoUpdateResult.ok !== 1 || repoUpdateResult.n !== 1 || repoUpdateResult.nModified !== 1) {
+        throw "ERROR"
+      }
+
+      const deleteCommitReviewsResult =
+        await CommitReviewModel.deleteMany({ repoId: { $in: reposToRemove } }).exec();
+
+      if (deleteCommitReviewsResult.ok !== 1) {
+        throw "ERROR";
+      }
+
+      const deletePullRequestReviewsResult =
+        await PullRequestReviewModel.deleteMany({ repoId: { $in: reposToRemove } }).exec();
+
+      if (deletePullRequestReviewsResult.ok !== 1) {
+        throw "ERROR";
+      }
+
     }
 
-    // TODO HANDLE ERROR
-    console.log(`Error: Could not remove ${reposToRemove.length} repo(s) from installation ${installationId}`)
+    try {
+
+      await clearRemovedRepoData();
+
+    } catch (err) {
+
+      console.log(`Error: Could not remove ${reposToRemove.length} repo(s) from installation ${installationId}`)
+    }
+
   });
 
 
