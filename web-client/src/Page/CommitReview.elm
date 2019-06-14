@@ -116,6 +116,7 @@ view model =
 
                             else
                                 renderHeadUpdatedModal
+                                    commitReview
                                     """This commit is stale! You can continue to browse to see what was previosly
                                     approved/rejected but if you would like to make changes you must go to the most
                                     recent commit in the PR.
@@ -724,8 +725,8 @@ renderTagOrReview config tag =
         ]
 
 
-renderHeadUpdatedModal : String -> Route.Route -> List (Html.Html Msg)
-renderHeadUpdatedModal modalText headCommitRoute =
+renderHeadUpdatedModal : CommitReview.CommitReview -> String -> Route.Route -> List (Html.Html Msg)
+renderHeadUpdatedModal commitReview modalText headCommitRoute =
     [ div
         [ class "modal is-active" ]
         [ div [ class "modal-background" ] []
@@ -742,7 +743,7 @@ renderHeadUpdatedModal modalText headCommitRoute =
                     [ class "buttons are-large is-centered" ]
                     [ button
                         [ class "button is-info is-fullwidth"
-                        , onClick <| SetModalClosed True
+                        , onClick <| SetModalClosed True commitReview
                         ]
                         [ text "browse stale commit" ]
                     , a
@@ -827,7 +828,7 @@ type Msg
     | CompletedRemoveRejectionOnTag String (Result.Result (Core.HttpError CraError.CommitReviewActionError) ())
     | ApproveDocs String
     | CompletedApproveDocs String (Result.Result (Core.HttpError CraError.CommitReviewActionError) ())
-    | SetModalClosed Bool
+    | SetModalClosed Bool CommitReview.CommitReview
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -876,7 +877,12 @@ update msg model =
     case msg of
         CompletedGetCommitReview (Result.Ok commitReview) ->
             ( { model | commitReview = RemoteData.Success commitReview }
-            , Ports.renderCodeEditors <| CommitReview.extractRenderEditorConfigs commitReview
+            , if commitReview.headCommitId == model.commitId then
+                Ports.renderCodeEditors <| CommitReview.extractRenderEditorConfigs commitReview
+
+              else
+                -- Opening modal, render code editor when modal closes.
+                Cmd.none
             )
 
         -- TODO handle error
@@ -1175,8 +1181,14 @@ update msg model =
                 _ ->
                     ( { model | approveDocsState = RequestForDocApprovalErrored () }, Cmd.none )
 
-        SetModalClosed modalClosed ->
-            ( { model | modalClosed = modalClosed }, Cmd.none )
+        SetModalClosed modalClosed commitReview ->
+            ( { model | modalClosed = modalClosed }
+            , if modalClosed then
+                Ports.renderCodeEditors <| CommitReview.extractRenderEditorConfigs commitReview
+
+              else
+                Cmd.none
+            )
 
 
 
