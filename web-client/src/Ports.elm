@@ -15,7 +15,7 @@ port onLoadFromLocalStorage : (String -> msg) -> Sub msg
 type alias RenderCodeEditorConfig =
     { tagId : String
     , startLineNumber : Int
-    , showLineNumbers : Bool
+    , customLineNumbers : Maybe (List (Maybe Int))
     , redLineRanges : List ( Int, Int )
     , greenLineRanges : List ( Int, Int )
     , content : List String

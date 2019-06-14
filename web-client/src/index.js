@@ -49,12 +49,29 @@ const renderCodeEditor = (renderConfig) => {
     editor.session.setMode("ace/mode/typescript");
     editor.setHighlightActiveLine(false);
 
-    editor.setOption("firstLineNumber", renderConfig.startLineNumber)
-    if (!renderConfig.showLineNumbers) {
-      editor.setOption('showLineNumbers', false);
+    editor.setValue(renderConfig.content.join("\n"), -1);
+
+    if (renderConfig.customLineNumbers) {
+      editor.session.gutterRenderer = {
+        // desired gutter width in pixels
+        getWidth: function(session, lastLineText, config) {
+           return lastLineText.length * config.characterWidth
+        },
+        // text for line number
+        getText: function(session, row) {
+          const lineNumber =
+            renderConfig.customLineNumbers[row]
+              ? renderConfig.customLineNumbers[row]
+               : ""
+
+          return lineNumber
+        }
+      }
+      editor.renderer.updateFull()
+    } else {
+      editor.setOption("firstLineNumber", renderConfig.startLineNumber)
     }
 
-    editor.setValue(renderConfig.content.join("\n"), -1);
 
     for (let greenRange of renderConfig.greenLineRanges) {
       const [ startLine, endLine ] = shiftRange(renderConfig.startLineNumber, greenRange);

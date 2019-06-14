@@ -40,6 +40,7 @@ type alias Review =
     , tag : Tag
     , alteredLines : List AlteredLine
     , contentWithDiffs : List String
+    , lineNumbersWithDiffs : List (Maybe Int)
     , redLineRanges : List ( Int, Int )
     , greenLineRanges : List ( Int, Int )
     }
@@ -483,58 +484,69 @@ renderConfigForReviewOrTag reviewOrTag =
     case reviewOrTag of
         AReview review ->
             let
-                ( content, ( greenLineRanges, redLineRanges ), showLineNumbers ) =
+                { content, redLineRanges, greenLineRanges, customLineNumbers } =
                     case review.reviewType of
                         ReviewDeletedTag ->
-                            ( review.contentWithDiffs
-                            , ( review.greenLineRanges, review.redLineRanges )
-                            , False
-                            )
+                            { content = review.contentWithDiffs
+                            , redLineRanges = review.redLineRanges
+                            , greenLineRanges = review.greenLineRanges
+                            , customLineNumbers = Just review.lineNumbersWithDiffs
+                            }
 
                         ReviewNewTag showingDiff ->
                             if showingDiff then
-                                ( review.contentWithDiffs
-                                , ( review.greenLineRanges, review.redLineRanges )
-                                , False
-                                )
+                                { content = review.contentWithDiffs
+                                , redLineRanges = review.redLineRanges
+                                , greenLineRanges = review.greenLineRanges
+                                , customLineNumbers = Just review.lineNumbersWithDiffs
+                                }
 
                             else
-                                ( review.tag.content, ( [], [] ), True )
+                                { content = review.tag.content
+                                , redLineRanges = []
+                                , greenLineRanges = []
+                                , customLineNumbers = Nothing
+                                }
 
                         ReviewModifiedTag showingDiff ->
                             if showingDiff then
-                                ( review.contentWithDiffs
-                                , ( review.greenLineRanges, review.redLineRanges )
-                                , False
-                                )
+                                { content = review.contentWithDiffs
+                                , redLineRanges = review.redLineRanges
+                                , greenLineRanges = review.greenLineRanges
+                                , customLineNumbers = Just review.lineNumbersWithDiffs
+                                }
 
                             else
-                                ( review.tag.content, ( [], [] ), True )
+                                { content = review.tag.content
+                                , redLineRanges = []
+                                , greenLineRanges = []
+                                , customLineNumbers = Nothing
+                                }
             in
             { tagId = review.tag.tagId
             , startLineNumber = review.tag.startLine
-            , showLineNumbers = showLineNumbers
             , content = content
             , redLineRanges = redLineRanges
             , greenLineRanges = greenLineRanges
+            , customLineNumbers = customLineNumbers
             }
 
         DeletedFileTag tag ->
             { tagId = tag.tagId
             , startLineNumber = tag.startLine
-            , showLineNumbers = True
             , content = tag.content
             , redLineRanges = [ ( tag.startLine, tag.endLine ) ]
             , greenLineRanges = []
+            , customLineNumbers = Nothing
             }
 
         NewFileTag tag ->
             { tagId = tag.tagId
             , startLineNumber = tag.startLine
-            , showLineNumbers = True
             , content = tag.content
             , redLineRanges = []
             , greenLineRanges = [ ( tag.startLine, tag.endLine ) ]
+            , customLineNumbers = Nothing
             }
 
 
@@ -551,7 +563,8 @@ calculateRangesAndContentWithDiff :
     ->
         { greenLineRanges : List ( Int, Int )
         , redLineRanges : List ( Int, Int )
-        , contentWithDiff : List String
+        , contentWithDiffs : List String
+        , lineNumbersWithDiffs : List (Maybe Int)
         }
 calculateRangesAndContentWithDiff startLineNumber content alteredLines fileLineNumberType =
     let
@@ -630,8 +643,9 @@ calculateRangesAndContentWithDiff startLineNumber content alteredLines fileLineN
                         tailAddedLines
                         []
                         { acc
-                            | contentWithDiff = acc.contentWithDiff ++ [ headAddedLines.content ]
+                            | contentWithDiffs = acc.contentWithDiffs ++ [ headAddedLines.content ]
                             , greenLineRanges = acc.greenLineRanges ++ [ ( hightlightLineNumber, hightlightLineNumber ) ]
+                            , lineNumbersWithDiffs = acc.lineNumbersWithDiffs ++ [ Just currentLineNumber ]
                         }
 
                 -- Deleted lines left with no content, must be deleted lines first then added lines if there are any.
@@ -643,8 +657,9 @@ calculateRangesAndContentWithDiff startLineNumber content alteredLines fileLineN
                         remainingAddedLines
                         tailDeletedLines
                         { acc
-                            | contentWithDiff = acc.contentWithDiff ++ [ headDeletedLines.content ]
+                            | contentWithDiffs = acc.contentWithDiffs ++ [ headDeletedLines.content ]
                             , redLineRanges = acc.redLineRanges ++ [ ( hightlightLineNumber, hightlightLineNumber ) ]
+                            , lineNumbersWithDiffs = acc.lineNumbersWithDiffs ++ [ Nothing ]
                         }
 
                 -- Content is left:
@@ -662,7 +677,10 @@ calculateRangesAndContentWithDiff startLineNumber content alteredLines fileLineN
                                         tailContent
                                         remainingAddedLines
                                         remainingDeletedLines
-                                        { acc | contentWithDiff = acc.contentWithDiff ++ [ headContent ] }
+                                        { acc
+                                            | contentWithDiffs = acc.contentWithDiffs ++ [ headContent ]
+                                            , lineNumbersWithDiffs = acc.lineNumbersWithDiffs ++ [ Just currentLineNumber ]
+                                        }
 
                                 Just nextAddedLine ->
                                     go
@@ -672,8 +690,9 @@ calculateRangesAndContentWithDiff startLineNumber content alteredLines fileLineN
                                         (List.drop 1 remainingAddedLines)
                                         remainingDeletedLines
                                         { acc
-                                            | contentWithDiff = acc.contentWithDiff ++ [ nextAddedLine.content ]
+                                            | contentWithDiffs = acc.contentWithDiffs ++ [ nextAddedLine.content ]
                                             , greenLineRanges = acc.greenLineRanges ++ [ ( hightlightLineNumber, hightlightLineNumber ) ]
+                                            , lineNumbersWithDiffs = acc.lineNumbersWithDiffs ++ [ Just currentLineNumber ]
                                         }
 
                         Just nextDeletedLine ->
@@ -684,8 +703,9 @@ calculateRangesAndContentWithDiff startLineNumber content alteredLines fileLineN
                                 remainingAddedLines
                                 (List.drop 1 remainingDeletedLines)
                                 { acc
-                                    | contentWithDiff = acc.contentWithDiff ++ [ nextDeletedLine.content ]
+                                    | contentWithDiffs = acc.contentWithDiffs ++ [ nextDeletedLine.content ]
                                     , redLineRanges = acc.redLineRanges ++ [ ( hightlightLineNumber, hightlightLineNumber ) ]
+                                    , lineNumbersWithDiffs = acc.lineNumbersWithDiffs ++ [ Nothing ]
                                 }
     in
     go
@@ -694,7 +714,7 @@ calculateRangesAndContentWithDiff startLineNumber content alteredLines fileLineN
         content
         addedLines
         deletedLines
-        { greenLineRanges = [], redLineRanges = [], contentWithDiff = [] }
+        { greenLineRanges = [], redLineRanges = [], contentWithDiffs = [], lineNumbersWithDiffs = [] }
 
 
 type alias ApprovedAndRejectedTags =
@@ -788,7 +808,7 @@ decodeReview tagStates =
         |> Decode.andThen
             (\(TagAndAlteredLinesAndReviewType tag alteredLines reviewType) ->
                 let
-                    { redLineRanges, greenLineRanges, contentWithDiff } =
+                    { redLineRanges, greenLineRanges, contentWithDiffs, lineNumbersWithDiffs } =
                         calculateRangesAndContentWithDiff
                             tag.startLine
                             tag.content
@@ -804,11 +824,12 @@ decodeReview tagStates =
                                     CurrentFileLineNumbers
                             )
                 in
-                Decode.map6 Review
+                Decode.map7 Review
                     (Decode.succeed reviewType)
                     (Decode.succeed tag)
                     (Decode.succeed alteredLines)
-                    (Decode.succeed contentWithDiff)
+                    (Decode.succeed contentWithDiffs)
+                    (Decode.succeed lineNumbersWithDiffs)
                     (Decode.succeed redLineRanges)
                     (Decode.succeed greenLineRanges)
             )
