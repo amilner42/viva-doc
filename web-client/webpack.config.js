@@ -151,12 +151,7 @@ if (MODE === "production") {
             }),
             // Copy static assets
             new CopyWebpackPlugin([
-                {
-                    from: "src/assets",
-                    to: "assets/"
-                },
-               { from: 'node_modules/highlightjs/highlight.pack.min.js', to: 'highlightjs/' },
-               { from: 'node_modules/highlightjs/styles/github.css', to: 'highlightjs/'}
+                { from: "src/assets", to: "assets/" }
             ]),
             new MiniCssExtractPlugin({
                 // Options similar to the same options in webpackOptions.output

@@ -4,11 +4,12 @@ import Api.Api as Api
 import Api.Core as Core
 import Api.Errors.CommitReviewAction as CraError
 import Api.Errors.GetCommitReview as GcrError
+import CodeEditor
 import CommitReview
-import CustomMarkdown as CM
 import Html exposing (Html, a, button, div, dl, dt, hr, i, p, section, span, table, tbody, td, text, th, thead, tr)
 import Html.Attributes exposing (class, classList, disabled, style)
 import Html.Events exposing (onClick)
+import Ports
 import RemoteData
 import Route
 import Session exposing (Session)
@@ -402,7 +403,6 @@ renderFileReview username remainingOwnersToApproveDocs approveDocsState isCommit
                     username
                     "This tag has been added to a new file"
                     remainingOwnersToApproveDocs
-                    CM.GreenBackground
                     approveDocsState
                     isCommitStale
                     tags
@@ -412,7 +412,6 @@ renderFileReview username remainingOwnersToApproveDocs approveDocsState isCommit
                     username
                     "This tag is being removed inside a deleted file"
                     remainingOwnersToApproveDocs
-                    CM.RedBackground
                     approveDocsState
                     isCommitStale
                     tags
@@ -467,21 +466,20 @@ renderTags :
     String
     -> String
     -> Set.Set String
-    -> CM.RenderStyle
     -> ApproveDocsState err
     -> Bool
     -> List CommitReview.Tag
     -> Html.Html Msg
-renderTags username description remainingOwnersToApproveDocs renderStyle approveDocsState isCommitStale tags =
+renderTags username description remainingOwnersToApproveDocs approveDocsState isCommitStale tags =
     div [ class "tile is-ancestor is-vertical" ] <|
         List.map
             (renderTagOrReview
-                { renderStyle = renderStyle
-                , username = username
+                { username = username
                 , description = description
                 , remainingOwnersToApproveDocs = remainingOwnersToApproveDocs
                 , approveDocsState = approveDocsState
                 , isCommitStale = isCommitStale
+                , maybeReview = Nothing
                 }
             )
             tags
@@ -499,26 +497,7 @@ renderReviews username remainingOwnersToApproveDocs approveDocsState isCommitSta
         List.map
             (\review ->
                 renderTagOrReview
-                    { renderStyle =
-                        case review.reviewType of
-                            CommitReview.ReviewNewTag showAlteredLines ->
-                                CM.MixedBackground
-                                    { contentType = CM.Current showAlteredLines
-                                    , alteredLines = review.alteredLines
-                                    }
-
-                            CommitReview.ReviewDeletedTag ->
-                                CM.MixedBackground
-                                    { contentType = CM.Previous
-                                    , alteredLines = review.alteredLines
-                                    }
-
-                            CommitReview.ReviewModifiedTag showAlteredLines ->
-                                CM.MixedBackground
-                                    { contentType = CM.Current showAlteredLines
-                                    , alteredLines = review.alteredLines
-                                    }
-                    , username = username
+                    { username = username
                     , description =
                         case review.reviewType of
                             CommitReview.ReviewNewTag _ ->
@@ -532,6 +511,7 @@ renderReviews username remainingOwnersToApproveDocs approveDocsState isCommitSta
                     , remainingOwnersToApproveDocs = remainingOwnersToApproveDocs
                     , approveDocsState = approveDocsState
                     , isCommitStale = isCommitStale
+                    , maybeReview = Just review
                     }
                     review.tag
             )
@@ -539,20 +519,20 @@ renderReviews username remainingOwnersToApproveDocs approveDocsState isCommitSta
 
 
 renderTagOrReview :
-    { renderStyle : CM.RenderStyle
-    , username : String
+    { username : String
     , description : String
     , approveDocsState : ApproveDocsState err
     , remainingOwnersToApproveDocs : Set.Set String
     , isCommitStale : Bool
+    , maybeReview : Maybe CommitReview.Review
     }
     -> CommitReview.Tag
     -> Html.Html Msg
 renderTagOrReview config tag =
     div [ class "tile is-parent" ]
         [ div
-            [ class "tile is-8 is-child" ]
-            (CM.getMarkdown tag.content tag.startLine "javascript" config.renderStyle)
+            [ class "tile is-8 is-child has-code-editor" ]
+            [ CodeEditor.codeEditor tag.tagId ]
         , div
             [ class "tile is-4"
             ]
@@ -710,27 +690,34 @@ renderTagOrReview config tag =
                                         [ text "Internal Error" ]
                                     ]
                         )
-                            ++ [ case config.renderStyle of
-                                    CM.MixedBackground { contentType } ->
-                                        case contentType of
-                                            CM.Previous ->
-                                                div [ class "is-hidden" ] []
+                            ++ [ case config.maybeReview of
+                                    Nothing ->
+                                        div [ class "is-hidden" ] []
 
-                                            CM.Current showAlteredLines ->
+                                    Just review ->
+                                        let
+                                            diffButton showingDiff =
                                                 button
                                                     [ class "button is-info is-fullwidth"
-                                                    , onClick <| SetShowAlteredLines tag.tagId (not showAlteredLines)
+                                                    , onClick <| SetShowAlteredLines review
                                                     ]
                                                     [ text <|
-                                                        if showAlteredLines then
+                                                        if showingDiff then
                                                             "Hide Diff"
 
                                                         else
                                                             "Show Diff"
                                                     ]
+                                        in
+                                        case review.reviewType of
+                                            CommitReview.ReviewNewTag showingDiff ->
+                                                diffButton showingDiff
 
-                                    _ ->
-                                        div [ class "is-hidden" ] []
+                                            CommitReview.ReviewDeletedTag ->
+                                                div [ class "is-hidden" ] []
+
+                                            CommitReview.ReviewModifiedTag showingDiff ->
+                                                diffButton showingDiff
                                ]
                     ]
                 ]
@@ -830,7 +817,7 @@ type Msg
     = CompletedGetCommitReview (Result.Result (Core.HttpError GcrError.GetCommitReviewError) CommitReview.CommitReview)
     | SetDisplayOnlyUsersTags Bool
     | SetDisplayOnlyTagsNeedingApproval Bool
-    | SetShowAlteredLines String Bool
+    | SetShowAlteredLines CommitReview.Review
     | ApproveTags (Set.Set String)
     | CompletedApproveTags (Set.Set String) (Result.Result (Core.HttpError CraError.CommitReviewActionError) ())
     | RemoveApprovalOnTag String
@@ -889,7 +876,9 @@ update msg model =
     in
     case msg of
         CompletedGetCommitReview (Result.Ok commitReview) ->
-            ( { model | commitReview = RemoteData.Success commitReview }, Cmd.none )
+            ( { model | commitReview = RemoteData.Success commitReview }
+            , Ports.renderCodeEditors <| CommitReview.extractRenderEditorConfigs commitReview
+            )
 
         -- TODO handle error
         CompletedGetCommitReview (Result.Err err) ->
@@ -901,25 +890,29 @@ update msg model =
         SetDisplayOnlyTagsNeedingApproval displayOnlyTagsNeedingApproval ->
             ( { model | displayOnlyTagsNeedingApproval = displayOnlyTagsNeedingApproval }, Cmd.none )
 
-        SetShowAlteredLines tagId showAlteredLines ->
+        SetShowAlteredLines forReview ->
+            let
+                updatedReview =
+                    { forReview
+                        | reviewType =
+                            case forReview.reviewType of
+                                CommitReview.ReviewModifiedTag showAlteredLines ->
+                                    CommitReview.ReviewModifiedTag <| not showAlteredLines
+
+                                CommitReview.ReviewNewTag showAlteredLines ->
+                                    CommitReview.ReviewNewTag <| not showAlteredLines
+
+                                CommitReview.ReviewDeletedTag ->
+                                    CommitReview.ReviewDeletedTag
+                    }
+            in
             ( { model
                 | commitReview =
                     RemoteData.map
                         (CommitReview.updateReviews
                             (\review ->
-                                if review.tag.tagId == tagId then
-                                    { review
-                                        | reviewType =
-                                            case review.reviewType of
-                                                CommitReview.ReviewModifiedTag _ ->
-                                                    CommitReview.ReviewModifiedTag showAlteredLines
-
-                                                CommitReview.ReviewNewTag _ ->
-                                                    CommitReview.ReviewNewTag showAlteredLines
-
-                                                CommitReview.ReviewDeletedTag ->
-                                                    CommitReview.ReviewDeletedTag
-                                    }
+                                if review.tag.tagId == updatedReview.tag.tagId then
+                                    updatedReview
 
                                 else
                                     review
@@ -927,7 +920,7 @@ update msg model =
                         )
                         model.commitReview
               }
-            , Cmd.none
+            , Ports.rerenderCodeEditor <| CommitReview.renderConfigForReviewOrTag <| CommitReview.AReview updatedReview
             )
 
         ApproveTags tags ->
