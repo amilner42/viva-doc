@@ -1,7 +1,8 @@
-module CommitReview exposing (AlteredLine, ApprovedState(..), CommitReview, EditType(..), FileReview, FileReviewType(..), OwnerTagStatus, Review, ReviewOrTag(..), ReviewType(..), Status(..), Tag, countTotalReviewsAndTags, decodeCommitReview, extractRenderEditorConfigs, filterFileReviews, getOwnerTagStatuses, readableTagType, renderConfigForReviewOrTag, updateReviews, updateTags)
+module CommitReview exposing (AlteredLine, ApprovedState(..), CommitReview, EditType(..), FileReview, FileReviewType(..), OwnerTagStatus, Review, ReviewOrTag(..), ReviewType(..), Status(..), Tag, countTotalReviewsAndTags, countVisibleReviewsAndTags, decodeCommitReview, extractRenderEditorConfigs, getOwnerTagStatuses, readableTagType, renderConfigForReviewOrTag, updateCommitReviewForSearch, updateReviews, updateTags)
 
 import Dict
 import Json.Decode as Decode
+import Json.Decode.Pipeline exposing (hardcoded, optional, required)
 import Ports
 import Set
 
@@ -21,6 +22,7 @@ type alias CommitReview =
 type alias FileReview =
     { fileReviewType : FileReviewType
     , currentFilePath : String
+    , isHidden : Bool
     }
 
 
@@ -79,6 +81,7 @@ type alias Tag =
 
     -- TODO actual error type
     , approvedState : ApprovedState ()
+    , isHidden : Bool
     }
 
 
@@ -114,30 +117,110 @@ type Status
     | Unconfirmed Int
 
 
-filterFileReviews :
+type alias SearchBy =
     { filterForUser : Maybe String
     , filterApprovedTags : Bool
     }
-    -> List FileReview
-    -> List FileReview
-filterFileReviews { filterForUser, filterApprovedTags } fileReviews =
-    fileReviews
-        |> (\fileReviewsIn ->
-                case filterForUser of
-                    Nothing ->
-                        fileReviewsIn
 
-                    Just username ->
-                        List.map (fileReviewFilterTagsForUser username) fileReviewsIn
-           )
-        |> (\fileReviewsIn ->
-                if filterApprovedTags then
-                    List.map fileReviewFilterTagsThatNeedApproval fileReviewsIn
 
-                else
-                    fileReviewsIn
-           )
-        |> List.filter fileReviewHasTagsOrReviews
+updateCommitReviewForSearch :
+    SearchBy
+    -> CommitReview
+    -> CommitReview
+updateCommitReviewForSearch searchBy commitReview =
+    { commitReview | fileReviews = List.map (updateFileReviewForSearch searchBy) commitReview.fileReviews }
+
+
+getNewHiddenValue : SearchBy -> Tag -> Bool
+getNewHiddenValue searchBy tag =
+    let
+        isHiddenThroughUserFilter =
+            case searchBy.filterForUser of
+                Nothing ->
+                    False
+
+                Just username ->
+                    tag.owner /= username
+
+        isHiddenThroughApprovalFilter =
+            if searchBy.filterApprovedTags then
+                isApproved tag.approvedState
+
+            else
+                False
+    in
+    isHiddenThroughApprovalFilter || isHiddenThroughUserFilter
+
+
+updateFileReviewForSearch : SearchBy -> FileReview -> FileReview
+updateFileReviewForSearch searchBy fileReview =
+    let
+        filterTagsForSearch =
+            List.map
+                (\tag -> { tag | isHidden = getNewHiddenValue searchBy tag })
+
+        filterReviewsForSearch =
+            List.map
+                (\review ->
+                    let
+                        reviewTag =
+                            review.tag
+                    in
+                    { review | tag = { reviewTag | isHidden = getNewHiddenValue searchBy reviewTag } }
+                )
+    in
+    case fileReview.fileReviewType of
+        NewFileReview tags ->
+            let
+                updatedTags =
+                    filterTagsForSearch tags
+
+                visibleTags =
+                    countVisibleTags updatedTags
+            in
+            { fileReview
+                | fileReviewType = NewFileReview updatedTags
+                , isHidden = visibleTags == 0
+            }
+
+        DeletedFileReview tags ->
+            let
+                updatedTags =
+                    filterTagsForSearch tags
+
+                visibleTags =
+                    countVisibleTags updatedTags
+            in
+            { fileReview
+                | fileReviewType = DeletedFileReview updatedTags
+                , isHidden = visibleTags == 0
+            }
+
+        ModifiedFileReview reviews ->
+            let
+                updatedReviews =
+                    filterReviewsForSearch reviews
+
+                visibleReviews =
+                    countVisibleReviews updatedReviews
+            in
+            { fileReview
+                | fileReviewType = ModifiedFileReview updatedReviews
+                , isHidden = visibleReviews == 0
+            }
+
+        RenamedFileReview prevName reviews ->
+            let
+                updatedReviews =
+                    filterReviewsForSearch reviews
+
+                visibleReviews =
+                    countVisibleReviews updatedReviews
+            in
+            { fileReview
+                | fileReviewType = RenamedFileReview prevName updatedReviews
+                , isHidden = visibleReviews == 0
+            }
 
 
 countTotalReviewsAndTags : List FileReview -> Int
@@ -161,53 +244,36 @@ reviewOrTagCount { fileReviewType } =
             List.length reviews
 
 
-fileReviewFilterTagsForUser : String -> FileReview -> FileReview
-fileReviewFilterTagsForUser username =
-    filterFileReviewTagsAndReviews
-        (\tag -> tag.owner == username)
-        (\review -> review.tag.owner == username)
+countVisibleReviewsAndTags : List FileReview -> Int
+countVisibleReviewsAndTags =
+    List.foldl (\fileReview totalCount -> totalCount + visibleReviewOrTagCount fileReview) 0
 
 
-fileReviewFilterTagsThatNeedApproval : FileReview -> FileReview
-fileReviewFilterTagsThatNeedApproval =
-    filterFileReviewTagsAndReviews
-        (\{ approvedState } -> not <| isApproved approvedState)
-        (\{ tag } -> not <| isApproved tag.approvedState)
-
-
-fileReviewHasTagsOrReviews : FileReview -> Bool
-fileReviewHasTagsOrReviews fileReview =
-    case fileReview.fileReviewType of
+visibleReviewOrTagCount : FileReview -> Int
+visibleReviewOrTagCount { fileReviewType } =
+    case fileReviewType of
         NewFileReview tags ->
-            List.length tags > 0
+            countVisibleTags tags
 
         DeletedFileReview tags ->
-            List.length tags > 0
-
-        ModifiedFileReview reviews ->
-            List.length reviews > 0
+            countVisibleTags tags
 
         RenamedFileReview _ reviews ->
-            List.length reviews > 0
+            countVisibleReviews reviews
+
+        ModifiedFileReview reviews ->
+            countVisibleReviews reviews
 
 
-filterFileReviewTagsAndReviews : (Tag -> Bool) -> (Review -> Bool) -> FileReview -> FileReview
-filterFileReviewTagsAndReviews keepTag keepReview fileReview =
-    { fileReview
-        | fileReviewType =
-            case fileReview.fileReviewType of
-                NewFileReview tags ->
-                    NewFileReview <| List.filter keepTag tags
+countVisibleTags : List Tag -> Int
+countVisibleTags =
+    List.length
+        << List.filter (.isHidden >> (==) False)
 
-                DeletedFileReview tags ->
-                    DeletedFileReview <| List.filter keepTag tags
 
-                ModifiedFileReview reviews ->
-                    ModifiedFileReview <| List.filter keepReview reviews
-
-                RenamedFileReview previousFilePath reviews ->
-                    RenamedFileReview previousFilePath <| List.filter keepReview reviews
-    }
+countVisibleReviews : List Review -> Int
+countVisibleReviews =
+    List.map .tag >> countVisibleTags
 
 
 readableTagType : TagType -> String
@@ -662,9 +728,10 @@ decodeCommitReview =
 
 decodeFileReview : ApprovedAndRejectedTags -> Decode.Decoder FileReview
 decodeFileReview tagStates =
-    Decode.map2 FileReview
+    Decode.map3 FileReview
         (decodeFileReviewType tagStates)
         (Decode.field "currentFilePath" Decode.string)
+        (Decode.succeed False)
 
 
 decodeFileReviewType : ApprovedAndRejectedTags -> Decode.Decoder FileReviewType
@@ -802,38 +869,40 @@ decodeTag { approvedTags, rejectedTags } =
     Decode.field "tagId" Decode.string
         |> Decode.andThen
             (\tagId ->
-                Decode.map8 Tag
-                    (Decode.field "tagType" Decode.string
-                        |> Decode.andThen
-                            (\tagType ->
-                                case tagType of
-                                    "file" ->
-                                        Decode.succeed FileTag
+                Decode.succeed Tag
+                    |> required "tagType"
+                        (Decode.string
+                            |> Decode.andThen
+                                (\tagType ->
+                                    case tagType of
+                                        "file" ->
+                                            Decode.succeed FileTag
 
-                                    "block" ->
-                                        Decode.succeed BlockTag
+                                        "block" ->
+                                            Decode.succeed BlockTag
 
-                                    "line" ->
-                                        Decode.succeed LineTag
+                                        "line" ->
+                                            Decode.succeed LineTag
 
-                                    _ ->
-                                        Decode.fail <| "Invalid tag type " ++ tagType
-                            )
-                    )
-                    (Decode.field "owner" Decode.string)
-                    (Decode.field "startLine" Decode.int)
-                    (Decode.field "endLine" Decode.int)
-                    (Decode.field "tagAnnotationLine" Decode.int)
-                    (Decode.field "content" (Decode.list Decode.string))
-                    (Decode.field "tagId" Decode.string)
-                    (Decode.succeed <|
-                        if Set.member tagId approvedTags then
+                                        _ ->
+                                            Decode.fail <| "Invalid tag type " ++ tagType
+                                )
+                        )
+                    |> required "owner" Decode.string
+                    |> required "startLine" Decode.int
+                    |> required "endLine" Decode.int
+                    |> required "tagAnnotationLine" Decode.int
+                    |> required "content" (Decode.list Decode.string)
+                    |> required "tagId" Decode.string
+                    |> hardcoded
+                        (if Set.member tagId approvedTags then
                             Approved
 
-                        else if Set.member tagId rejectedTags then
+                         else if Set.member tagId rejectedTags then
                             Rejected
 
-                        else
+                         else
                             Neutral
-                    )
+                        )
+                    |> hardcoded False
             )

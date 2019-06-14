@@ -33,7 +33,7 @@ type alias Model =
     , prNumber : Int
     , commitId : String
     , commitReview : RemoteData.RemoteData (Core.HttpError GcrError.GetCommitReviewError) CommitReview.CommitReview
-    , displayOnlyUsersTags : Bool
+    , displayOnlyUsersTags : Maybe String
     , displayOnlyTagsNeedingApproval : Bool
     , modalClosed : Bool
 
@@ -51,7 +51,7 @@ init session repoId prNumber commitId =
             , prNumber = prNumber
             , commitId = commitId
             , commitReview = RemoteData.NotAsked
-            , displayOnlyUsersTags = False
+            , displayOnlyUsersTags = Nothing
             , displayOnlyTagsNeedingApproval = False
             , modalClosed = False
             , approveDocsState = NotRequesting
@@ -127,7 +127,7 @@ view model =
 renderCommitReview :
     { username : String
     , approveDocsState : ApproveDocsState err
-    , displayOnlyUsersTags : Bool
+    , displayOnlyUsersTags : Maybe String
     , displayOnlyTagsNeedingApproval : Bool
     , isCommitStale : Bool
     }
@@ -135,26 +135,15 @@ renderCommitReview :
     -> List (Html.Html Msg)
 renderCommitReview config commitReview =
     let
-        fileReviewsToRender =
-            CommitReview.filterFileReviews
-                { filterForUser =
-                    if config.displayOnlyUsersTags then
-                        Just config.username
-
-                    else
-                        Nothing
-                , filterApprovedTags = config.displayOnlyTagsNeedingApproval
-                }
-                commitReview.fileReviews
-
         totalReviews =
             CommitReview.countTotalReviewsAndTags commitReview.fileReviews
 
         displayingReviews =
-            CommitReview.countTotalReviewsAndTags fileReviewsToRender
+            CommitReview.countVisibleReviewsAndTags commitReview.fileReviews
     in
     renderSummaryHeader config.username config.approveDocsState config.isCommitStale commitReview
         :: renderCommitReviewHeader
+            config.username
             config.displayOnlyUsersTags
             config.displayOnlyTagsNeedingApproval
             displayingReviews
@@ -167,7 +156,7 @@ renderCommitReview config commitReview =
                 config.approveDocsState
                 config.isCommitStale
             )
-            fileReviewsToRender
+            commitReview.fileReviews
 
 
 renderSummaryHeader : String -> ApproveDocsState err -> Bool -> CommitReview.CommitReview -> Html.Html Msg
@@ -320,8 +309,8 @@ renderSummaryHeader username approveDocsState isCommitStale commitReview =
         ]
 
 
-renderCommitReviewHeader : Bool -> Bool -> Int -> Int -> CommitReview.CommitReview -> Html.Html Msg
-renderCommitReviewHeader displayOnlyUsersTags displayOnlyTagsNeedingApproval displayingReviews totalReviews commitReview =
+renderCommitReviewHeader : String -> Maybe String -> Bool -> Int -> Int -> CommitReview.CommitReview -> Html.Html Msg
+renderCommitReviewHeader username displayOnlyUsersTags displayOnlyTagsNeedingApproval displayingReviews totalReviews commitReview =
     div
         [ class "level is-mobile"
         , style "margin-bottom" "0px"
@@ -356,17 +345,27 @@ renderCommitReviewHeader displayOnlyUsersTags displayOnlyTagsNeedingApproval dis
         , div [ class "buttons level-right" ]
             [ button
                 [ class "button"
-                , onClick <| SetDisplayOnlyUsersTags (not displayOnlyUsersTags)
+                , onClick <|
+                    SetDisplayOnlyUsersTags
+                        (case displayOnlyUsersTags of
+                            Nothing ->
+                                Just username
+
+                            Just _ ->
+                                Nothing
+                        )
+                        username
                 ]
                 [ span [ class "icon is-small" ]
                     [ i
                         [ class "material-icons" ]
                         [ text <|
-                            if displayOnlyUsersTags then
-                                "check_box"
+                            case displayOnlyUsersTags of
+                                Nothing ->
+                                    "check_box_outline_blank"
 
-                            else
-                                "check_box_outline_blank"
+                                Just _ ->
+                                    "check_box"
                         ]
                     ]
                 , div [] [ text "Your Tags" ]
@@ -395,7 +394,7 @@ renderCommitReviewHeader displayOnlyUsersTags displayOnlyTagsNeedingApproval dis
 
 renderFileReview : String -> Set.Set String -> ApproveDocsState err -> Bool -> CommitReview.FileReview -> Html.Html Msg
 renderFileReview username remainingOwnersToApproveDocs approveDocsState isCommitStale fileReview =
-    div [ class "section" ] <|
+    div [ classList [ ( "section", True ), ( "is-hidden", fileReview.isHidden ) ] ] <|
         [ renderFileReviewHeader fileReview
         , case fileReview.fileReviewType of
             CommitReview.NewFileReview tags ->
@@ -529,7 +528,7 @@ renderTagOrReview :
     -> CommitReview.Tag
     -> Html.Html Msg
 renderTagOrReview config tag =
-    div [ class "tile is-parent" ]
+    div [ classList [ ( "tile is-parent", True ), ( "is-hidden", tag.isHidden ) ] ]
         [ div
             [ class "tile is-8 is-child has-code-editor" ]
             [ CodeEditor.codeEditor tag.tagId ]
@@ -815,7 +814,7 @@ renderGetCommitReviewErrorModal httpError =
 
 type Msg
     = CompletedGetCommitReview (Result.Result (Core.HttpError GcrError.GetCommitReviewError) CommitReview.CommitReview)
-    | SetDisplayOnlyUsersTags Bool
+    | SetDisplayOnlyUsersTags (Maybe String) String
     | SetDisplayOnlyTagsNeedingApproval Bool
     | SetShowAlteredLines CommitReview.Review
     | ApproveTags (Set.Set String)
@@ -884,11 +883,35 @@ update msg model =
         CompletedGetCommitReview (Result.Err err) ->
             ( { model | commitReview = RemoteData.Failure err }, Cmd.none )
 
-        SetDisplayOnlyUsersTags displayOnlyUsersTags ->
-            ( { model | displayOnlyUsersTags = displayOnlyUsersTags }, Cmd.none )
+        SetDisplayOnlyUsersTags displayOnlyUsersTags username ->
+            ( { model
+                | displayOnlyUsersTags = displayOnlyUsersTags
+                , commitReview =
+                    model.commitReview
+                        |> RemoteData.map
+                            (CommitReview.updateCommitReviewForSearch
+                                { filterForUser = displayOnlyUsersTags
+                                , filterApprovedTags = model.displayOnlyTagsNeedingApproval
+                                }
+                            )
+              }
+            , Cmd.none
+            )
 
         SetDisplayOnlyTagsNeedingApproval displayOnlyTagsNeedingApproval ->
-            ( { model | displayOnlyTagsNeedingApproval = displayOnlyTagsNeedingApproval }, Cmd.none )
+            ( { model
+                | displayOnlyTagsNeedingApproval = displayOnlyTagsNeedingApproval
+                , commitReview =
+                    model.commitReview
+                        |> RemoteData.map
+                            (CommitReview.updateCommitReviewForSearch
+                                { filterForUser = model.displayOnlyUsersTags
+                                , filterApprovedTags = displayOnlyTagsNeedingApproval
+                                }
+                            )
+              }
+            , Cmd.none
+            )
 
         SetShowAlteredLines forReview ->
             let
@@ -941,21 +964,26 @@ update msg model =
             , Api.postApproveTags model.repoId model.prNumber model.commitId tags (CompletedApproveTags tags)
             )
 
-        -- TODO Probably better to feed commitReview throguh to avoid `RemoteData.map`
         CompletedApproveTags approvedTags (Ok ()) ->
             ( { model
                 | commitReview =
-                    RemoteData.map
-                        (CommitReview.updateTags
-                            (\tag ->
-                                if Set.member tag.tagId approvedTags then
-                                    { tag | approvedState = CommitReview.Approved }
+                    model.commitReview
+                        |> RemoteData.map
+                            (CommitReview.updateTags
+                                (\tag ->
+                                    if Set.member tag.tagId approvedTags then
+                                        { tag | approvedState = CommitReview.Approved }
 
-                                else
-                                    tag
+                                    else
+                                        tag
+                                )
                             )
-                        )
-                        model.commitReview
+                        |> RemoteData.map
+                            (CommitReview.updateCommitReviewForSearch
+                                { filterForUser = model.displayOnlyUsersTags
+                                , filterApprovedTags = model.displayOnlyTagsNeedingApproval
+                                }
+                            )
               }
             , Cmd.none
             )
@@ -984,17 +1012,23 @@ update msg model =
         CompletedRemoveApprovalOnTag tagId (Result.Ok ()) ->
             ( { model
                 | commitReview =
-                    RemoteData.map
-                        (CommitReview.updateTags
-                            (\tag ->
-                                if tag.tagId == tagId then
-                                    { tag | approvedState = CommitReview.Neutral }
+                    model.commitReview
+                        |> RemoteData.map
+                            (CommitReview.updateTags
+                                (\tag ->
+                                    if tag.tagId == tagId then
+                                        { tag | approvedState = CommitReview.Neutral }
 
-                                else
-                                    tag
+                                    else
+                                        tag
+                                )
                             )
-                        )
-                        model.commitReview
+                        |> RemoteData.map
+                            (CommitReview.updateCommitReviewForSearch
+                                { filterForUser = model.displayOnlyUsersTags
+                                , filterApprovedTags = model.displayOnlyTagsNeedingApproval
+                                }
+                            )
               }
             , Cmd.none
             )
@@ -1028,17 +1062,23 @@ update msg model =
         CompletedRejectTags tags (Ok ()) ->
             ( { model
                 | commitReview =
-                    RemoteData.map
-                        (CommitReview.updateTags
-                            (\tag ->
-                                if Set.member tag.tagId tags then
-                                    { tag | approvedState = CommitReview.Rejected }
+                    model.commitReview
+                        |> RemoteData.map
+                            (CommitReview.updateTags
+                                (\tag ->
+                                    if Set.member tag.tagId tags then
+                                        { tag | approvedState = CommitReview.Rejected }
 
-                                else
-                                    tag
+                                    else
+                                        tag
+                                )
                             )
-                        )
-                        model.commitReview
+                        |> RemoteData.map
+                            (CommitReview.updateCommitReviewForSearch
+                                { filterForUser = model.displayOnlyUsersTags
+                                , filterApprovedTags = model.displayOnlyTagsNeedingApproval
+                                }
+                            )
               }
             , Cmd.none
             )
@@ -1072,17 +1112,23 @@ update msg model =
         CompletedRemoveRejectionOnTag tagId (Result.Ok ()) ->
             ( { model
                 | commitReview =
-                    RemoteData.map
-                        (CommitReview.updateTags
-                            (\tag ->
-                                if tag.tagId == tagId then
-                                    { tag | approvedState = CommitReview.Neutral }
+                    model.commitReview
+                        |> RemoteData.map
+                            (CommitReview.updateTags
+                                (\tag ->
+                                    if tag.tagId == tagId then
+                                        { tag | approvedState = CommitReview.Neutral }
 
-                                else
-                                    tag
+                                    else
+                                        tag
+                                )
                             )
-                        )
-                        model.commitReview
+                        |> RemoteData.map
+                            (CommitReview.updateCommitReviewForSearch
+                                { filterForUser = model.displayOnlyUsersTags
+                                , filterApprovedTags = model.displayOnlyTagsNeedingApproval
+                                }
+                            )
               }
             , Cmd.none
             )
