@@ -84,7 +84,8 @@ export type BaseReview = Diff.HasAlteredLines & {
 /** A `ReviewNew` is pointing to a newly created tag.
 
   The tag annotation would be a green line in the git diff.
-  Because it's a new tag we don't include altered lines.
+
+  The `tag` will be from the current file, and so have current line numbers.
   */
 export type ReviewNewTag = BaseReview & {
   reviewType: "new";
@@ -93,16 +94,21 @@ export type ReviewNewTag = BaseReview & {
 /** A `ReviewDeleted` is pointing to a deleted tag.
 
   The tag annotation would be a red line in the git diff.
-  Because it's a deleted tag we don't include the altered lines.
+
+  The `tag` will be from the deleted file, and so have previous line numbers. Due to this, the field
+  `currentFileStartLineNumber` is present to indicate what the first line number (whether it be added/removed/neutral)
+  of the previous tag would be in the new file.
  */
 export type ReviewDeletedTag = BaseReview & {
   reviewType: "deleted";
+  currentFileStartLineNumber: number;
 }
 
 /** A `ReviewModified` is pointing to a modified tag.
 
   The tag annotation would not be red or green in the git diff, only the code/comment changed.
-  We include all altered lines that reflect the modification.
+
+  The `tag` will be from the current file, and so have current line numbers.
 */
 export type ReviewModifiedTag = BaseReview & {
   reviewType: "modified";
@@ -549,14 +555,32 @@ const tagMapFromPartial =
   return tagMap
 }
 
+const calculateCurrentFileStartLineNumberFromPreviousFileTag =
+  ( tag: Tag.VdTag
+  , alteredLines: Diff.AlteredLine[]
+  ): number => {
+
+  const firstAl = alteredLines[0];
+  const firstAlCurrentLineNumber = firstAl.currentLineNumber;
+  const firstAlPreviousLineNumber = firstAl.previousLineNumber;
+
+  const tagPreviousStartLineNumber = tag.startLine;
+
+  return firstAlCurrentLineNumber - (firstAlPreviousLineNumber - tagPreviousStartLineNumber);
+}
+
 /** TODO DOC */
 const reviewsFromTagMapAndAlteredLines = (tagMap: TagMap, alteredLines: Diff.AlteredLine[]): Review[] => {
 
   const reviewDeletedTags: ReviewDeletedTag[] = R.map<Tag.VdTag, ReviewDeletedTag>((tag) => {
+
+    const relevantAlteredLines = R.filter(alteredLineInTagOwnership(tag, "deleted"), alteredLines);
+
     return {
       reviewType: "deleted",
       tag,
-      alteredLines: R.filter(alteredLineInTagOwnership(tag, "deleted"), alteredLines)
+      alteredLines: relevantAlteredLines,
+      currentFileStartLineNumber:  calculateCurrentFileStartLineNumberFromPreviousFileTag(tag, relevantAlteredLines)
     }
   }, tagMap.deletedTags)
 

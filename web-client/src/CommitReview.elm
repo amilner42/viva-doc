@@ -53,7 +53,7 @@ deleted tag (because then what are you showing?) so we don't have a bool on it t
 
 -}
 type ReviewType
-    = ReviewDeletedTag
+    = ReviewDeletedTag Int
     | ReviewNewTag Bool
     | ReviewModifiedTag Bool
 
@@ -486,7 +486,7 @@ renderConfigForReviewOrTag reviewOrTag =
             let
                 { content, redLineRanges, greenLineRanges, customLineNumbers } =
                     case review.reviewType of
-                        ReviewDeletedTag ->
+                        ReviewDeletedTag _ ->
                             { content = review.contentWithDiffs
                             , redLineRanges = review.redLineRanges
                             , greenLineRanges = review.greenLineRanges
@@ -552,7 +552,7 @@ renderConfigForReviewOrTag reviewOrTag =
 
 type FileLineNumberType
     = CurrentFileLineNumbers
-    | PreviousFileLineNumbers
+    | PreviousFileLineNumbers Int
 
 
 calculateRangesAndContentWithDiff :
@@ -576,19 +576,28 @@ calculateRangesAndContentWithDiff startLineNumber content alteredLines fileLineN
         deletedLines =
             List.filter (.editType >> (==) Deletion) alteredLines
 
+        nextLineNumberInCurrentFileIfSwallowedAlteredLine : EditType -> Int -> Int
+        nextLineNumberInCurrentFileIfSwallowedAlteredLine editType lineNumber =
+            case editType of
+                Insertion ->
+                    lineNumber + 1
+
+                Deletion ->
+                    lineNumber
+
         nextLineNumberIfSwallowedAlteredLine : EditType -> Int -> Int
         nextLineNumberIfSwallowedAlteredLine editType lineNumber =
             case ( editType, fileLineNumberType ) of
                 ( Insertion, CurrentFileLineNumbers ) ->
                     lineNumber + 1
 
-                ( Insertion, PreviousFileLineNumbers ) ->
+                ( Insertion, PreviousFileLineNumbers _ ) ->
                     lineNumber
 
                 ( Deletion, CurrentFileLineNumbers ) ->
                     lineNumber
 
-                ( Deletion, PreviousFileLineNumbers ) ->
+                ( Deletion, PreviousFileLineNumbers _ ) ->
                     lineNumber + 1
 
         nextContentIfSwallowedAlteredLines : EditType -> List String -> List String
@@ -597,13 +606,13 @@ calculateRangesAndContentWithDiff startLineNumber content alteredLines fileLineN
                 ( Insertion, CurrentFileLineNumbers ) ->
                     List.drop 1 remainingContent
 
-                ( Insertion, PreviousFileLineNumbers ) ->
+                ( Insertion, PreviousFileLineNumbers _ ) ->
                     remainingContent
 
                 ( Deletion, CurrentFileLineNumbers ) ->
                     remainingContent
 
-                ( Deletion, PreviousFileLineNumbers ) ->
+                ( Deletion, PreviousFileLineNumbers _ ) ->
                     List.drop 1 remainingContent
 
         nextAlteredLineForLineNumber : Int -> List AlteredLine -> Maybe AlteredLine
@@ -614,7 +623,7 @@ calculateRangesAndContentWithDiff startLineNumber content alteredLines fileLineN
 
                 headAlteredLine :: _ ->
                     case fileLineNumberType of
-                        PreviousFileLineNumbers ->
+                        PreviousFileLineNumbers _ ->
                             if headAlteredLine.previousLineNumber == lineNumber then
                                 Just headAlteredLine
 
@@ -628,7 +637,7 @@ calculateRangesAndContentWithDiff startLineNumber content alteredLines fileLineN
                             else
                                 Nothing
 
-        go currentLineNumber hightlightLineNumber remainingContent remainingAddedLines remainingDeletedLines acc =
+        go lineNumberInTag lineNumberInCurrentFile hightlightLineNumber remainingContent remainingAddedLines remainingDeletedLines acc =
             case ( remainingContent, remainingAddedLines, remainingDeletedLines ) of
                 -- Base case.
                 ( [], [], [] ) ->
@@ -637,7 +646,8 @@ calculateRangesAndContentWithDiff startLineNumber content alteredLines fileLineN
                 -- Only added lines left, must be those.
                 ( [], headAddedLines :: tailAddedLines, [] ) ->
                     go
-                        (nextLineNumberIfSwallowedAlteredLine Insertion currentLineNumber)
+                        (nextLineNumberIfSwallowedAlteredLine Insertion lineNumberInTag)
+                        (nextLineNumberInCurrentFileIfSwallowedAlteredLine Insertion lineNumberInCurrentFile)
                         (hightlightLineNumber + 1)
                         []
                         tailAddedLines
@@ -645,13 +655,14 @@ calculateRangesAndContentWithDiff startLineNumber content alteredLines fileLineN
                         { acc
                             | contentWithDiffs = acc.contentWithDiffs ++ [ headAddedLines.content ]
                             , greenLineRanges = acc.greenLineRanges ++ [ ( hightlightLineNumber, hightlightLineNumber ) ]
-                            , lineNumbersWithDiffs = acc.lineNumbersWithDiffs ++ [ Just currentLineNumber ]
+                            , lineNumbersWithDiffs = acc.lineNumbersWithDiffs ++ [ Just lineNumberInCurrentFile ]
                         }
 
                 -- Deleted lines left with no content, must be deleted lines first then added lines if there are any.
                 ( [], _, headDeletedLines :: tailDeletedLines ) ->
                     go
-                        (nextLineNumberIfSwallowedAlteredLine Deletion currentLineNumber)
+                        (nextLineNumberIfSwallowedAlteredLine Deletion lineNumberInTag)
+                        (nextLineNumberInCurrentFileIfSwallowedAlteredLine Deletion lineNumberInCurrentFile)
                         (hightlightLineNumber + 1)
                         []
                         remainingAddedLines
@@ -667,24 +678,26 @@ calculateRangesAndContentWithDiff startLineNumber content alteredLines fileLineN
                 --  2. check if a added line should be swallowed
                 --  3. else it must be the content next
                 ( headContent :: tailContent, _, _ ) ->
-                    case nextAlteredLineForLineNumber currentLineNumber remainingDeletedLines of
+                    case nextAlteredLineForLineNumber lineNumberInTag remainingDeletedLines of
                         Nothing ->
-                            case nextAlteredLineForLineNumber currentLineNumber remainingAddedLines of
+                            case nextAlteredLineForLineNumber lineNumberInTag remainingAddedLines of
                                 Nothing ->
                                     go
-                                        (currentLineNumber + 1)
+                                        (lineNumberInTag + 1)
+                                        (lineNumberInCurrentFile + 1)
                                         (hightlightLineNumber + 1)
                                         tailContent
                                         remainingAddedLines
                                         remainingDeletedLines
                                         { acc
                                             | contentWithDiffs = acc.contentWithDiffs ++ [ headContent ]
-                                            , lineNumbersWithDiffs = acc.lineNumbersWithDiffs ++ [ Just currentLineNumber ]
+                                            , lineNumbersWithDiffs = acc.lineNumbersWithDiffs ++ [ Just lineNumberInCurrentFile ]
                                         }
 
                                 Just nextAddedLine ->
                                     go
-                                        (nextLineNumberIfSwallowedAlteredLine Insertion currentLineNumber)
+                                        (nextLineNumberIfSwallowedAlteredLine Insertion lineNumberInTag)
+                                        (nextLineNumberInCurrentFileIfSwallowedAlteredLine Insertion lineNumberInCurrentFile)
                                         (hightlightLineNumber + 1)
                                         (nextContentIfSwallowedAlteredLines Insertion remainingContent)
                                         (List.drop 1 remainingAddedLines)
@@ -692,12 +705,13 @@ calculateRangesAndContentWithDiff startLineNumber content alteredLines fileLineN
                                         { acc
                                             | contentWithDiffs = acc.contentWithDiffs ++ [ nextAddedLine.content ]
                                             , greenLineRanges = acc.greenLineRanges ++ [ ( hightlightLineNumber, hightlightLineNumber ) ]
-                                            , lineNumbersWithDiffs = acc.lineNumbersWithDiffs ++ [ Just currentLineNumber ]
+                                            , lineNumbersWithDiffs = acc.lineNumbersWithDiffs ++ [ Just lineNumberInCurrentFile ]
                                         }
 
                         Just nextDeletedLine ->
                             go
-                                (nextLineNumberIfSwallowedAlteredLine Deletion currentLineNumber)
+                                (nextLineNumberIfSwallowedAlteredLine Deletion lineNumberInTag)
+                                (nextLineNumberInCurrentFileIfSwallowedAlteredLine Deletion lineNumberInCurrentFile)
                                 (hightlightLineNumber + 1)
                                 (nextContentIfSwallowedAlteredLines Deletion remainingContent)
                                 remainingAddedLines
@@ -710,6 +724,13 @@ calculateRangesAndContentWithDiff startLineNumber content alteredLines fileLineN
     in
     go
         startLineNumber
+        (case fileLineNumberType of
+            PreviousFileLineNumbers currentFileStartLineNumber ->
+                currentFileStartLineNumber
+
+            CurrentFileLineNumbers ->
+                startLineNumber
+        )
         startLineNumber
         content
         addedLines
@@ -814,8 +835,8 @@ decodeReview tagStates =
                             tag.content
                             alteredLines
                             (case reviewType of
-                                ReviewDeletedTag ->
-                                    PreviousFileLineNumbers
+                                ReviewDeletedTag currentFileStartLineNumber ->
+                                    PreviousFileLineNumbers currentFileStartLineNumber
 
                                 ReviewNewTag _ ->
                                     CurrentFileLineNumbers
@@ -852,7 +873,8 @@ decodeTagAndAlteredLinesAndReviewType tagStates =
                             Decode.succeed <| ReviewNewTag True
 
                         "deleted" ->
-                            Decode.succeed ReviewDeletedTag
+                            Decode.field "currentFileStartLineNumber" Decode.int
+                                |> Decode.map ReviewDeletedTag
 
                         "modified" ->
                             Decode.succeed <| ReviewModifiedTag True

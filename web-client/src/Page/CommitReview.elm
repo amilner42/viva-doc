@@ -503,7 +503,7 @@ renderReviews username remainingOwnersToApproveDocs approveDocsState isCommitSta
                             CommitReview.ReviewNewTag _ ->
                                 "This tag has been added to an existing file"
 
-                            CommitReview.ReviewDeletedTag ->
+                            CommitReview.ReviewDeletedTag _ ->
                                 "This tag has been deleted from an existing file"
 
                             CommitReview.ReviewModifiedTag _ ->
@@ -713,7 +713,7 @@ renderTagOrReview config tag =
                                             CommitReview.ReviewNewTag showingDiff ->
                                                 diffButton showingDiff
 
-                                            CommitReview.ReviewDeletedTag ->
+                                            CommitReview.ReviewDeletedTag _ ->
                                                 div [ class "is-hidden" ] []
 
                                             CommitReview.ReviewModifiedTag showingDiff ->
@@ -931,8 +931,8 @@ update msg model =
                                 CommitReview.ReviewNewTag showAlteredLines ->
                                     CommitReview.ReviewNewTag <| not showAlteredLines
 
-                                CommitReview.ReviewDeletedTag ->
-                                    CommitReview.ReviewDeletedTag
+                                CommitReview.ReviewDeletedTag currentFileStartLineNumber ->
+                                    CommitReview.ReviewDeletedTag currentFileStartLineNumber
                     }
             in
             ( { model
