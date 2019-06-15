@@ -1,7 +1,9 @@
-module CommitReview exposing (AlteredLine, ApprovedState(..), CommitReview, EditType(..), FileReview, FileReviewType(..), OwnerTagStatus, Review, ReviewType(..), Status(..), Tag, countTotalReviewsAndTags, decodeCommitReview, filterFileReviews, getOwnerTagStatuses, readableTagType, updateReviews, updateTags)
+module CommitReview exposing (AlteredLine, ApprovedState(..), CommitReview, EditType(..), FileReview, FileReviewType(..), OwnerTagStatus, Review, ReviewOrTag(..), ReviewType(..), Status(..), Tag, countTotalReviewsAndTags, countVisibleReviewsAndTags, decodeCommitReview, extractRenderEditorConfigs, getOwnerTagStatuses, readableTagType, renderConfigForReviewOrTag, updateCommitReviewForSearch, updateReviews, updateTags)
 
 import Dict
 import Json.Decode as Decode
+import Json.Decode.Pipeline exposing (hardcoded, optional, required)
+import Ports
 import Set
 
 
@@ -20,6 +22,7 @@ type alias CommitReview =
 type alias FileReview =
     { fileReviewType : FileReviewType
     , currentFilePath : String
+    , isHidden : Bool
     }
 
 
@@ -36,6 +39,10 @@ type alias Review =
     { reviewType : ReviewType
     , tag : Tag
     , alteredLines : List AlteredLine
+    , contentWithDiffs : List String
+    , lineNumbersWithDiffs : List (Maybe Int)
+    , redLineRanges : List ( Int, Int )
+    , greenLineRanges : List ( Int, Int )
     }
 
 
@@ -46,7 +53,7 @@ deleted tag (because then what are you showing?) so we don't have a bool on it t
 
 -}
 type ReviewType
-    = ReviewDeletedTag
+    = ReviewDeletedTag Int
     | ReviewNewTag Bool
     | ReviewModifiedTag Bool
 
@@ -75,6 +82,7 @@ type alias Tag =
 
     -- TODO actual error type
     , approvedState : ApprovedState ()
+    , isHidden : Bool
     }
 
 
@@ -110,30 +118,110 @@ type Status
     | Unconfirmed Int
 
 
-filterFileReviews :
+type alias SearchBy =
     { filterForUser : Maybe String
     , filterApprovedTags : Bool
     }
-    -> List FileReview
-    -> List FileReview
-filterFileReviews { filterForUser, filterApprovedTags } fileReviews =
-    fileReviews
-        |> (\fileReviewsIn ->
-                case filterForUser of
-                    Nothing ->
-                        fileReviewsIn
 
-                    Just username ->
-                        List.map (fileReviewFilterTagsForUser username) fileReviewsIn
-           )
-        |> (\fileReviewsIn ->
-                if filterApprovedTags then
-                    List.map fileReviewFilterTagsThatNeedApproval fileReviewsIn
 
-                else
-                    fileReviewsIn
-           )
-        |> List.filter fileReviewHasTagsOrReviews
+updateCommitReviewForSearch :
+    SearchBy
+    -> CommitReview
+    -> CommitReview
+updateCommitReviewForSearch searchBy commitReview =
+    { commitReview | fileReviews = List.map (updateFileReviewForSearch searchBy) commitReview.fileReviews }
+
+
+getNewHiddenValue : SearchBy -> Tag -> Bool
+getNewHiddenValue searchBy tag =
+    let
+        isHiddenThroughUserFilter =
+            case searchBy.filterForUser of
+                Nothing ->
+                    False
+
+                Just username ->
+                    tag.owner /= username
+
+        isHiddenThroughApprovalFilter =
+            if searchBy.filterApprovedTags then
+                isApproved tag.approvedState
+
+            else
+                False
+    in
+    isHiddenThroughApprovalFilter || isHiddenThroughUserFilter
+
+
+updateFileReviewForSearch : SearchBy -> FileReview -> FileReview
+updateFileReviewForSearch searchBy fileReview =
+    let
+        filterTagsForSearch =
+            List.map
+                (\tag -> { tag | isHidden = getNewHiddenValue searchBy tag })
+
+        filterReviewsForSearch =
+            List.map
+                (\review ->
+                    let
+                        reviewTag =
+                            review.tag
+                    in
+                    { review | tag = { reviewTag | isHidden = getNewHiddenValue searchBy reviewTag } }
+                )
+    in
+    case fileReview.fileReviewType of
+        NewFileReview tags ->
+            let
+                updatedTags =
+                    filterTagsForSearch tags
+
+                visibleTags =
+                    countVisibleTags updatedTags
+            in
+            { fileReview
+                | fileReviewType = NewFileReview updatedTags
+                , isHidden = visibleTags == 0
+            }
+
+        DeletedFileReview tags ->
+            let
+                updatedTags =
+                    filterTagsForSearch tags
+
+                visibleTags =
+                    countVisibleTags updatedTags
+            in
+            { fileReview
+                | fileReviewType = DeletedFileReview updatedTags
+                , isHidden = visibleTags == 0
+            }
+
+        ModifiedFileReview reviews ->
+            let
+                updatedReviews =
+                    filterReviewsForSearch reviews
+
+                visibleReviews =
+                    countVisibleReviews updatedReviews
+            in
+            { fileReview
+                | fileReviewType = ModifiedFileReview updatedReviews
+                , isHidden = visibleReviews == 0
+            }
+
+        RenamedFileReview prevName reviews ->
+            let
+                updatedReviews =
+                    filterReviewsForSearch reviews
+
+                visibleReviews =
+                    countVisibleReviews updatedReviews
+            in
+            { fileReview
+                | fileReviewType = RenamedFileReview prevName updatedReviews
+                , isHidden = visibleReviews == 0
+            }
 
 
 countTotalReviewsAndTags : List FileReview -> Int
@@ -157,53 +245,36 @@ reviewOrTagCount { fileReviewType } =
             List.length reviews
 
 
-fileReviewFilterTagsForUser : String -> FileReview -> FileReview
-fileReviewFilterTagsForUser username =
-    filterFileReviewTagsAndReviews
-        (\tag -> tag.owner == username)
-        (\review -> review.tag.owner == username)
+countVisibleReviewsAndTags : List FileReview -> Int
+countVisibleReviewsAndTags =
+    List.foldl (\fileReview totalCount -> totalCount + visibleReviewOrTagCount fileReview) 0
 
 
-fileReviewFilterTagsThatNeedApproval : FileReview -> FileReview
-fileReviewFilterTagsThatNeedApproval =
-    filterFileReviewTagsAndReviews
-        (\{ approvedState } -> not <| isApproved approvedState)
-        (\{ tag } -> not <| isApproved tag.approvedState)
-
-
-fileReviewHasTagsOrReviews : FileReview -> Bool
-fileReviewHasTagsOrReviews fileReview =
-    case fileReview.fileReviewType of
+visibleReviewOrTagCount : FileReview -> Int
+visibleReviewOrTagCount { fileReviewType } =
+    case fileReviewType of
         NewFileReview tags ->
-            List.length tags > 0
+            countVisibleTags tags
 
         DeletedFileReview tags ->
-            List.length tags > 0
-
-        ModifiedFileReview reviews ->
-            List.length reviews > 0
+            countVisibleTags tags
 
         RenamedFileReview _ reviews ->
-            List.length reviews > 0
+            countVisibleReviews reviews
+
+        ModifiedFileReview reviews ->
+            countVisibleReviews reviews
 
 
-filterFileReviewTagsAndReviews : (Tag -> Bool) -> (Review -> Bool) -> FileReview -> FileReview
-filterFileReviewTagsAndReviews keepTag keepReview fileReview =
-    { fileReview
-        | fileReviewType =
-            case fileReview.fileReviewType of
-                NewFileReview tags ->
-                    NewFileReview <| List.filter keepTag tags
+countVisibleTags : List Tag -> Int
+countVisibleTags =
+    List.length
+        << List.filter (.isHidden >> (==) False)
 
-                DeletedFileReview tags ->
-                    DeletedFileReview <| List.filter keepTag tags
 
-                ModifiedFileReview reviews ->
-                    ModifiedFileReview <| List.filter keepReview reviews
-
-                RenamedFileReview previousFilePath reviews ->
-                    RenamedFileReview previousFilePath <| List.filter keepReview reviews
-    }
+countVisibleReviews : List Review -> Int
+countVisibleReviews =
+    List.map .tag >> countVisibleTags
 
 
 readableTagType : TagType -> String
@@ -270,6 +341,27 @@ updateReviews updateReview commitReview =
     { commitReview | fileReviews = List.map fileReviewTagMap commitReview.fileReviews }
 
 
+findReview : String -> CommitReview -> Maybe Review
+findReview tagId =
+    let
+        go remainingTagOrReviews =
+            case remainingTagOrReviews of
+                [] ->
+                    Nothing
+
+                (AReview review) :: tailTagsAndReviews ->
+                    if review.tag.tagId == tagId then
+                        Just review
+
+                    else
+                        go tailTagsAndReviews
+
+                _ :: tailTagsAndReviews ->
+                    go tailTagsAndReviews
+    in
+    allTagsOrReviews >> go
+
+
 getOwnerTagStatuses : CommitReview -> List OwnerTagStatus
 getOwnerTagStatuses commitReview =
     tagFold
@@ -313,7 +405,8 @@ getOwnerTagStatuses commitReview =
 
 type ReviewOrTag
     = AReview Review
-    | ATag Tag
+    | DeletedFileTag Tag
+    | NewFileTag Tag
 
 
 isApproved : ApprovedState err -> Bool
@@ -329,30 +422,32 @@ isApproved approvedState =
 {-| A basic fold on the reviews/tags.
 -}
 reviewOrTagFold : (ReviewOrTag -> acc -> acc) -> acc -> CommitReview -> acc
-reviewOrTagFold foldFunc initAcc commitReview =
-    let
-        allTagsOrReviews : List ReviewOrTag
-        allTagsOrReviews =
-            List.foldl
-                (\fileReview reviewsOrTags ->
-                    List.append reviewsOrTags <|
-                        case fileReview.fileReviewType of
-                            NewFileReview tags ->
-                                List.map ATag tags
+reviewOrTagFold foldFunc initAcc =
+    allTagsOrReviews >> List.foldl foldFunc initAcc
 
-                            DeletedFileReview tags ->
-                                List.map ATag tags
 
-                            ModifiedFileReview reviews ->
-                                List.map AReview reviews
+{-| Get all tags and reviews from all file reviews
+-}
+allTagsOrReviews : CommitReview -> List ReviewOrTag
+allTagsOrReviews =
+    .fileReviews
+        >> List.foldl
+            (\fileReview reviewsOrTags ->
+                List.append reviewsOrTags <|
+                    case fileReview.fileReviewType of
+                        NewFileReview tags ->
+                            List.map NewFileTag tags
 
-                            RenamedFileReview _ reviews ->
-                                List.map AReview reviews
-                )
-                []
-                commitReview.fileReviews
-    in
-    List.foldl foldFunc initAcc allTagsOrReviews
+                        DeletedFileReview tags ->
+                            List.map DeletedFileTag tags
+
+                        ModifiedFileReview reviews ->
+                            List.map AReview reviews
+
+                        RenamedFileReview _ reviews ->
+                            List.map AReview reviews
+            )
+            []
 
 
 {-| A basic fold on the tags.
@@ -363,12 +458,284 @@ tagFold foldFunc =
         (\tagOrReview ->
             foldFunc <|
                 case tagOrReview of
-                    ATag aTag ->
-                        aTag
+                    NewFileTag tag ->
+                        tag
+
+                    DeletedFileTag tag ->
+                        tag
 
                     AReview aReview ->
                         aReview.tag
         )
+
+
+extractRenderEditorConfigs : CommitReview -> List Ports.RenderCodeEditorConfig
+extractRenderEditorConfigs =
+    reviewOrTagFold
+        (\reviewOrTag previousRenderConfigs ->
+            renderConfigForReviewOrTag reviewOrTag
+                :: previousRenderConfigs
+        )
+        []
+
+
+renderConfigForReviewOrTag : ReviewOrTag -> Ports.RenderCodeEditorConfig
+renderConfigForReviewOrTag reviewOrTag =
+    case reviewOrTag of
+        AReview review ->
+            let
+                { content, redLineRanges, greenLineRanges, customLineNumbers } =
+                    case review.reviewType of
+                        ReviewDeletedTag _ ->
+                            { content = review.contentWithDiffs
+                            , redLineRanges = review.redLineRanges
+                            , greenLineRanges = review.greenLineRanges
+                            , customLineNumbers = Just review.lineNumbersWithDiffs
+                            }
+
+                        ReviewNewTag showingDiff ->
+                            if showingDiff then
+                                { content = review.contentWithDiffs
+                                , redLineRanges = review.redLineRanges
+                                , greenLineRanges = review.greenLineRanges
+                                , customLineNumbers = Just review.lineNumbersWithDiffs
+                                }
+
+                            else
+                                { content = review.tag.content
+                                , redLineRanges = []
+                                , greenLineRanges = []
+                                , customLineNumbers = Nothing
+                                }
+
+                        ReviewModifiedTag showingDiff ->
+                            if showingDiff then
+                                { content = review.contentWithDiffs
+                                , redLineRanges = review.redLineRanges
+                                , greenLineRanges = review.greenLineRanges
+                                , customLineNumbers = Just review.lineNumbersWithDiffs
+                                }
+
+                            else
+                                { content = review.tag.content
+                                , redLineRanges = []
+                                , greenLineRanges = []
+                                , customLineNumbers = Nothing
+                                }
+            in
+            { tagId = review.tag.tagId
+            , startLineNumber = review.tag.startLine
+            , content = content
+            , redLineRanges = redLineRanges
+            , greenLineRanges = greenLineRanges
+            , customLineNumbers = customLineNumbers
+            }
+
+        DeletedFileTag tag ->
+            { tagId = tag.tagId
+            , startLineNumber = tag.startLine
+            , content = tag.content
+            , redLineRanges = [ ( tag.startLine, tag.endLine ) ]
+            , greenLineRanges = []
+            , customLineNumbers = Nothing
+            }
+
+        NewFileTag tag ->
+            { tagId = tag.tagId
+            , startLineNumber = tag.startLine
+            , content = tag.content
+            , redLineRanges = []
+            , greenLineRanges = [ ( tag.startLine, tag.endLine ) ]
+            , customLineNumbers = Nothing
+            }
+
+
+type FileLineNumberType
+    = CurrentFileLineNumbers
+    | PreviousFileLineNumbers Int
+
+
+calculateRangesAndContentWithDiff :
+    Int
+    -> List String
+    -> List AlteredLine
+    -> FileLineNumberType
+    ->
+        { greenLineRanges : List ( Int, Int )
+        , redLineRanges : List ( Int, Int )
+        , contentWithDiffs : List String
+        , lineNumbersWithDiffs : List (Maybe Int)
+        }
+calculateRangesAndContentWithDiff startLineNumber content alteredLines fileLineNumberType =
+    let
+        addedLines : List AlteredLine
+        addedLines =
+            List.filter (.editType >> (==) Insertion) alteredLines
+
+        deletedLines : List AlteredLine
+        deletedLines =
+            List.filter (.editType >> (==) Deletion) alteredLines
+
+        nextLineNumberInCurrentFileIfSwallowedAlteredLine : EditType -> Int -> Int
+        nextLineNumberInCurrentFileIfSwallowedAlteredLine editType lineNumber =
+            case editType of
+                Insertion ->
+                    lineNumber + 1
+
+                Deletion ->
+                    lineNumber
+
+        nextLineNumberIfSwallowedAlteredLine : EditType -> Int -> Int
+        nextLineNumberIfSwallowedAlteredLine editType lineNumber =
+            case ( editType, fileLineNumberType ) of
+                ( Insertion, CurrentFileLineNumbers ) ->
+                    lineNumber + 1
+
+                ( Insertion, PreviousFileLineNumbers _ ) ->
+                    lineNumber
+
+                ( Deletion, CurrentFileLineNumbers ) ->
+                    lineNumber
+
+                ( Deletion, PreviousFileLineNumbers _ ) ->
+                    lineNumber + 1
+
+        nextContentIfSwallowedAlteredLines : EditType -> List String -> List String
+        nextContentIfSwallowedAlteredLines editType remainingContent =
+            case ( editType, fileLineNumberType ) of
+                ( Insertion, CurrentFileLineNumbers ) ->
+                    List.drop 1 remainingContent
+
+                ( Insertion, PreviousFileLineNumbers _ ) ->
+                    remainingContent
+
+                ( Deletion, CurrentFileLineNumbers ) ->
+                    remainingContent
+
+                ( Deletion, PreviousFileLineNumbers _ ) ->
+                    List.drop 1 remainingContent
+
+        nextAlteredLineForLineNumber : Int -> List AlteredLine -> Maybe AlteredLine
+        nextAlteredLineForLineNumber lineNumber remainingAlteredLines =
+            case remainingAlteredLines of
+                [] ->
+                    Nothing
+
+                headAlteredLine :: _ ->
+                    case fileLineNumberType of
+                        PreviousFileLineNumbers _ ->
+                            if headAlteredLine.previousLineNumber == lineNumber then
+                                Just headAlteredLine
+
+                            else
+                                Nothing
+
+                        CurrentFileLineNumbers ->
+                            if headAlteredLine.currentLineNumber == lineNumber then
+                                Just headAlteredLine
+
+                            else
+                                Nothing
+
+        go lineNumberInTag lineNumberInCurrentFile hightlightLineNumber remainingContent remainingAddedLines remainingDeletedLines acc =
+            case ( remainingContent, remainingAddedLines, remainingDeletedLines ) of
+                -- Base case.
+                ( [], [], [] ) ->
+                    acc
+
+                -- Only added lines left, must be those.
+                ( [], headAddedLines :: tailAddedLines, [] ) ->
+                    go
+                        (nextLineNumberIfSwallowedAlteredLine Insertion lineNumberInTag)
+                        (nextLineNumberInCurrentFileIfSwallowedAlteredLine Insertion lineNumberInCurrentFile)
+                        (hightlightLineNumber + 1)
+                        []
+                        tailAddedLines
+                        []
+                        { acc
+                            | contentWithDiffs = acc.contentWithDiffs ++ [ headAddedLines.content ]
+                            , greenLineRanges = acc.greenLineRanges ++ [ ( hightlightLineNumber, hightlightLineNumber ) ]
+                            , lineNumbersWithDiffs = acc.lineNumbersWithDiffs ++ [ Just lineNumberInCurrentFile ]
+                        }
+
+                -- Deleted lines left with no content, must be deleted lines first then added lines if there are any.
+                ( [], _, headDeletedLines :: tailDeletedLines ) ->
+                    go
+                        (nextLineNumberIfSwallowedAlteredLine Deletion lineNumberInTag)
+                        (nextLineNumberInCurrentFileIfSwallowedAlteredLine Deletion lineNumberInCurrentFile)
+                        (hightlightLineNumber + 1)
+                        []
+                        remainingAddedLines
+                        tailDeletedLines
+                        { acc
+                            | contentWithDiffs = acc.contentWithDiffs ++ [ headDeletedLines.content ]
+                            , redLineRanges = acc.redLineRanges ++ [ ( hightlightLineNumber, hightlightLineNumber ) ]
+                            , lineNumbersWithDiffs = acc.lineNumbersWithDiffs ++ [ Nothing ]
+                        }
+
+                -- Content is left:
+                --  1. check if a deleted line should be swallowed
+                --  2. check if a added line should be swallowed
+                --  3. else it must be the content next
+                ( headContent :: tailContent, _, _ ) ->
+                    case nextAlteredLineForLineNumber lineNumberInTag remainingDeletedLines of
+                        Nothing ->
+                            case nextAlteredLineForLineNumber lineNumberInTag remainingAddedLines of
+                                Nothing ->
+                                    go
+                                        (lineNumberInTag + 1)
+                                        (lineNumberInCurrentFile + 1)
+                                        (hightlightLineNumber + 1)
+                                        tailContent
+                                        remainingAddedLines
+                                        remainingDeletedLines
+                                        { acc
+                                            | contentWithDiffs = acc.contentWithDiffs ++ [ headContent ]
+                                            , lineNumbersWithDiffs = acc.lineNumbersWithDiffs ++ [ Just lineNumberInCurrentFile ]
+                                        }
+
+                                Just nextAddedLine ->
+                                    go
+                                        (nextLineNumberIfSwallowedAlteredLine Insertion lineNumberInTag)
+                                        (nextLineNumberInCurrentFileIfSwallowedAlteredLine Insertion lineNumberInCurrentFile)
+                                        (hightlightLineNumber + 1)
+                                        (nextContentIfSwallowedAlteredLines Insertion remainingContent)
+                                        (List.drop 1 remainingAddedLines)
+                                        remainingDeletedLines
+                                        { acc
+                                            | contentWithDiffs = acc.contentWithDiffs ++ [ nextAddedLine.content ]
+                                            , greenLineRanges = acc.greenLineRanges ++ [ ( hightlightLineNumber, hightlightLineNumber ) ]
+                                            , lineNumbersWithDiffs = acc.lineNumbersWithDiffs ++ [ Just lineNumberInCurrentFile ]
+                                        }
+
+                        Just nextDeletedLine ->
+                            go
+                                (nextLineNumberIfSwallowedAlteredLine Deletion lineNumberInTag)
+                                (nextLineNumberInCurrentFileIfSwallowedAlteredLine Deletion lineNumberInCurrentFile)
+                                (hightlightLineNumber + 1)
+                                (nextContentIfSwallowedAlteredLines Deletion remainingContent)
+                                remainingAddedLines
+                                (List.drop 1 remainingDeletedLines)
+                                { acc
+                                    | contentWithDiffs = acc.contentWithDiffs ++ [ nextDeletedLine.content ]
+                                    , redLineRanges = acc.redLineRanges ++ [ ( hightlightLineNumber, hightlightLineNumber ) ]
+                                    , lineNumbersWithDiffs = acc.lineNumbersWithDiffs ++ [ Nothing ]
+                                }
+    in
+    go
+        startLineNumber
+        (case fileLineNumberType of
+            PreviousFileLineNumbers currentFileStartLineNumber ->
+                currentFileStartLineNumber
+
+            CurrentFileLineNumbers ->
+                startLineNumber
+        )
+        startLineNumber
+        content
+        addedLines
+        deletedLines
+        { greenLineRanges = [], redLineRanges = [], contentWithDiffs = [], lineNumbersWithDiffs = [] }
 
 
 type alias ApprovedAndRejectedTags =
@@ -402,9 +769,10 @@ decodeCommitReview =
 
 decodeFileReview : ApprovedAndRejectedTags -> Decode.Decoder FileReview
 decodeFileReview tagStates =
-    Decode.map2 FileReview
+    Decode.map3 FileReview
         (decodeFileReviewType tagStates)
         (Decode.field "currentFilePath" Decode.string)
+        (Decode.succeed False)
 
 
 decodeFileReviewType : ApprovedAndRejectedTags -> Decode.Decoder FileReviewType
@@ -457,7 +825,46 @@ decodeDeletedFileReview tagStates =
 
 decodeReview : ApprovedAndRejectedTags -> Decode.Decoder Review
 decodeReview tagStates =
-    Decode.map3 Review
+    decodeTagAndAlteredLinesAndReviewType tagStates
+        |> Decode.andThen
+            (\(TagAndAlteredLinesAndReviewType tag alteredLines reviewType) ->
+                let
+                    { redLineRanges, greenLineRanges, contentWithDiffs, lineNumbersWithDiffs } =
+                        calculateRangesAndContentWithDiff
+                            tag.startLine
+                            tag.content
+                            alteredLines
+                            (case reviewType of
+                                ReviewDeletedTag currentFileStartLineNumber ->
+                                    PreviousFileLineNumbers currentFileStartLineNumber
+
+                                ReviewNewTag _ ->
+                                    CurrentFileLineNumbers
+
+                                ReviewModifiedTag _ ->
+                                    CurrentFileLineNumbers
+                            )
+                in
+                Decode.map7 Review
+                    (Decode.succeed reviewType)
+                    (Decode.succeed tag)
+                    (Decode.succeed alteredLines)
+                    (Decode.succeed contentWithDiffs)
+                    (Decode.succeed lineNumbersWithDiffs)
+                    (Decode.succeed redLineRanges)
+                    (Decode.succeed greenLineRanges)
+            )
+
+
+type TagAndAlteredLinesAndReviewType
+    = TagAndAlteredLinesAndReviewType Tag (List AlteredLine) ReviewType
+
+
+decodeTagAndAlteredLinesAndReviewType : ApprovedAndRejectedTags -> Decode.Decoder TagAndAlteredLinesAndReviewType
+decodeTagAndAlteredLinesAndReviewType tagStates =
+    Decode.map3 TagAndAlteredLinesAndReviewType
+        (Decode.field "tag" <| decodeTag tagStates)
+        (Decode.field "alteredLines" (Decode.list decodeAlteredLine))
         (Decode.field "reviewType" Decode.string
             |> Decode.andThen
                 (\reviewType ->
@@ -466,7 +873,8 @@ decodeReview tagStates =
                             Decode.succeed <| ReviewNewTag True
 
                         "deleted" ->
-                            Decode.succeed ReviewDeletedTag
+                            Decode.field "currentFileStartLineNumber" Decode.int
+                                |> Decode.map ReviewDeletedTag
 
                         "modified" ->
                             Decode.succeed <| ReviewModifiedTag True
@@ -475,8 +883,6 @@ decodeReview tagStates =
                             Decode.fail <| "Invalid review type: " ++ reviewType
                 )
         )
-        (Decode.field "tag" <| decodeTag tagStates)
-        (Decode.field "alteredLines" <| Decode.list decodeAlteredLine)
 
 
 decodeAlteredLine : Decode.Decoder AlteredLine
@@ -506,38 +912,40 @@ decodeTag { approvedTags, rejectedTags } =
     Decode.field "tagId" Decode.string
         |> Decode.andThen
             (\tagId ->
-                Decode.map8 Tag
-                    (Decode.field "tagType" Decode.string
-                        |> Decode.andThen
-                            (\tagType ->
-                                case tagType of
-                                    "file" ->
-                                        Decode.succeed FileTag
+                Decode.succeed Tag
+                    |> required "tagType"
+                        (Decode.string
+                            |> Decode.andThen
+                                (\tagType ->
+                                    case tagType of
+                                        "file" ->
+                                            Decode.succeed FileTag
 
-                                    "block" ->
-                                        Decode.succeed BlockTag
+                                        "block" ->
+                                            Decode.succeed BlockTag
 
-                                    "line" ->
-                                        Decode.succeed LineTag
+                                        "line" ->
+                                            Decode.succeed LineTag
 
-                                    _ ->
-                                        Decode.fail <| "Invalid tag type " ++ tagType
-                            )
-                    )
-                    (Decode.field "owner" Decode.string)
-                    (Decode.field "startLine" Decode.int)
-                    (Decode.field "endLine" Decode.int)
-                    (Decode.field "tagAnnotationLine" Decode.int)
-                    (Decode.field "content" (Decode.list Decode.string))
-                    (Decode.field "tagId" Decode.string)
-                    (Decode.succeed <|
-                        if Set.member tagId approvedTags then
+                                        _ ->
+                                            Decode.fail <| "Invalid tag type " ++ tagType
+                                )
+                        )
+                    |> required "owner" Decode.string
+                    |> required "startLine" Decode.int
+                    |> required "endLine" Decode.int
+                    |> required "tagAnnotationLine" Decode.int
+                    |> required "content" (Decode.list Decode.string)
+                    |> required "tagId" Decode.string
+                    |> hardcoded
+                        (if Set.member tagId approvedTags then
                             Approved
 
-                        else if Set.member tagId rejectedTags then
+                         else if Set.member tagId rejectedTags then
                             Rejected
 
-                        else
+                         else
                             Neutral
-                    )
+                        )
+                    |> hardcoded False
             )
