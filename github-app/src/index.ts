@@ -4,6 +4,8 @@ import * as Probot from 'probot' // eslint-disable-line no-unused-vars
 import R from "ramda"
 import mongoose = require("mongoose")
 
+import * as AppError from "./error"
+
 
 interface RepoIdAndName {
   repoId: number;
@@ -43,288 +45,305 @@ import * as Analysis from "./analysis"
 export = (app: Probot.Application) => {
 
 
-  // TODO handle errors.
   app.on("installation.created", async (context) => {
-
-    const payload = context.payload
-    const installationId = (payload.installation as any).id
-    const owner = (payload.installation as any).account.login // TODO shold this be the id of the owner?
-
-    const repoIdsAndNames: RepoIdAndName[] = R.map((repo) => {
-      return { repoName: repo.name, repoId: repo.id };
-    }, payload.repositories);
-
-    const repoIds = R.map(({ repoId }) => repoId, repoIdsAndNames);
-
-    await initializeRepoModel(installationId, owner, repoIds);
-    await analyzeAlreadyOpenPrsForRepos(context, owner, repoIdsAndNames);
-
-  });
-
-
-  // TODO handle errors
-  app.on("installation.deleted", async (context) => {
-
-    const payload = context.payload
-    const installationId = (payload.installation as any).id
-
-    const clearAllData = async () => {
-
-      const deleteRepoResult =
-        await RepoModel.findOneAndDelete({ installationId }).exec();
-
-      if (deleteRepoResult === null) {
-        throw "ERROR : 1285732919";
-      }
-
-      const repoIds = (deleteRepoResult.toObject() as Repo).repoIds;
-
-      const deleteCommitReviewsResult =
-        await CommitReviewModel.deleteMany({ repoId: { $in: repoIds } }).exec();
-
-      if (deleteCommitReviewsResult.ok !== 1) {
-        throw "ERROR";
-      }
-
-      const deletePullRequestReviewsResult =
-        await PullRequestReviewModel.deleteMany({ repoId: { $in: repoIds } }).exec();
-
-      if (deletePullRequestReviewsResult.ok !== 1) {
-        throw "ERROR";
-      }
-
-    }
-
     try {
 
-      await clearAllData();
+      const payload = context.payload
+      const installationId = (payload.installation as any).id
+      const owner = (payload.installation as any).account.login // TODO shold this be the id of the owner?
+
+      const repoIdsAndNames: RepoIdAndName[] = R.map((repo) => {
+        return { repoName: repo.name, repoId: repo.id };
+      }, payload.repositories);
+
+      const repoIds = R.map(({ repoId }) => repoId, repoIdsAndNames);
+
+      await initializeRepoModel(installationId, owner, repoIds);
+      await analyzeAlreadyOpenPrsForRepos(context, owner, repoIdsAndNames);
 
     } catch (err) {
-
-      console.log(`Error deleting installation with id: ${installationId}`);
+      AppError.logWebhookErrorLeak("installation.created", err);
     }
-
   });
 
 
-  // TODO handle errors.
+  app.on("installation.deleted", async (context) => {
+    try {
+
+      const payload = context.payload
+      const installationId = (payload.installation as any).id
+
+      const clearAllData = async () => {
+
+        const deleteRepoResult =
+          await RepoModel.findOneAndDelete({ installationId }).exec();
+
+        if (deleteRepoResult === null) {
+          throw "ERROR : 1285732919";
+        }
+
+        const repoIds = (deleteRepoResult.toObject() as Repo).repoIds;
+
+        const deleteCommitReviewsResult =
+          await CommitReviewModel.deleteMany({ repoId: { $in: repoIds } }).exec();
+
+        if (deleteCommitReviewsResult.ok !== 1) {
+          throw "ERROR";
+        }
+
+        const deletePullRequestReviewsResult =
+          await PullRequestReviewModel.deleteMany({ repoId: { $in: repoIds } }).exec();
+
+        if (deletePullRequestReviewsResult.ok !== 1) {
+          throw "ERROR";
+        }
+
+      }
+
+      try {
+
+        await clearAllData();
+
+      } catch (err) {
+
+        console.log(`Error deleting installation with id: ${installationId}`);
+      }
+
+    } catch (err) {
+      AppError.logWebhookErrorLeak("installation.deleted", err);
+    }
+  });
+
+
   app.on("installation_repositories.added", async (context) => {
+    try {
 
-    const payload = context.payload
-    const installationId = (payload.installation as any).id
-    const owner = (payload.installation as any).account.login // TODO shold this be the id of the owner?
+      const payload = context.payload
+      const installationId = (payload.installation as any).id
+      const owner = (payload.installation as any).account.login // TODO shold this be the id of the owner?
 
-    const repoIdsAndNames: RepoIdAndName[] = R.map((repoAdded) => {
-      return { repoName: repoAdded.name, repoId: repoAdded.id };
-    }, payload.repositories_added)
+      const repoIdsAndNames: RepoIdAndName[] = R.map((repoAdded) => {
+        return { repoName: repoAdded.name, repoId: repoAdded.id };
+      }, payload.repositories_added)
 
-    const repoIds = R.map(({ repoId }) => repoId, repoIdsAndNames);
-
-    const repoUpdateResult = await RepoModel.update(
-      { installationId },
-      { $addToSet: { "repoIds": { $each: repoIds } }}
-    )
-
-    // TODO HANDLE ERROR better? (also wrap in try-catch)
-    if (repoUpdateResult.ok !== 1 || repoUpdateResult.n !== 1 || repoUpdateResult.nModified !== 1) {
-      console.log(`Error: Could not save ${repoIds.length} repo(s) to installation ${installationId}`);
-      return;
-    }
-
-    await analyzeAlreadyOpenPrsForRepos(context, owner, repoIdsAndNames);
-
-  });
-
-
-  // TODO handle errors.
-  app.on("installation_repositories.removed", async (context) => {
-
-    const payload = context.payload;
-    const installationId = (payload.installation as any).id;
-    const reposToRemove: number[] = R.map((repoToRemove) => {
-      return repoToRemove.id
-    }, payload.repositories_removed);
-
-
-    const clearRemovedRepoData = async () => {
+      const repoIds = R.map(({ repoId }) => repoId, repoIdsAndNames);
 
       const repoUpdateResult = await RepoModel.update(
         { installationId },
-        { $pull: { "repoIds": { $in: reposToRemove } } }
-      );
+        { $addToSet: { "repoIds": { $each: repoIds } }}
+      )
 
+      // TODO HANDLE ERROR better? (also wrap in try-catch)
       if (repoUpdateResult.ok !== 1 || repoUpdateResult.n !== 1 || repoUpdateResult.nModified !== 1) {
-        throw "ERROR"
+        console.log(`Error: Could not save ${repoIds.length} repo(s) to installation ${installationId}`);
+        return;
       }
 
-      const deleteCommitReviewsResult =
-        await CommitReviewModel.deleteMany({ repoId: { $in: reposToRemove } }).exec();
+      await analyzeAlreadyOpenPrsForRepos(context, owner, repoIdsAndNames);
 
-      if (deleteCommitReviewsResult.ok !== 1) {
-        throw "ERROR";
-      }
-
-      const deletePullRequestReviewsResult =
-        await PullRequestReviewModel.deleteMany({ repoId: { $in: reposToRemove } }).exec();
-
-      if (deletePullRequestReviewsResult.ok !== 1) {
-        throw "ERROR";
-      }
-
+    } catch (err) {
+      AppError.logWebhookErrorLeak("installation_repositories.added", err);
     }
+  });
+
+
+  app.on("installation_repositories.removed", async (context) => {
+    try {
+
+      const payload = context.payload;
+      const installationId = (payload.installation as any).id;
+      const reposToRemove: number[] = R.map((repoToRemove) => {
+        return repoToRemove.id
+      }, payload.repositories_removed);
+
+
+      const clearRemovedRepoData = async () => {
+
+        const repoUpdateResult = await RepoModel.update(
+          { installationId },
+          { $pull: { "repoIds": { $in: reposToRemove } } }
+        );
+
+        if (repoUpdateResult.ok !== 1 || repoUpdateResult.n !== 1 || repoUpdateResult.nModified !== 1) {
+          throw "ERROR"
+        }
+
+        const deleteCommitReviewsResult =
+          await CommitReviewModel.deleteMany({ repoId: { $in: reposToRemove } }).exec();
+
+        if (deleteCommitReviewsResult.ok !== 1) {
+          throw "ERROR";
+        }
+
+        const deletePullRequestReviewsResult =
+          await PullRequestReviewModel.deleteMany({ repoId: { $in: reposToRemove } }).exec();
+
+        if (deletePullRequestReviewsResult.ok !== 1) {
+          throw "ERROR";
+        }
+
+      }
+
+      try {
+
+        await clearRemovedRepoData();
+
+      } catch (err) {
+
+        console.log(`Error: Could not remove ${reposToRemove.length} repo(s) from installation ${installationId}`)
+      }
+
+    } catch (err) {
+      AppError.logWebhookErrorLeak("installation_repositories.removed", err);
+    }
+  });
+
+
+  app.on("pull_request.opened", async (context) => {
 
     try {
 
-      await clearRemovedRepoData();
+      const prPayload = context.payload
+      const { owner } = context.repo()
+      const repoId = (prPayload.repository as any).id
+      const repoFullName: string = (prPayload.repository as any).full_name
+      const repoName: string = (prPayload.repository as any).name
+      const branchName: string = (prPayload.pull_request as any).head.ref
+      const pullRequestId: number = (prPayload.pull_request as any).id
+      const pullRequestNumber: number = (prPayload.pull_request as any).number
+      const headCommitId = (prPayload.pull_request as any).head.sha
 
-    } catch (err) {
+      const baseBranchName = (prPayload.pull_request as any).base.ref
+      const baseCommitId = (prPayload.pull_request as any).base.sha
 
-      console.log(`Error: Could not remove ${reposToRemove.length} repo(s) from installation ${installationId}`)
-    }
-
-  });
-
-
-  // TODO handle errors.
-  app.on("pull_request.opened", async (context) => {
-
-    const prPayload = context.payload
-    const { owner } = context.repo()
-    const repoId = (prPayload.repository as any).id
-    const repoFullName: string = (prPayload.repository as any).full_name
-    const repoName: string = (prPayload.repository as any).name
-    const branchName: string = (prPayload.pull_request as any).head.ref
-    const pullRequestId: number = (prPayload.pull_request as any).id
-    const pullRequestNumber: number = (prPayload.pull_request as any).number
-    const headCommitId = (prPayload.pull_request as any).head.sha
-
-    const baseBranchName = (prPayload.pull_request as any).base.ref
-    const baseCommitId = (prPayload.pull_request as any).base.sha
-
-    await analyzeNewPullRequest(
-      context,
-      owner,
-      repoId,
-      repoName,
-      repoFullName,
-      branchName,
-      baseBranchName,
-      pullRequestId,
-      pullRequestNumber,
-      headCommitId,
-      baseCommitId
-    );
-
-  });
-
-
-  // TODO handle errors.
-  app.on("push", async (context) => {
-
-    const pushPayload = context.payload
-
-    // The push was for a tag or a new branch (set upstream...), couldn't be for an open PR, no need for analysis.
-    if (pushPayload.before === "0000000000000000000000000000000000000000") {
-      console.log("skipped");
-      return;
-    }
-
-    const repoId: number = (pushPayload.repository as any).id
-    const repoName: string = (pushPayload.repository as any).name
-    const branchName: string = (R.last(pushPayload.ref.split("/")) as any) // TODO errors?
-    const { owner } = context.repo()
-    const headCommitId: string = pushPayload.after
-
-    const prNumbers = await getOpenPullRequestNumbersForBranch(context, repoName, branchName, owner)
-
-    // Perform analysis on all relevant open PRs.
-    R.map( async (pullRequestNumber) => {
-
-      const pullRequestReview = await PullRequestReviewModel.findOneAndUpdate(
-        { repoId, pullRequestNumber },
-        {
-          $push: { "pendingAnalysisForCommits": headCommitId },
-          headCommitId: headCommitId,
-          headCommitApprovedTags: null,
-          headCommitRejectedTags: null,
-          headCommitRemainingOwnersToApproveDocs: null,
-          headCommitTagsAndOwners: null,
-          loadingHeadAnalysis: true
-        },
-        {
-          new: false
-        }
-      ).exec();
-
-      // TODO handle error better?
-      if (pullRequestReview === null) {
-        const errMessage =
-          `Missing PullRequestReview object for --- repoId: ${repoId}, prNumber: ${pullRequestNumber}`
-        console.log(errMessage);
-        return;
-      }
-
-      const previousPullRequestReviewObject: PullRequestReview = pullRequestReview.toObject();
-
-      // If there are already commits being analyzed in the pipeline, so there is no need to trigger the pipeline or
-      // save a previous CommitReviewObject.
-      if (previousPullRequestReviewObject.pendingAnalysisForCommits.length !== 0) {
-        return;
-      }
-
-      // Otherwise we need to save the old CommitReviewObject and trigger the analysis pipeline.
-
-      const commitReviewUpdateResult = await CommitReviewModel.update(
-        { repoId, pullRequestNumber, commitId: previousPullRequestReviewObject.headCommitId },
-        {
-          approvedTags: previousPullRequestReviewObject.headCommitApprovedTags,
-          rejectedTags: previousPullRequestReviewObject.headCommitRejectedTags,
-          remainingOwnersToApproveDocs: previousPullRequestReviewObject.headCommitRemainingOwnersToApproveDocs,
-          frozen: true
-        }
+      await analyzeNewPullRequest(
+        context,
+        owner,
+        repoId,
+        repoName,
+        repoFullName,
+        branchName,
+        baseBranchName,
+        pullRequestId,
+        pullRequestNumber,
+        headCommitId,
+        baseCommitId
       );
 
-      // TODO HANDLE ERROR better
-      if (commitReviewUpdateResult.n !== 1 || commitReviewUpdateResult.nModified !== 1) {
-        const errMessage = `Failed to update previous commit: ${JSON.stringify({ repoId, pullRequestNumber, commitId: previousPullRequestReviewObject.headCommitId },)}`;
-        console.log(errMessage);
+    } catch (err) {
+      AppError.logWebhookErrorLeak("pull_request.opened", err);
+    }
+  });
+
+
+  app.on("push", async (context) => {
+    try {
+
+      const pushPayload = context.payload
+
+      // The push was for a tag or a new branch (set upstream...), couldn't be for an open PR, no need for analysis.
+      if (pushPayload.before === "0000000000000000000000000000000000000000") {
+        console.log("skipped");
+        return;
       }
 
-      // Construct the new PRO from previous one.
-      const pullRequestReviewObject: PullRequestReview =
-        { ...previousPullRequestReviewObject,
-          ...{
-            headCommitId,
-            pendingAnalysisForCommits: [ headCommitId ],
+      const repoId: number = (pushPayload.repository as any).id
+      const repoName: string = (pushPayload.repository as any).name
+      const branchName: string = (R.last(pushPayload.ref.split("/")) as any) // TODO errors?
+      const { owner } = context.repo()
+      const headCommitId: string = pushPayload.after
+
+      const prNumbers = await getOpenPullRequestNumbersForBranch(context, repoName, branchName, owner)
+
+      // Perform analysis on all relevant open PRs.
+      R.map( async (pullRequestNumber) => {
+
+        const pullRequestReview = await PullRequestReviewModel.findOneAndUpdate(
+          { repoId, pullRequestNumber },
+          {
+            $push: { "pendingAnalysisForCommits": headCommitId },
+            headCommitId: headCommitId,
             headCommitApprovedTags: null,
             headCommitRejectedTags: null,
             headCommitRemainingOwnersToApproveDocs: null,
             headCommitTagsAndOwners: null,
             loadingHeadAnalysis: true
           },
-        ...{
-            // An unlikely race condition, but just in case, if the last commit had no remaining owners to approve dos
-            // then it is the last success commit. Because first that is pulled and then only after is success set
-            // there is a chance this runs between the 2 db operations.
-            currentAnalysisLastCommitWithSuccessStatus:
-              (previousPullRequestReviewObject.headCommitRemainingOwnersToApproveDocs === [])
-                ? previousPullRequestReviewObject.headCommitId
-                : previousPullRequestReviewObject.currentAnalysisLastCommitWithSuccessStatus
+          {
+            new: false
           }
+        ).exec();
+
+        // TODO handle error better?
+        if (pullRequestReview === null) {
+          const errMessage =
+            `Missing PullRequestReview object for --- repoId: ${repoId}, prNumber: ${pullRequestNumber}`
+          console.log(errMessage);
+          return;
         }
 
-      await Analysis.pipeline(
-        pullRequestReviewObject,
-        getClientUrlForCommitReview(repoId, pullRequestNumber),
-        retrieveDiff(context, owner, repoName),
-        retrieveFile(context, owner, repoName),
-        setCommitStatus(context, owner, repoName)
-      ).catch((err) => {
-        console.log(`Analysis Pipeline Error: ${err} --- ${JSON.stringify(err)}`)
-      })
+        const previousPullRequestReviewObject: PullRequestReview = pullRequestReview.toObject();
 
-    }, prNumbers)
+        // If there are already commits being analyzed in the pipeline, so there is no need to trigger the pipeline or
+        // save a previous CommitReviewObject.
+        if (previousPullRequestReviewObject.pendingAnalysisForCommits.length !== 0) {
+          return;
+        }
 
+        // Otherwise we need to save the old CommitReviewObject and trigger the analysis pipeline.
+
+        const commitReviewUpdateResult = await CommitReviewModel.update(
+          { repoId, pullRequestNumber, commitId: previousPullRequestReviewObject.headCommitId },
+          {
+            approvedTags: previousPullRequestReviewObject.headCommitApprovedTags,
+            rejectedTags: previousPullRequestReviewObject.headCommitRejectedTags,
+            remainingOwnersToApproveDocs: previousPullRequestReviewObject.headCommitRemainingOwnersToApproveDocs,
+            frozen: true
+          }
+        );
+
+        // TODO HANDLE ERROR better
+        if (commitReviewUpdateResult.n !== 1 || commitReviewUpdateResult.nModified !== 1) {
+          const errMessage = `Failed to update previous commit: ${JSON.stringify({ repoId, pullRequestNumber, commitId: previousPullRequestReviewObject.headCommitId },)}`;
+          console.log(errMessage);
+        }
+
+        // Construct the new PRO from previous one.
+        const pullRequestReviewObject: PullRequestReview =
+          { ...previousPullRequestReviewObject,
+            ...{
+              headCommitId,
+              pendingAnalysisForCommits: [ headCommitId ],
+              headCommitApprovedTags: null,
+              headCommitRejectedTags: null,
+              headCommitRemainingOwnersToApproveDocs: null,
+              headCommitTagsAndOwners: null,
+              loadingHeadAnalysis: true
+            },
+          ...{
+              // An unlikely race condition, but just in case, if the last commit had no remaining owners to approve dos
+              // then it is the last success commit. Because first that is pulled and then only after is success set
+              // there is a chance this runs between the 2 db operations.
+              currentAnalysisLastCommitWithSuccessStatus:
+                (previousPullRequestReviewObject.headCommitRemainingOwnersToApproveDocs === [])
+                  ? previousPullRequestReviewObject.headCommitId
+                  : previousPullRequestReviewObject.currentAnalysisLastCommitWithSuccessStatus
+            }
+          }
+
+        await Analysis.pipeline(
+          pullRequestReviewObject,
+          getClientUrlForCommitReview(repoId, pullRequestNumber),
+          retrieveDiff(context, owner, repoName),
+          retrieveFile(context, owner, repoName),
+          setCommitStatus(context, owner, repoName)
+        )
+
+      }, prNumbers)
+
+    } catch (err) {
+      AppError.logWebhookErrorLeak("push", err);
+    }
   });
 
 }

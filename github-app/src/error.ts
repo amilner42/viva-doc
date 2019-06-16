@@ -1,22 +1,29 @@
-// Module for representing the root error type.
+// The base error type for all errors thrown within github-app.
+export interface GithubAppError {
+  githubAppError: true;
+  errorName: string;
+}
 
-/** The root error type.
 
-The proto framework wants errors to have a `stack` and `message` field for pretty printing.
+// Log that an error leaked all the way to the webhook.
+//
+// We don't want these type of errors.
+export const logWebhookErrorLeak = (webhookName: string, err: any): void => {
 
-  WARNING:
-    Don't extend `Error`:
-    https://github.com/Microsoft/TypeScript/wiki/Breaking-Changes#extending-built-ins-like-error-array-and-map-may-no-longer-work
+  log(`An unhandled error leaked all the way back to webhook ${webhookName}.`);
+  doIgnoringError(() => { log(`Error object direct log: ${err}`); });
+  doIgnoringError(() => { log(`Error object JSON.stringify: ${JSON.stringify(err)}`)});
 
-*/
-export class ProbotAppError {
+}
 
-  public stack: any
-  public message: string
 
-  constructor(msg: string) {
-    const err = new Error()
-    this.message = msg;
-    this.stack = err.stack
-  }
+// Stub for possible logging service.
+export const log = (str: string) => {
+  console.error(str);
+}
+
+
+// Do something and eat any errors that get thrown.
+const doIgnoringError = (doThis: () => void): void => {
+  try { doThis(); } catch (err) { }
 }
