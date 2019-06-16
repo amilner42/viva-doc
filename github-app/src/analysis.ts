@@ -6,7 +6,7 @@ import * as Diff from "./diff"
 import * as Tag from "./tag"
 import * as Review from "./review"
 import * as Lang from "./languages/index"
-import * as AppError from "./error"
+import * as F from "./functional"
 
 import mongoose from "mongoose"
 const PullRequestReviewModel = mongoose.model("PullRequestReview")
@@ -472,26 +472,18 @@ const attachCode = async (
 
 
 const isLanguageSupported = (fileDiff: Diff.FileDiff): boolean => {
-  try {
-    // TODO does this make sense on with diffType = rename?
-    Lang.extractFileType(fileDiff.currentFilePath)
-    return true
-  } catch ( err ) {
-    if (err instanceof Lang.LanguageParserError) {
-      switch (err.type) {
 
-        case "unsupported-extension":
-          return false;
+  switch (fileDiff.diffType) {
 
-        case "unsupported-file":
-          return false;
-      }
+    case "renamed":
+      return F.isJust(Lang.getLanguageFromFilePath(fileDiff.previousFilePath))
+              && F.isJust(Lang.getLanguageFromFilePath(fileDiff.currentFilePath));
 
-      // Otherwise propogate error
-      throw err;
-    }
+    case "deleted":
+    case "new":
+    case "modified":
+      return F.isJust(Lang.getLanguageFromFilePath(fileDiff.currentFilePath));
 
-    // Otherwise propogate error
-    throw err;
   }
+
 }

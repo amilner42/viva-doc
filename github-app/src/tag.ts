@@ -98,7 +98,8 @@ Note: This does not mutate the object you pass in, it creates a new object.
 */
 export const parseTags = (diffWF: FileDiffWithCode): FileDiffWithCodeAndTags => {
 
-  const currentLanguage = Lang.extractFileType(diffWF.currentFilePath)
+  // TODO we are casting here becuase we checked earlier, better to attach language earlier to avoid type casts.
+  const currentLanguage = Lang.getLanguageFromFilePath(diffWF.currentFilePath) as Lang.Language
 
   switch (diffWF.diffType) {
 
@@ -117,7 +118,8 @@ export const parseTags = (diffWF: FileDiffWithCode): FileDiffWithCodeAndTags => 
     }
 
     case "renamed":
-      const previousLanguage = Lang.extractFileType(diffWF.previousFilePath)
+    // TODO we are casting here becuase we checked earlier, better to attach language earlier to avoid type casts.
+      const previousLanguage = Lang.getLanguageFromFilePath(diffWF.previousFilePath) as Lang.Language
 
       return R.merge(
         diffWF,

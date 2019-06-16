@@ -5,6 +5,17 @@
 // A basic maybe type
 export type Maybe<T> = T | null
 
+
+export const isJust = <T>(val: Maybe<T>) => {
+  if (val === null) { return false }
+
+  return true;
+}
+
+export const isNull = <T>(val: Maybe<T>) => {
+  return !isJust(val);
+}
+
 /** UNIONS */
 
 // A type with 2 options
