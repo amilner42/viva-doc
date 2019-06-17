@@ -66,6 +66,7 @@ export = (app: Probot.Application) => {
   });
 
 
+  // TODO Code quality helper functions.
   app.on("installation.deleted", async (context) => {
     AppError.webhookErrorWrapper("installation.deleted", async () => {
 
@@ -89,7 +90,7 @@ export = (app: Probot.Application) => {
           errorName: "delete-repo-failure",
           githubAppError: true,
           loggable: true,
-          isSevere: true,
+          isSevere: false,
           installationId,
           data: err,
           stack: AppError.getStack()
@@ -115,7 +116,7 @@ export = (app: Probot.Application) => {
           errorName: "delete-repo-delete-commit-reviews-failure",
           githubAppError: true,
           loggable: true,
-          isSevere: true,
+          isSevere: false,
           installationId,
           stack: AppError.getStack(),
           data: err
@@ -140,7 +141,7 @@ export = (app: Probot.Application) => {
           errorName: "delete-repo-delete-pull-request-reviews-failure",
           githubAppError: true,
           loggable: true,
-          isSevere: true,
+          isSevere: false,
           data: err,
           installationId,
           stack: AppError.getStack()
@@ -152,6 +153,8 @@ export = (app: Probot.Application) => {
     });
   });
 
+
+  // TODO Code quality helper functions.
   app.on("installation_repositories.added", async (context) => {
     AppError.webhookErrorWrapper("installation_repositories.added", async () => {
 
@@ -201,6 +204,7 @@ export = (app: Probot.Application) => {
   });
 
 
+  // TODO Code quality helper functions.
   app.on("installation_repositories.removed", async (context) => {
     AppError.webhookErrorWrapper("installation_repositories.removed", async () => {
 
@@ -210,41 +214,82 @@ export = (app: Probot.Application) => {
         return repoToRemove.id
       }, payload.repositories_removed);
 
-
-      const clearRemovedRepoData = async () => {
+      try {
 
         const repoUpdateResult = await RepoModel.update(
           { installationId },
           { $pull: { "repoIds": { $in: reposToRemove } } }
-        );
+        ).exec();
 
         if (repoUpdateResult.ok !== 1 || repoUpdateResult.n !== 1 || repoUpdateResult.nModified !== 1) {
-          throw "ERROR"
+          throw { updateQueryFailed: true
+                , ok: repoUpdateResult.ok
+                , n: repoUpdateResult.n
+                , nModified: repoUpdateResult.nModified
+                }
         }
 
-        const deleteCommitReviewsResult =
-          await CommitReviewModel.deleteMany({ repoId: { $in: reposToRemove } }).exec();
+      } catch (err) {
 
-        if (deleteCommitReviewsResult.ok !== 1) {
-          throw "ERROR";
-        }
+        const removeReposLoggableError: AppError.GithubAppLoggableError = {
+          errorName: "remove-repos-failure",
+          githubAppError: true,
+          loggable: true,
+          isSevere: false,
+          data: err,
+          installationId,
+          stack: AppError.getStack(),
+        };
 
-        const deletePullRequestReviewsResult =
-          await PullRequestReviewModel.deleteMany({ repoId: { $in: reposToRemove } }).exec();
-
-        if (deletePullRequestReviewsResult.ok !== 1) {
-          throw "ERROR";
-        }
+        throw removeReposLoggableError;
 
       }
 
       try {
 
-        await clearRemovedRepoData();
+        const deleteCommitReviewsResult = await CommitReviewModel.deleteMany({ repoId: { $in: reposToRemove } }).exec();
+
+        if (deleteCommitReviewsResult.ok !== 1) {
+          throw `delete commit review result not ok: ${deleteCommitReviewsResult.ok}`;
+        }
 
       } catch (err) {
 
-        console.log(`Error: Could not remove ${reposToRemove.length} repo(s) from installation ${installationId}`)
+        const deleteCommitReviewsLoggableError: AppError.GithubAppLoggableError = {
+          errorName: "remove-repos-delete-commit-reviews-failure",
+          githubAppError: true,
+          loggable: true,
+          isSevere: false,
+          installationId,
+          stack: AppError.getStack(),
+          data: err
+        }
+
+        throw deleteCommitReviewsLoggableError;
+      }
+
+      try {
+
+        const deletePullRequestReviewsResult =
+          await PullRequestReviewModel.deleteMany({ repoId: { $in: reposToRemove } }).exec();
+
+        if (deletePullRequestReviewsResult.ok !== 1) {
+          throw `delete pull request result not ok: ${deletePullRequestReviewsResult.ok}`;
+        }
+
+      } catch (err) {
+
+        const deletePullRequestReviewLoggableError: AppError.GithubAppLoggableError = {
+          errorName: "remove-repos-delete-pull-request-reviews-failure",
+          githubAppError: true,
+          loggable: true,
+          isSevere: false,
+          data: err,
+          installationId,
+          stack: AppError.getStack()
+        }
+
+        throw deletePullRequestReviewLoggableError;
       }
 
     });
