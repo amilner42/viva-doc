@@ -61,7 +61,7 @@ export = (app: Probot.Application) => {
 
       await Repo.newInstallation(installationId, owner, repoIds, "init-repo-failure");
 
-      await analyzeAlreadyOpenPrsForRepos(context, owner, repoIdsAndNames);
+      await analyzeAlreadyOpenPrsForRepos(installationId, context, owner, repoIdsAndNames);
 
     });
   });
@@ -106,7 +106,7 @@ export = (app: Probot.Application) => {
 
       await Repo.addReposToInstallaton(installationId, repoIds, "add-repos-failure");
 
-      await analyzeAlreadyOpenPrsForRepos(context, owner, repoIdsAndNames);
+      await analyzeAlreadyOpenPrsForRepos(installationId, context, owner, repoIdsAndNames);
 
     });
   });
@@ -144,6 +144,7 @@ export = (app: Probot.Application) => {
 
       const prPayload = context.payload
       const { owner } = context.repo()
+      const installationId = (prPayload.installation as any).id
       const repoId = (prPayload.repository as any).id
       const repoFullName: string = (prPayload.repository as any).full_name
       const repoName: string = (prPayload.repository as any).name
@@ -156,6 +157,7 @@ export = (app: Probot.Application) => {
       const baseCommitId = (prPayload.pull_request as any).base.sha
 
       await analyzeNewPullRequest(
+        installationId,
         context,
         owner,
         repoId,
@@ -190,7 +192,7 @@ export = (app: Probot.Application) => {
       const { owner } = context.repo()
       const headCommitId: string = pushPayload.after
 
-      const prNumbers = await getOpenPullRequestNumbersForBranch(context, repoName, branchName, owner)
+      const prNumbers = await getOpenPullRequestNumbersForBranch(installationId, context, repoName, branchName, owner)
 
       const settledPromises = await PromisesExtra.settleAll<void, any>(
         prNumbers.map(async (pullRequestNumber) => {
@@ -270,9 +272,9 @@ const analyzeOldPullRequest =
   await Analysis.pipeline(
     pullRequestReviewObject,
     getClientUrlForCommitReview(repoId, pullRequestNumber),
-    retrieveDiff(context, owner, repoName),
-    retrieveFile(context, owner, repoName),
-    setCommitStatus(context, owner, repoName)
+    retrieveDiff(installationId, context, owner, repoName),
+    retrieveFile(installationId, context, owner, repoName),
+    setCommitStatus(installationId, context, owner, repoName)
   );
 
 }
@@ -280,7 +282,8 @@ const analyzeOldPullRequest =
 
 // TODO HANDLE ERRORS
 const analyzeNewPullRequest =
-  async ( context: Probot.Context
+  async ( installationId: number
+  , context: Probot.Context
   , owner: string
   , repoId: number
   , repoName: string
@@ -319,9 +322,9 @@ const analyzeNewPullRequest =
   await Analysis.pipeline(
     pullRequestReviewObject,
     getClientUrlForCommitReview(repoId, pullRequestNumber),
-    retrieveDiff(context, owner, repoName),
-    retrieveFile(context, owner, repoName),
-    setCommitStatus(context, owner, repoName)
+    retrieveDiff(installationId, context, owner, repoName),
+    retrieveFile(installationId, context, owner, repoName),
+    setCommitStatus(installationId, context, owner, repoName)
   ).catch((err) => {
     console.log(`Analysis Pipeline Error: ${err} --- ${JSON.stringify(err)}`)
   })
@@ -331,19 +334,28 @@ const analyzeNewPullRequest =
 
 
 // TODO HANDLE ERRORS
-const analyzeAlreadyOpenPrsForRepos = async (context: Probot.Context, owner: string, repoIdsAndNames: RepoIdAndName[]) => {
+const analyzeAlreadyOpenPrsForRepos =
+  async ( installationId: number
+        , context: Probot.Context
+        , owner: string
+        , repoIdsAndNames: RepoIdAndName[]
+        ): Promise<void> => {
 
   for (let repoIdAndName of repoIdsAndNames) {
-    await analyzeAlreadyOpenPrs(context, owner, repoIdAndName);
+    await analyzeAlreadyOpenPrs(installationId, context, owner, repoIdAndName);
   }
-
 }
 
 
 // TODO HANDLE ERRORS
-const analyzeAlreadyOpenPrs = async (context: Probot.Context, owner: string, repoIdAndName: RepoIdAndName) => {
+const analyzeAlreadyOpenPrs =
+  async ( installationId: number
+        , context: Probot.Context
+        , owner: string
+        , repoIdAndName: RepoIdAndName
+        ): Promise<void> => {
 
-  const openPrs = await getOpenPullRequests(context, owner, repoIdAndName);
+  const openPrs = await getOpenPullRequests(installationId, context, owner, repoIdAndName);
 
   for (let openPr of openPrs) {
 
@@ -358,6 +370,7 @@ const analyzeAlreadyOpenPrs = async (context: Probot.Context, owner: string, rep
     const baseCommitId = openPr.base.sha;
 
     await analyzeNewPullRequest(
+      installationId,
       context,
       owner,
       repoId,
@@ -376,111 +389,237 @@ const analyzeAlreadyOpenPrs = async (context: Probot.Context, owner: string, rep
 }
 
 
-// TODO HANDLE ERRORS
-const getOpenPullRequests = async (context: Probot.Context, owner: string, { repoName }: RepoIdAndName) => {
+// @THROWS only `GithubApp.LoggableError` upon failure to retrieve open PRs.
+const getOpenPullRequests =
+  async ( installationId: number
+        , context: Probot.Context
+        , owner: string
+        , { repoName }: RepoIdAndName
+        ) => {
 
-  const response = await context.github.pulls.list({
-    repo: repoName,
-    owner,
-    state: "open"
-  })
+  try {
 
-  return response.data;
+    const response = await context.github.pulls.list({
+      repo: repoName,
+      owner,
+      state: "open"
+    })
+
+    return response.data;
+
+  } catch (err) {
+
+    const getPullRequestsLoggableError: AppError.GithubAppLoggableError = {
+      errorName: "github-retrieve-open-pull-requests-failure",
+      githubAppError: true,
+      loggable: true,
+      isSevere: false,
+      installationId,
+      stack: AppError.getStack(),
+      data: {
+        err,
+        owner,
+        repoName
+      }
+    };
+
+    throw getPullRequestsLoggableError;
+  }
 
 }
 
 
-// TODO HANDLE ERRORS
+// @THROWS only `GithubApp.LoggableError` upon failure to retrieve open PRs for branch.
 const getOpenPullRequestNumbersForBranch =
-  async (context: Probot.Context, repoName: string, branchName: string, owner: string)
-  : Promise<number[]> => {
+  async ( installationId: number
+        , context: Probot.Context
+        , repoName: string
+        , branchName: string
+        , owner: string
+        ) : Promise<number[]> => {
 
-  // TODO check this is good when under an organization?
-  const pullListResponse = await context.github.pulls.list({
-    owner,
-    repo: repoName,
-    state: "open",
-    head: `${owner}:${branchName}`
-  })
+  try {
 
-  return R.map((datum) => { return datum.number },  pullListResponse.data)
+    const pullListResponse = await context.github.pulls.list({
+      owner,
+      repo: repoName,
+      state: "open",
+      head: `${owner}:${branchName}`
+    })
+
+    return R.map((datum) => { return datum.number },  pullListResponse.data)
+
+  } catch (err) {
+
+    const getPullRequestsLoggableError: AppError.GithubAppLoggableError = {
+      errorName: "github-retrieve-open-pull-requests-for-branch-failure",
+      githubAppError: true,
+      loggable: true,
+      isSevere: false,
+      installationId,
+      stack: AppError.getStack(),
+      data: {
+        err,
+        repoName,
+        branchName,
+        owner
+      }
+    };
+
+    throw getPullRequestsLoggableError;
+  }
+
 }
 
 
-// TODO HANDLE ERRORS
+// @THROWS only `GithubApp.LoggableError` upon failure to retrieve diff.
 const retrieveDiff = R.curry(
-  async ( context: Probot.Context
+  async ( installationId: number
+  , context: Probot.Context
   , owner: string
   , repoName: string
   , baseBranchNameOrCommitSHA: string
   , headBranchNameOrCommitSHA: string
   ) : Promise<string> => {
 
-  // Need the correct accept header to get the diff:
-  // Refer: https://developer.github.com/v3/media/#commits-commit-comparison-and-pull-requests
-  const diffAcceptHeader = { accept: "application/vnd.github.v3.diff"}
-  // Unfortunetly the typings are wrong, and they don't include `headers` even though octokit (which this wraps)
-  // has that field, and of course we need to pass the correct header to get the correct media type. This is
-  // why I have a `as any` at the end here, it is only because the typings are wrong.
-  const diffResponse = await context.github.repos.compareCommits({
-    headers: diffAcceptHeader,
-    owner,
-    repo: repoName,
-    base: baseBranchNameOrCommitSHA,
-    head: headBranchNameOrCommitSHA
-  } as any);
+  try {
 
-  return diffResponse.data;
-})
+    // Need the correct accept header to get the diff:
+    // Refer: https://developer.github.com/v3/media/#commits-commit-comparison-and-pull-requests
+    const diffAcceptHeader = { accept: "application/vnd.github.v3.diff"}
+    // Unfortunetly the typings are wrong, and they don't include `headers` even though octokit (which this wraps)
+    // has that field, and of course we need to pass the correct header to get the correct media type. This is
+    // why I have a `as any` at the end here, it is only because the typings are wrong.
+    const diffResponse = await context.github.repos.compareCommits({
+      headers: diffAcceptHeader,
+      owner,
+      repo: repoName,
+      base: baseBranchNameOrCommitSHA,
+      head: headBranchNameOrCommitSHA
+    } as any);
+
+    return diffResponse.data;
+
+  } catch (err) {
+
+    const retrieveDiffLoggableError: AppError.GithubAppLoggableError = {
+      errorName: "retrieve-diff-failure",
+      installationId,
+      githubAppError: true,
+      loggable: true,
+      isSevere: false,
+      stack: AppError.getStack(),
+      data: {
+        err,
+        owner,
+        repoName,
+        baseBranchNameOrCommitSHA,
+        headBranchNameOrCommitSHA
+      }
+    };
+
+    throw retrieveDiffLoggableError;
+  }
+
+});
 
 
-// TODO HANDLE ERRORS
+// @THROWS only `GithubApp.LoggableError` upon failure to retrieve file.
 const retrieveFile = R.curry(
-  async ( context: Probot.Context
-  , owner: string
-  , repoName: string
-  , commitId: string
-  , filePath: string
-  ) : Promise<string> => {
+  async ( installationId: number
+        , context: Probot.Context
+        , owner: string
+        , repoName: string
+        , commitId: string
+        , filePath: string
+        ) : Promise<string> => {
 
-  return context.github.repos.getContents({
-    owner,
-    repo: repoName,
-    path: filePath,
-    ref: commitId
-  })
-  .then(R.path<any>(["data"]))
-  .then((data) => {
-    return (new Buffer(data.content, data.encoding)).toString("ascii")
-  })
+  try {
 
-})
+    return await context.github.repos.getContents({
+      owner,
+      repo: repoName,
+      path: filePath,
+      ref: commitId
+    })
+    .then(R.path<any>(["data"]))
+    .then((data) => {
+      return (new Buffer(data.content, data.encoding)).toString("ascii")
+    })
+
+  } catch (err) {
+
+    const failureToRetrieveFileLoggableError: AppError.GithubAppLoggableError = {
+      errorName: "github-retrieve-file-failure",
+      githubAppError: true,
+      loggable: true,
+      isSevere: false,
+      data: {
+        err,
+        repoName,
+        commitId,
+        filePath
+      },
+      installationId,
+      stack: AppError.getStack()
+    }
+
+    throw failureToRetrieveFileLoggableError;
+  }
+
+});
 
 
-// TODO HANDLE ERRORS
+// @THROWS only `GithubAppLoggableError` upon failure to set status.
 const setCommitStatus = R.curry(
-  async ( context: Probot.Context
+  async (installationId: number
+  , context: Probot.Context
   , owner: string
   , repoName: string
   , commitId: string
   , statusState: "success" | "failure" | "pending"
   , optional?: { description?: string, target_url?: string }
-  ) => {
+  ): Promise<void> => {
 
-  const requiredSettings = {
-    owner,
-    repo: repoName,
-    sha: commitId,
-    context: VIVA_DOC_STATUS_NAME,
-    state: statusState
+  try {
+
+    const requiredSettings = {
+      owner,
+      repo: repoName,
+      sha: commitId,
+      context: VIVA_DOC_STATUS_NAME,
+      state: statusState
+    }
+
+    const settings = optional ? { ...requiredSettings, ...optional } : requiredSettings
+
+    await context.github.repos.createStatus(settings);
+
+  } catch (err) {
+
+    const setStatusLoggableError: AppError.GithubAppLoggableError = {
+      errorName: "github-set-status-failure",
+      githubAppError: true,
+      loggable: true,
+      installationId,
+      isSevere: false,
+      stack: AppError.getStack(),
+      data: {
+        err,
+        repoName,
+        owner,
+        commitId,
+        statusState
+      }
+    }
+
+    throw setStatusLoggableError;
   }
 
-  const settings = optional ? { ...requiredSettings, ...optional } : requiredSettings
-
-  return context.github.repos.createStatus(settings).then(R.path(["data"]))
-})
+});
 
 
+// @THROWS never.
 // TODO add env for prod.
 const getClientUrlForCommitReview = R.curry((repoId: number, prNumber: number, commitId: string): string => {
   return `http://localhost:8080/review/repo/${repoId}/pr/${prNumber}/commit/${commitId}`
