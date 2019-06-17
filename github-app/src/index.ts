@@ -194,8 +194,8 @@ export = (app: Probot.Application) => {
         })
       );
 
-      const failedResults = PromisesExtra.getRejectedSettlements(settledPromises);
-      if (failedResults.length !== 0) { throw failedResults; }
+      const rejectedSettlements = PromisesExtra.getRejectedSettlements(settledPromises);
+      if (rejectedSettlements.length > 0) { throw rejectedSettlements; }
 
     });
   });
@@ -325,7 +325,7 @@ const analyzeNewPullRequest =
 }
 
 
-// TODO HANDLE ERRORS
+// @THROWS An array of errors, propogated from all the calls to `analyzeAlreadyOpenPrs`.
 const analyzeAlreadyOpenPrsForRepos =
   async ( installationId: number
         , context: Probot.Context
@@ -333,13 +333,20 @@ const analyzeAlreadyOpenPrsForRepos =
         , repoIdsAndNames: GH.RepoIdAndName[]
         ): Promise<void> => {
 
-  for (let repoIdAndName of repoIdsAndNames) {
-    await analyzeAlreadyOpenPrs(installationId, context, owner, repoIdAndName);
-  }
+  const settledPromises = await PromisesExtra.settleAll(
+    repoIdsAndNames.map(async (repoIdAndName) => {
+      return await analyzeAlreadyOpenPrs(installationId, context, owner, repoIdAndName);
+    })
+  );
+
+  const rejectedSettlements = PromisesExtra.getRejectedSettlements(settledPromises);
+  if (rejectedSettlements.length > 0) { throw rejectedSettlements; }
 }
 
 
-// TODO HANDLE ERRORS
+// @THROWS either:
+//   - GithubApp.LoggableError
+//   - An array of errors, propogated by calls to `analyzeNewPullRequest`.
 const analyzeAlreadyOpenPrs =
   async ( installationId: number
         , context: Probot.Context
@@ -349,34 +356,39 @@ const analyzeAlreadyOpenPrs =
 
   const openPrs = await GH.getOpenPullRequests(installationId, context, owner, repoIdAndName);
 
-  for (let openPr of openPrs) {
+  const settledPromises = await PromisesExtra.settleAll(
+    openPrs.map(async (openPr) => {
 
-    const repoId = openPr.head.repo.id;
-    const repoName = openPr.head.repo.name;
-    const repoFullName = openPr.head.repo.full_name;
-    const branchName = openPr.head.ref;
-    const baseBranchName = openPr.base.ref;
-    const pullRequestId = openPr.id;
-    const pullRequestNumber = openPr.number;
-    const headCommitId = openPr.head.sha;
-    const baseCommitId = openPr.base.sha;
+      const repoId = openPr.head.repo.id;
+      const repoName = openPr.head.repo.name;
+      const repoFullName = openPr.head.repo.full_name;
+      const branchName = openPr.head.ref;
+      const baseBranchName = openPr.base.ref;
+      const pullRequestId = openPr.id;
+      const pullRequestNumber = openPr.number;
+      const headCommitId = openPr.head.sha;
+      const baseCommitId = openPr.base.sha;
 
-    await analyzeNewPullRequest(
-      installationId,
-      context,
-      owner,
-      repoId,
-      repoName,
-      repoFullName,
-      branchName,
-      baseBranchName,
-      pullRequestId,
-      pullRequestNumber,
-      headCommitId,
-      baseCommitId
-    );
+      await analyzeNewPullRequest(
+        installationId,
+        context,
+        owner,
+        repoId,
+        repoName,
+        repoFullName,
+        branchName,
+        baseBranchName,
+        pullRequestId,
+        pullRequestNumber,
+        headCommitId,
+        baseCommitId
+      );
 
-  }
+    })
+  );
+
+  const rejectedSettlements = PromisesExtra.getRejectedSettlements(settledPromises);
+  if (rejectedSettlements.length > 0) { throw rejectedSettlements; }
 
 }
 

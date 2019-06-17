@@ -47,18 +47,21 @@ export const webhookErrorWrapper = async (webhookName: string, webhookCode: () =
     logWebhookErrorLeak(webhookName, err);
   }
 
-  try {
-
-    await webhookCode();
-
-  } catch (err) {
+  // This function will always resolve.
+  const handleError = async (err: any): Promise<void> => {
 
     if (Array.isArray(err)) {
-      await Promise.all(err.map(handleSingleError));
-      return;
+      await Promise.all(err.map(handleError));
+    } else {
+      await handleSingleError(err);
     }
 
-    await handleSingleError(err);
+  }
+
+  try {
+    await webhookCode();
+  } catch (err) {
+    await handleError(err);
   }
 
 }
