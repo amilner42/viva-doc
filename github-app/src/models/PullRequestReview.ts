@@ -79,3 +79,64 @@ export const deletePullRequestReviewsForRepos =
   }
 
 }
+
+
+// Adds a commit ID to the pending analysis, and updates all `headXXX` fields.
+// @RETURNS The previous pull request object (prior to update).
+// @THROWS only `GithubAppLoggableError` upon failure.
+export const updateHeadCommit =
+  async ( installationId: number
+        , repoId: number
+        , pullRequestNumber: number
+        , headCommitId: string
+        , errorName: string
+        ): Promise<PullRequestReview> => {
+
+  try {
+
+    const pullRequestReview = await PullRequestReviewModel.findOneAndUpdate(
+      { repoId, pullRequestNumber },
+      {
+        $push: { "pendingAnalysisForCommits": headCommitId },
+        headCommitId: headCommitId,
+        headCommitApprovedTags: null,
+        headCommitRejectedTags: null,
+        headCommitRemainingOwnersToApproveDocs: null,
+        headCommitTagsAndOwners: null,
+        loadingHeadAnalysis: true
+      },
+      {
+        new: false
+      }
+    ).exec();
+
+    if (pullRequestReview === null) {
+      const errMessage =
+        `Missing PullRequestReview object for --- repoId: ${repoId}, prNumber: ${pullRequestNumber}`
+
+      throw errMessage;
+    }
+
+    return pullRequestReview.toObject();
+
+  } catch (err) {
+
+    const updateHeadCommitOnPullRequestReviewLoggableError: AppError.GithubAppLoggableError = {
+      errorName,
+      githubAppError: true,
+      loggable: true,
+      isSevere: false,
+      data: err,
+      installationId,
+      stack: AppError.getStack()
+    }
+
+    throw updateHeadCommitOnPullRequestReviewLoggableError;
+  }
+
+}
+
+
+export const isAnalyzingCommits = (pullRequestReview: PullRequestReview): boolean => {
+  return pullRequestReview.pendingAnalysisForCommits.length !== 0;
+}

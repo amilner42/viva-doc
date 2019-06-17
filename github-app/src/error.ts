@@ -28,14 +28,14 @@ export interface GithubAppLoggableError extends GithubAppError {
 
 // A wrapper for all webhooks.
 //
-// Will catch and log loggable errors properly. That is the point of this wrapper.
+// Will catch and log loggable errors properly. That is the point of this wrapper. It will handle both single errors
+// and arrays of errors properly.
+//
 // NOTE: All other errors will be caught but will be logged as leaked errors.
 export const webhookErrorWrapper = async (webhookName: string, webhookCode: () => Promise<void>): Promise<void> => {
-  try {
 
-    await webhookCode();
-
-  } catch (err) {
+  // This function will always resolve.
+  const handleSingleError = async (err: any): Promise<void> => {
 
     const githubAppLoggableError = isGithubAppLoggableError(err);
 
@@ -46,6 +46,21 @@ export const webhookErrorWrapper = async (webhookName: string, webhookCode: () =
 
     logWebhookErrorLeak(webhookName, err);
   }
+
+  try {
+
+    await webhookCode();
+
+  } catch (err) {
+
+    if (Array.isArray(err)) {
+      await Promise.all(err.map(handleSingleError));
+      return;
+    }
+
+    await handleSingleError(err);
+  }
+
 }
 
 
@@ -101,7 +116,13 @@ export const getStack = (): string => {
 }
 
 
+// This function will not throw errors.
 export const isGithubAppLoggableError = (err: any): F.Maybe<GithubAppLoggableError>  => {
+
+  if (typeof err !== "object") {
+    return null;
+  }
+
   if ((err as GithubAppLoggableError).githubAppError && (err as GithubAppLoggableError).loggable) {
     return err;
   }

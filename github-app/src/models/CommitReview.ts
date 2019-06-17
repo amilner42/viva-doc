@@ -3,6 +3,7 @@ import mongoose = require("mongoose")
 import { FileReviewWithMetadata, TagAndOwner } from "../review";
 import * as AppError from "../error";
 
+
 export interface CommitReview {
   repoId: number,
   repoName: string,
@@ -69,6 +70,61 @@ export const deleteCommitReviewsForRepos =
     }
 
     throw deleteCommitReviewsLoggableError;
+  }
+
+}
+
+
+// Freezes a commit with some final data.
+//
+// @THROWS only `GithubAppLoggableError` upon failed update.
+export const freezeCommitReviewWithFinalData =
+  async ( installationId: number
+        , repoId: number
+        , pullRequestNumber: number
+        , commitId: string
+        , finalApprovedTags: string[]
+        , finalRejectedTags: string[]
+        , finalRemainingOwnersToApproveDocs: string[]
+        , errorName: string
+        ) => {
+
+  try {
+
+    const commitReviewUpdateResult = await CommitReviewModel.update(
+      { repoId, pullRequestNumber, commitId },
+      {
+        approvedTags: finalApprovedTags,
+        rejectedTags: finalRejectedTags,
+        remainingOwnersToApproveDocs: finalRemainingOwnersToApproveDocs,
+        frozen: true
+      }
+    ).exec();
+
+    if ( commitReviewUpdateResult.ok !== 1
+          || commitReviewUpdateResult.n !== 1
+          || commitReviewUpdateResult.nModified !== 1 ) {
+
+      throw { updateQueryFailure: true
+            , ok: commitReviewUpdateResult.ok
+            , n: commitReviewUpdateResult.n
+            , nModified: commitReviewUpdateResult.nModified
+            }
+    }
+
+  } catch (err) {
+
+    const freezeCommitReviewLoggableError: AppError.GithubAppLoggableError = {
+      errorName,
+      installationId,
+      githubAppError: true,
+      loggable: true,
+      isSevere: true,
+      data: err,
+      stack: AppError.getStack()
+    };
+
+    throw freezeCommitReviewLoggableError;
   }
 
 }

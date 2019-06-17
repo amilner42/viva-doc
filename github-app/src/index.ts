@@ -26,21 +26,21 @@ mongoose.connect('mongodb://localhost/viva-doc-dev', { useNewUrlParser: true }, 
   }
 })
 
-
+// NOTE: Order of these requires matters, LoggableError must be first.
+require("./models/LoggableError");
 require("./models/PullRequestReview");
 require("./models/CommitReview");
 require("./models/Repo");
-require("./models/LoggableError");
 
 
 // All imports to internal modules should be here so that all mongoose schemas have loaded first.
 const PullRequestReviewModel = mongoose.model('PullRequestReview')
-const CommitReviewModel = mongoose.model('CommitReview')
 import * as Repo from "./models/Repo";
 import * as CommitReview from "./models/CommitReview";
 import * as PullRequestReview from "./models/PullRequestReview";
 import * as Analysis from "./analysis"
 import * as AppError from "./error"
+import * as PromisesExtra from "./promises-extra"
 
 
 export = (app: Probot.Application) => {
@@ -184,6 +184,7 @@ export = (app: Probot.Application) => {
       }
 
       const repoId: number = (pushPayload.repository as any).id
+      const installationId = (pushPayload.installation as any).id;
       const repoName: string = (pushPayload.repository as any).name
       const branchName: string = (R.last(pushPayload.ref.split("/")) as any) // TODO errors?
       const { owner } = context.repo()
@@ -191,94 +192,88 @@ export = (app: Probot.Application) => {
 
       const prNumbers = await getOpenPullRequestNumbersForBranch(context, repoName, branchName, owner)
 
-      // Perform analysis on all relevant open PRs.
-      R.map( async (pullRequestNumber) => {
+      const settledPromises = await PromisesExtra.settleAll<void, any>(
+        prNumbers.map(async (pullRequestNumber) => {
+          return analyzeOldPullRequest(
+            installationId, context, repoId, owner, repoName, pullRequestNumber, headCommitId
+          );
+        })
+      );
 
-        const pullRequestReview = await PullRequestReviewModel.findOneAndUpdate(
-          { repoId, pullRequestNumber },
-          {
-            $push: { "pendingAnalysisForCommits": headCommitId },
-            headCommitId: headCommitId,
-            headCommitApprovedTags: null,
-            headCommitRejectedTags: null,
-            headCommitRemainingOwnersToApproveDocs: null,
-            headCommitTagsAndOwners: null,
-            loadingHeadAnalysis: true
-          },
-          {
-            new: false
-          }
-        ).exec();
-
-        // TODO handle error better?
-        if (pullRequestReview === null) {
-          const errMessage =
-            `Missing PullRequestReview object for --- repoId: ${repoId}, prNumber: ${pullRequestNumber}`
-          console.log(errMessage);
-          return;
-        }
-
-        const previousPullRequestReviewObject: PullRequestReview.PullRequestReview = pullRequestReview.toObject();
-
-        // If there are already commits being analyzed in the pipeline, so there is no need to trigger the pipeline or
-        // save a previous CommitReviewObject.
-        if (previousPullRequestReviewObject.pendingAnalysisForCommits.length !== 0) {
-          return;
-        }
-
-        // Otherwise we need to save the old CommitReviewObject and trigger the analysis pipeline.
-
-        const commitReviewUpdateResult = await CommitReviewModel.update(
-          { repoId, pullRequestNumber, commitId: previousPullRequestReviewObject.headCommitId },
-          {
-            approvedTags: previousPullRequestReviewObject.headCommitApprovedTags,
-            rejectedTags: previousPullRequestReviewObject.headCommitRejectedTags,
-            remainingOwnersToApproveDocs: previousPullRequestReviewObject.headCommitRemainingOwnersToApproveDocs,
-            frozen: true
-          }
-        );
-
-        // TODO HANDLE ERROR better
-        if (commitReviewUpdateResult.n !== 1 || commitReviewUpdateResult.nModified !== 1) {
-          const errMessage = `Failed to update previous commit: ${JSON.stringify({ repoId, pullRequestNumber, commitId: previousPullRequestReviewObject.headCommitId },)}`;
-          console.log(errMessage);
-        }
-
-        // Construct the new PRO from previous one.
-        const pullRequestReviewObject: PullRequestReview.PullRequestReview =
-          { ...previousPullRequestReviewObject,
-            ...{
-              headCommitId,
-              pendingAnalysisForCommits: [ headCommitId ],
-              headCommitApprovedTags: null,
-              headCommitRejectedTags: null,
-              headCommitRemainingOwnersToApproveDocs: null,
-              headCommitTagsAndOwners: null,
-              loadingHeadAnalysis: true
-            },
-          ...{
-              // An unlikely race condition, but just in case, if the last commit had no remaining owners to approve dos
-              // then it is the last success commit. Because first that is pulled and then only after is success set
-              // there is a chance this runs between the 2 db operations.
-              currentAnalysisLastCommitWithSuccessStatus:
-                (previousPullRequestReviewObject.headCommitRemainingOwnersToApproveDocs === [])
-                  ? previousPullRequestReviewObject.headCommitId
-                  : previousPullRequestReviewObject.currentAnalysisLastCommitWithSuccessStatus
-            }
-          }
-
-        await Analysis.pipeline(
-          pullRequestReviewObject,
-          getClientUrlForCommitReview(repoId, pullRequestNumber),
-          retrieveDiff(context, owner, repoName),
-          retrieveFile(context, owner, repoName),
-          setCommitStatus(context, owner, repoName)
-        )
-
-      }, prNumbers)
+      const failedResults = PromisesExtra.getRejectedSettlements(settledPromises);
+      if (failedResults.length !== 0) { throw failedResults; }
 
     });
   });
+
+}
+
+
+// TODO DOC
+const analyzeOldPullRequest =
+  async ( installationId: number
+        , context: Probot.Context
+        , repoId: number
+        , owner: string
+        , repoName: string
+        , pullRequestNumber: number
+        , headCommitId: string
+        ) : Promise<void> => {
+
+
+  const previousPullRequestReviewObject = await PullRequestReview.updateHeadCommit(
+    installationId,
+    repoId,
+    pullRequestNumber,
+    headCommitId,
+    "update-pull-request-review-head-commit-failure"
+  );
+
+  // No need to trigger pipeline, already analyzing commits.
+  if (PullRequestReview.isAnalyzingCommits(previousPullRequestReviewObject)) { return; }
+
+  // Otherwise we need to save the old CommitReviewObject and trigger the analysis pipeline.
+  await CommitReview.freezeCommitReviewWithFinalData(
+    installationId,
+    repoId,
+    pullRequestNumber,
+    previousPullRequestReviewObject.headCommitId,
+    previousPullRequestReviewObject.headCommitApprovedTags as string[],
+    previousPullRequestReviewObject.headCommitRejectedTags as string[],
+    previousPullRequestReviewObject.headCommitRemainingOwnersToApproveDocs as string[],
+    "freeze-commit-review-failure"
+  );
+
+  // Construct the new PRO from previous one.
+  const pullRequestReviewObject: PullRequestReview.PullRequestReview =
+    { ...previousPullRequestReviewObject,
+      ...{
+        headCommitId,
+        pendingAnalysisForCommits: [ headCommitId ],
+        headCommitApprovedTags: null,
+        headCommitRejectedTags: null,
+        headCommitRemainingOwnersToApproveDocs: null,
+        headCommitTagsAndOwners: null,
+        loadingHeadAnalysis: true
+      },
+    ...{
+        // An unlikely race condition, but just in case, if the last commit had no remaining owners to approve dos
+        // then it is the last success commit. Because first that is pulled and then only after is success set
+        // there is a chance this runs between the 2 db operations.
+        currentAnalysisLastCommitWithSuccessStatus:
+          (previousPullRequestReviewObject.headCommitRemainingOwnersToApproveDocs === [])
+            ? previousPullRequestReviewObject.headCommitId
+            : previousPullRequestReviewObject.currentAnalysisLastCommitWithSuccessStatus
+      }
+    }
+
+  await Analysis.pipeline(
+    pullRequestReviewObject,
+    getClientUrlForCommitReview(repoId, pullRequestNumber),
+    retrieveDiff(context, owner, repoName),
+    retrieveFile(context, owner, repoName),
+    setCommitStatus(context, owner, repoName)
+  );
 
 }
 
