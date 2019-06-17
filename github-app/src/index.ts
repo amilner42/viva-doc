@@ -28,9 +28,10 @@ mongoose.connect('mongodb://localhost/viva-doc-dev', { useNewUrlParser: true }, 
 })
 
 
-require("./models/PullRequestReview")
-require("./models/CommitReview")
-require("./models/Repo")
+require("./models/PullRequestReview");
+require("./models/CommitReview");
+require("./models/Repo");
+require("./models/SevereError");
 
 
 // All imports to internal modules should be here so that all mongoose schemas have loaded first
@@ -46,7 +47,7 @@ export = (app: Probot.Application) => {
 
 
   app.on("installation.created", async (context) => {
-    try {
+    AppError.webhookErrorWrapper("installation.created", async () => {
 
       const payload = context.payload
       const installationId = (payload.installation as any).id
@@ -61,14 +62,12 @@ export = (app: Probot.Application) => {
       await initializeRepoModel(installationId, owner, repoIds);
       await analyzeAlreadyOpenPrsForRepos(context, owner, repoIdsAndNames);
 
-    } catch (err) {
-      AppError.logWebhookErrorLeak("installation.created", err);
-    }
+    });
   });
 
 
   app.on("installation.deleted", async (context) => {
-    try {
+    AppError.webhookErrorWrapper("installation.deleted", async () => {
 
       const payload = context.payload
       const installationId = (payload.installation as any).id
@@ -109,14 +108,12 @@ export = (app: Probot.Application) => {
         console.log(`Error deleting installation with id: ${installationId}`);
       }
 
-    } catch (err) {
-      AppError.logWebhookErrorLeak("installation.deleted", err);
-    }
+    });
   });
 
 
   app.on("installation_repositories.added", async (context) => {
-    try {
+    AppError.webhookErrorWrapper("installation_repositories.added", async () => {
 
       const payload = context.payload
       const installationId = (payload.installation as any).id
@@ -141,14 +138,12 @@ export = (app: Probot.Application) => {
 
       await analyzeAlreadyOpenPrsForRepos(context, owner, repoIdsAndNames);
 
-    } catch (err) {
-      AppError.logWebhookErrorLeak("installation_repositories.added", err);
-    }
+    });
   });
 
 
   app.on("installation_repositories.removed", async (context) => {
-    try {
+    AppError.webhookErrorWrapper("installation_repositories.removed", async () => {
 
       const payload = context.payload;
       const installationId = (payload.installation as any).id;
@@ -193,15 +188,12 @@ export = (app: Probot.Application) => {
         console.log(`Error: Could not remove ${reposToRemove.length} repo(s) from installation ${installationId}`)
       }
 
-    } catch (err) {
-      AppError.logWebhookErrorLeak("installation_repositories.removed", err);
-    }
+    });
   });
 
 
   app.on("pull_request.opened", async (context) => {
-
-    try {
+    AppError.webhookErrorWrapper("pull_request.opened", async () => {
 
       const prPayload = context.payload
       const { owner } = context.repo()
@@ -230,14 +222,12 @@ export = (app: Probot.Application) => {
         baseCommitId
       );
 
-    } catch (err) {
-      AppError.logWebhookErrorLeak("pull_request.opened", err);
-    }
+    });
   });
 
 
   app.on("push", async (context) => {
-    try {
+    AppError.webhookErrorWrapper("push", async () => {
 
       const pushPayload = context.payload
 
@@ -341,26 +331,45 @@ export = (app: Probot.Application) => {
 
       }, prNumbers)
 
-    } catch (err) {
-      AppError.logWebhookErrorLeak("push", err);
-    }
+    });
   });
 
 }
 
 
+// Initializes the repo model.
+//
+// Throws only `AppError.GithubAppSevereError` upon failure.
 const initializeRepoModel = async (installationId: number, owner: string, repoIds: number[]) => {
+  try {
 
-  const repoObject: Repo = {
-    installationId,
-    owner,
-    repoIds
+    const repoObject: Repo = {
+      installationId,
+      owner,
+      repoIds
+    };
+
+    const repo = new RepoModel(repoObject);
+
+    await repo.save();
+
+  } catch (err) {
+
+    let stack = new Error().stack;
+
+    if (stack === undefined) { stack = "No stack available." }
+
+    const githubAppSevereError: AppError.GithubAppSevereError = {
+      githubAppError: true,
+      severe: true,
+      errorName: "init-repo-failure",
+      installationId,
+      stack,
+      data: err
+    }
+
+    throw githubAppSevereError;
   }
-
-  const repo = new RepoModel(repoObject);
-
-  await repo.save()
-
 }
 
 
