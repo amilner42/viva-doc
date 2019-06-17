@@ -81,6 +81,19 @@ export const recordSevereError = async (err: GithubAppSevereError): Promise<void
 }
 
 
+// Returns the stack string if it exists, otherwise returns "no stack available.".
+export const getStack = (): string => {
+
+  const stack = new Error().stack;
+
+  if (stack === undefined) {
+    return "No stack available";
+  }
+
+  return stack;
+}
+
+
 export const isGithubAppSevereError = (err: any): F.Maybe<GithubAppSevereError>  => {
   if (err.githubAppError && err.severe) {
     return err;

@@ -1,10 +1,9 @@
 // Base module for probot app.
 
+// WARNING: Do not import internal modules here, import them below.
 import * as Probot from 'probot' // eslint-disable-line no-unused-vars
 import R from "ramda"
 import mongoose = require("mongoose")
-
-import * as AppError from "./error"
 
 
 interface RepoIdAndName {
@@ -34,13 +33,14 @@ require("./models/Repo");
 require("./models/SevereError");
 
 
-// All imports to internal modules should be here so that all mongoose schemas have loaded first
+// All imports to internal modules should be here so that all mongoose schemas have loaded first.
 const PullRequestReviewModel = mongoose.model('PullRequestReview')
 const RepoModel = mongoose.model("Repo")
 const CommitReviewModel = mongoose.model('CommitReview')
 import { Repo } from "./models/Repo"
 import { PullRequestReview } from "./models/PullRequestReview"
 import * as Analysis from "./analysis"
+import * as AppError from "./error"
 
 
 export = (app: Probot.Application) => {
@@ -72,40 +72,78 @@ export = (app: Probot.Application) => {
       const payload = context.payload
       const installationId = (payload.installation as any).id
 
-      const clearAllData = async () => {
+      let deletedRepoDocument: mongoose.Document;
 
-        const deleteRepoResult =
-          await RepoModel.findOneAndDelete({ installationId }).exec();
+      // Delete Repo Document
+      try {
 
-        if (deleteRepoResult === null) {
-          throw "ERROR : 1285732919";
-        }
+        const deleteRepoResult = await RepoModel.findOneAndDelete({ installationId }).exec();
 
-        const repoIds = (deleteRepoResult.toObject() as Repo).repoIds;
+        if (deleteRepoResult === null) throw "not-found";
 
-        const deleteCommitReviewsResult =
-          await CommitReviewModel.deleteMany({ repoId: { $in: repoIds } }).exec();
+        deletedRepoDocument = deleteRepoResult;
+
+      } catch (err) {
+
+        const deleteRepoSevereError: AppError.GithubAppSevereError = {
+          errorName: "delete-repo-failure",
+          githubAppError: true,
+          severe: true,
+          installationId,
+          data: err,
+          stack: AppError.getStack()
+        };
+
+        throw deleteRepoSevereError;
+      }
+
+      const repoIds = (deletedRepoDocument.toObject() as Repo).repoIds;
+
+      // Delete CommitReview Document(s)
+      try {
+
+        const deleteCommitReviewsResult = await CommitReviewModel.deleteMany({ repoId: { $in: repoIds } }).exec();
 
         if (deleteCommitReviewsResult.ok !== 1) {
-          throw "ERROR";
+          throw `delete commit review result not ok: ${deleteCommitReviewsResult.ok}`;
         }
+
+      } catch (err) {
+
+        const deleteCommitReviewsSevereError: AppError.GithubAppSevereError = {
+          errorName: "delete-repo-delete-commit-reviews-failure",
+          githubAppError: true,
+          severe: true,
+          installationId,
+          stack: AppError.getStack(),
+          data: err
+        }
+
+        throw deleteCommitReviewsSevereError;
+      }
+
+      // Delete PullRequest Document(s)
+      try {
 
         const deletePullRequestReviewsResult =
           await PullRequestReviewModel.deleteMany({ repoId: { $in: repoIds } }).exec();
 
         if (deletePullRequestReviewsResult.ok !== 1) {
-          throw "ERROR";
+          throw `delete pull request result not ok: ${deletePullRequestReviewsResult.ok}`;
         }
-
-      }
-
-      try {
-
-        await clearAllData();
 
       } catch (err) {
 
-        console.log(`Error deleting installation with id: ${installationId}`);
+        const deletePullRequestReviewSevereError: AppError.GithubAppSevereError = {
+          githubAppError: true,
+          errorName: "delete-repo-delete-pull-request-reviews-failure",
+          severe: true,
+          data: err,
+          installationId,
+          stack: AppError.getStack()
+        }
+
+        throw deletePullRequestReviewSevereError;
       }
 
     });
@@ -355,20 +393,16 @@ const initializeRepoModel = async (installationId: number, owner: string, repoId
 
   } catch (err) {
 
-    let stack = new Error().stack;
-
-    if (stack === undefined) { stack = "No stack available." }
-
-    const githubAppSevereError: AppError.GithubAppSevereError = {
+    const initRepoSevereError: AppError.GithubAppSevereError = {
       githubAppError: true,
       severe: true,
       errorName: "init-repo-failure",
       installationId,
-      stack,
+      stack: AppError.getStack(),
       data: err
     }
 
-    throw githubAppSevereError;
+    throw initRepoSevereError;
   }
 }
 
