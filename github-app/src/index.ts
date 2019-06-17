@@ -152,7 +152,6 @@ export = (app: Probot.Application) => {
     });
   });
 
-
   app.on("installation_repositories.added", async (context) => {
     AppError.webhookErrorWrapper("installation_repositories.added", async () => {
 
@@ -166,15 +165,34 @@ export = (app: Probot.Application) => {
 
       const repoIds = R.map(({ repoId }) => repoId, repoIdsAndNames);
 
-      const repoUpdateResult = await RepoModel.update(
-        { installationId },
-        { $addToSet: { "repoIds": { $each: repoIds } }}
-      )
+      try {
 
-      // TODO HANDLE ERROR better? (also wrap in try-catch)
-      if (repoUpdateResult.ok !== 1 || repoUpdateResult.n !== 1 || repoUpdateResult.nModified !== 1) {
-        console.log(`Error: Could not save ${repoIds.length} repo(s) to installation ${installationId}`);
-        return;
+        const repoUpdateResult = await RepoModel.update(
+          { installationId },
+          { $addToSet: { "repoIds": { $each: repoIds } }}
+        ).exec();
+
+        if (repoUpdateResult.ok !== 1 || repoUpdateResult.n !== 1 || repoUpdateResult.nModified !== 1) {
+          throw { updateQueryFailure: true
+                , ok: repoUpdateResult.ok
+                , n: repoUpdateResult.n
+                , nModified: repoUpdateResult.nModified
+                }
+        }
+
+      } catch (err) {
+
+        const addReposLoggableError: AppError.GithubAppLoggableError = {
+          errorName: "add-repos-failure",
+          githubAppError: true,
+          loggable: true,
+          isSevere: true,
+          data: err,
+          stack: AppError.getStack(),
+          installationId
+        }
+
+        throw addReposLoggableError;
       }
 
       await analyzeAlreadyOpenPrsForRepos(context, owner, repoIdsAndNames);
@@ -462,6 +480,7 @@ const analyzeNewPullRequest =
 }
 
 
+// TODO HANDLE ERRORS
 const analyzeAlreadyOpenPrsForRepos = async (context: Probot.Context, owner: string, repoIdsAndNames: RepoIdAndName[]) => {
 
   for (let repoIdAndName of repoIdsAndNames) {
