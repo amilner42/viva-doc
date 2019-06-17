@@ -337,7 +337,6 @@ export = (app: Probot.Application) => {
 
       // The push was for a tag or a new branch (set upstream...), couldn't be for an open PR, no need for analysis.
       if (pushPayload.before === "0000000000000000000000000000000000000000") {
-        console.log("skipped");
         return;
       }
 

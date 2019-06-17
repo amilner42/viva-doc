@@ -1,4 +1,5 @@
 import * as F from "./functional";
+import * as Log from "./log";
 
 import mongoose from "mongoose"
 import { LoggableError } from "./models/LoggableError";
@@ -53,9 +54,9 @@ export const webhookErrorWrapper = async (webhookName: string, webhookCode: () =
 // NOTE: This function will not throw any errors.
 export const logWebhookErrorLeak = (webhookName: string, err: any): void => {
 
-  log(`An unhandled error leaked all the way back to webhook ${webhookName}.`);
-  doIgnoringError(() => { log(`  Error object direct log: ${err}`); });
-  doIgnoringError(() => { log(`  Error object JSON.stringify: ${JSON.stringify(err)}`); });
+  Log.error(`An unhandled error leaked all the way back to webhook ${webhookName}.`);
+  doIgnoringError(() => { Log.error(`  Error object direct log: ${err}`); });
+  doIgnoringError(() => { Log.error(`  Error object JSON.stringify: ${JSON.stringify(err)}`); });
 }
 
 
@@ -64,10 +65,10 @@ export const logWebhookErrorLeak = (webhookName: string, err: any): void => {
 // NOTE: This function will not throw any errors.
 export const logLoggableError = async (err: GithubAppLoggableError): Promise<void> => {
 
-  log(`A loggable error occured for installation ${err.installationId} with name: ${err.errorName}`);
-  doIgnoringError(() => { log(`  Loggable error is severe: ${err.isSevere}`); });
-  doIgnoringError(() => { log(`  Loggable error contains data: ${JSON.stringify(err.data)}`); });
-  doIgnoringError(() => { log(`  Loggable error contains stack: ${err.stack}`); });
+  Log.error(`A loggable error occured for installation ${err.installationId} with name: ${err.errorName}`);
+  doIgnoringError(() => { Log.error(`  Loggable error is severe: ${err.isSevere}`); });
+  doIgnoringError(() => { Log.error(`  Loggable error contains data: ${JSON.stringify(err.data)}`); });
+  doIgnoringError(() => { Log.error(`  Loggable error contains stack: ${err.stack}`); });
 
   const loggableErrorObject: LoggableError = {
     name: err.errorName,
@@ -80,9 +81,9 @@ export const logLoggableError = async (err: GithubAppLoggableError): Promise<voi
   try {
     const loggableError = new LoggableErrorModel(loggableErrorObject);
     await loggableError.save();
-    log(`  Saved loggable error to database`);
+    Log.error(`  Saved loggable error to database`);
   } catch (err) {
-    log(`  Could not save loggable error to database`);
+    Log.error(`  Could not save loggable error to database`);
   }
 }
 
@@ -106,12 +107,6 @@ export const isGithubAppLoggableError = (err: any): F.Maybe<GithubAppLoggableErr
   }
 
   return null;
-}
-
-
-// Stub for possible logging service.
-export const log = (str: string) => {
-  console.error(str);
 }
 
 
