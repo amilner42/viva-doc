@@ -30,7 +30,7 @@ mongoose.connect('mongodb://localhost/viva-doc-dev', { useNewUrlParser: true }, 
 require("./models/PullRequestReview");
 require("./models/CommitReview");
 require("./models/Repo");
-require("./models/SevereError");
+require("./models/LoggableError");
 
 
 // All imports to internal modules should be here so that all mongoose schemas have loaded first.
@@ -85,16 +85,17 @@ export = (app: Probot.Application) => {
 
       } catch (err) {
 
-        const deleteRepoSevereError: AppError.GithubAppSevereError = {
+        const deleteRepoLoggableError: AppError.GithubAppLoggableError = {
           errorName: "delete-repo-failure",
           githubAppError: true,
-          severe: true,
+          loggable: true,
+          isSevere: true,
           installationId,
           data: err,
           stack: AppError.getStack()
         };
 
-        throw deleteRepoSevereError;
+        throw deleteRepoLoggableError;
       }
 
       const repoIds = (deletedRepoDocument.toObject() as Repo).repoIds;
@@ -110,16 +111,17 @@ export = (app: Probot.Application) => {
 
       } catch (err) {
 
-        const deleteCommitReviewsSevereError: AppError.GithubAppSevereError = {
+        const deleteCommitReviewsLoggableError: AppError.GithubAppLoggableError = {
           errorName: "delete-repo-delete-commit-reviews-failure",
           githubAppError: true,
-          severe: true,
+          loggable: true,
+          isSevere: true,
           installationId,
           stack: AppError.getStack(),
           data: err
         }
 
-        throw deleteCommitReviewsSevereError;
+        throw deleteCommitReviewsLoggableError;
       }
 
       // Delete PullRequest Document(s)
@@ -134,16 +136,17 @@ export = (app: Probot.Application) => {
 
       } catch (err) {
 
-        const deletePullRequestReviewSevereError: AppError.GithubAppSevereError = {
-          githubAppError: true,
+        const deletePullRequestReviewLoggableError: AppError.GithubAppLoggableError = {
           errorName: "delete-repo-delete-pull-request-reviews-failure",
-          severe: true,
+          githubAppError: true,
+          loggable: true,
+          isSevere: true,
           data: err,
           installationId,
           stack: AppError.getStack()
         }
 
-        throw deletePullRequestReviewSevereError;
+        throw deletePullRequestReviewLoggableError;
       }
 
     });
@@ -377,7 +380,7 @@ export = (app: Probot.Application) => {
 
 // Initializes the repo model.
 //
-// Throws only `AppError.GithubAppSevereError` upon failure.
+// Throws only `AppError.GithubAppLoggableError` upon failure.
 const initializeRepoModel = async (installationId: number, owner: string, repoIds: number[]) => {
   try {
 
@@ -393,16 +396,17 @@ const initializeRepoModel = async (installationId: number, owner: string, repoId
 
   } catch (err) {
 
-    const initRepoSevereError: AppError.GithubAppSevereError = {
+    const initRepoLoggableError: AppError.GithubAppLoggableError = {
       githubAppError: true,
-      severe: true,
+      loggable: true,
+      isSevere: true,
       errorName: "init-repo-failure",
       installationId,
       stack: AppError.getStack(),
       data: err
     }
 
-    throw initRepoSevereError;
+    throw initRepoLoggableError;
   }
 }
 

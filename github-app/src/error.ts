@@ -1,8 +1,8 @@
 import * as F from "./functional";
 
 import mongoose from "mongoose"
-import { SevereError } from "./models/SevereError";
-const SevereErrorModel = mongoose.model("SevereError");
+import { LoggableError } from "./models/LoggableError";
+const LoggableErrorModel = mongoose.model("LoggableError");
 
 
 // The base error type for all errors thrown within github-app.
@@ -12,9 +12,13 @@ export interface GithubAppError {
 }
 
 
-// A severe error is an error that couldn't be handled that requires attention asap.
-export interface GithubAppSevereError extends GithubAppError {
-  severe: true;
+// All errors that are meant to be logged for manual review later.
+//
+// `isSevere` should be set to `true` if the error needs immediete attention
+//    - for instance if the error is blocking the app from working
+export interface GithubAppLoggableError extends GithubAppError {
+  loggable: true;
+  isSevere: boolean;
   installationId: number;
   data: any;
   stack: string;
@@ -23,8 +27,8 @@ export interface GithubAppSevereError extends GithubAppError {
 
 // A wrapper for all webhooks.
 //
-// Will catch and handle severe errors properly. All other errors will be logged but cannot be dealt with in a
-// meaningful way at this level - they should be dealt with earlier.
+// Will catch and log loggable errors properly. That is the point of this wrapper.
+// NOTE: All other errors will be caught but will be logged as leaked errors.
 export const webhookErrorWrapper = async (webhookName: string, webhookCode: () => Promise<void>): Promise<void> => {
   try {
 
@@ -32,10 +36,10 @@ export const webhookErrorWrapper = async (webhookName: string, webhookCode: () =
 
   } catch (err) {
 
-    const githubAppSevereError = isGithubAppSevereError(err);
+    const githubAppLoggableError = isGithubAppLoggableError(err);
 
-    if (githubAppSevereError !== null) {
-      await recordSevereError(githubAppSevereError);
+    if (githubAppLoggableError !== null) {
+      await logLoggableError(githubAppLoggableError);
       return;
     }
 
@@ -55,28 +59,30 @@ export const logWebhookErrorLeak = (webhookName: string, err: any): void => {
 }
 
 
-// Logs the severe error and then saves it to the database.
+// Logs the loggable error and then saves it to the database.
 //
 // NOTE: This function will not throw any errors.
-export const recordSevereError = async (err: GithubAppSevereError): Promise<void> => {
+export const logLoggableError = async (err: GithubAppLoggableError): Promise<void> => {
 
-  log(`A severe error occured for installation ${err.installationId} with name: ${err.errorName}`);
-  doIgnoringError(() => { log(`  Severe error contains data: ${JSON.stringify(err.data)}`); });
-  doIgnoringError(() => { log(`  Severe error contains stack: ${err.stack}`)});
+  log(`A loggable error occured for installation ${err.installationId} with name: ${err.errorName}`);
+  doIgnoringError(() => { log(`  Loggable error is severe: ${err.isSevere}`); });
+  doIgnoringError(() => { log(`  Loggable error contains data: ${JSON.stringify(err.data)}`); });
+  doIgnoringError(() => { log(`  Loggable error contains stack: ${err.stack}`); });
 
-  const severeErrorObject: SevereError = {
+  const loggableErrorObject: LoggableError = {
     name: err.errorName,
+    isSevere: err.isSevere,
     data: err.data,
     stack: err.stack,
     installationId: err.installationId
   }
 
   try {
-    const severeError = new SevereErrorModel(severeErrorObject);
-    await severeError.save();
-    log(`  Saved severe error to database`);
+    const loggableError = new LoggableErrorModel(loggableErrorObject);
+    await loggableError.save();
+    log(`  Saved loggable error to database`);
   } catch (err) {
-    log(`  Could not save severe error to database`);
+    log(`  Could not save loggable error to database`);
   }
 }
 
@@ -94,8 +100,8 @@ export const getStack = (): string => {
 }
 
 
-export const isGithubAppSevereError = (err: any): F.Maybe<GithubAppSevereError>  => {
-  if (err.githubAppError && err.severe) {
+export const isGithubAppLoggableError = (err: any): F.Maybe<GithubAppLoggableError>  => {
+  if ((err as GithubAppLoggableError).githubAppError && (err as GithubAppLoggableError).loggable) {
     return err;
   }
 
