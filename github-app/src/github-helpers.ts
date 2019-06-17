@@ -33,7 +33,7 @@ export const getOpenPullRequests =
       errorName: "github-retrieve-open-pull-requests-failure",
       githubAppError: true,
       loggable: true,
-      isSevere: false,
+      isSevere: true,
       installationId,
       stack: AppError.getStack(),
       data: {
