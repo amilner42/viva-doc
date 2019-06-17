@@ -35,10 +35,10 @@ require("./models/LoggableError");
 
 // All imports to internal modules should be here so that all mongoose schemas have loaded first.
 const PullRequestReviewModel = mongoose.model('PullRequestReview')
-const RepoModel = mongoose.model("Repo")
 const CommitReviewModel = mongoose.model('CommitReview')
-import { Repo } from "./models/Repo"
-import { PullRequestReview } from "./models/PullRequestReview"
+import * as Repo from "./models/Repo";
+import * as CommitReview from "./models/CommitReview";
+import * as PullRequestReview from "./models/PullRequestReview";
 import * as Analysis from "./analysis"
 import * as AppError from "./error"
 
@@ -59,102 +59,38 @@ export = (app: Probot.Application) => {
 
       const repoIds = R.map(({ repoId }) => repoId, repoIdsAndNames);
 
-      await initializeRepoModel(installationId, owner, repoIds);
+      await Repo.newInstallation(installationId, owner, repoIds, "init-repo-failure");
+
       await analyzeAlreadyOpenPrsForRepos(context, owner, repoIdsAndNames);
 
     });
   });
 
 
-  // TODO Code quality helper functions.
   app.on("installation.deleted", async (context) => {
     AppError.webhookErrorWrapper("installation.deleted", async () => {
 
       const payload = context.payload
       const installationId = (payload.installation as any).id
 
-      let deletedRepoDocument: mongoose.Document;
+      const deletedRepo: Repo.Repo = await Repo.deleteInstallation(installationId);
 
-      // Delete Repo Document
-      try {
+      await CommitReview.deleteCommitReviewsForRepos(
+        installationId,
+        deletedRepo.repoIds,
+        "delete-repo-delete-commit-reviews-failure"
+      );
 
-        const deleteRepoResult = await RepoModel.findOneAndDelete({ installationId }).exec();
-
-        if (deleteRepoResult === null) throw "not-found";
-
-        deletedRepoDocument = deleteRepoResult;
-
-      } catch (err) {
-
-        const deleteRepoLoggableError: AppError.GithubAppLoggableError = {
-          errorName: "delete-repo-failure",
-          githubAppError: true,
-          loggable: true,
-          isSevere: false,
-          installationId,
-          data: err,
-          stack: AppError.getStack()
-        };
-
-        throw deleteRepoLoggableError;
-      }
-
-      const repoIds = (deletedRepoDocument.toObject() as Repo).repoIds;
-
-      // Delete CommitReview Document(s)
-      try {
-
-        const deleteCommitReviewsResult = await CommitReviewModel.deleteMany({ repoId: { $in: repoIds } }).exec();
-
-        if (deleteCommitReviewsResult.ok !== 1) {
-          throw `delete commit review result not ok: ${deleteCommitReviewsResult.ok}`;
-        }
-
-      } catch (err) {
-
-        const deleteCommitReviewsLoggableError: AppError.GithubAppLoggableError = {
-          errorName: "delete-repo-delete-commit-reviews-failure",
-          githubAppError: true,
-          loggable: true,
-          isSevere: false,
-          installationId,
-          stack: AppError.getStack(),
-          data: err
-        }
-
-        throw deleteCommitReviewsLoggableError;
-      }
-
-      // Delete PullRequest Document(s)
-      try {
-
-        const deletePullRequestReviewsResult =
-          await PullRequestReviewModel.deleteMany({ repoId: { $in: repoIds } }).exec();
-
-        if (deletePullRequestReviewsResult.ok !== 1) {
-          throw `delete pull request result not ok: ${deletePullRequestReviewsResult.ok}`;
-        }
-
-      } catch (err) {
-
-        const deletePullRequestReviewLoggableError: AppError.GithubAppLoggableError = {
-          errorName: "delete-repo-delete-pull-request-reviews-failure",
-          githubAppError: true,
-          loggable: true,
-          isSevere: false,
-          data: err,
-          installationId,
-          stack: AppError.getStack()
-        }
-
-        throw deletePullRequestReviewLoggableError;
-      }
+      await PullRequestReview.deletePullRequestReviewsForRepos(
+        installationId,
+        deletedRepo.repoIds,
+        "delete-repo-delete-pull-request-reviews-failure"
+      );
 
     });
   });
 
 
-  // TODO Code quality helper functions.
   app.on("installation_repositories.added", async (context) => {
     AppError.webhookErrorWrapper("installation_repositories.added", async () => {
 
@@ -168,35 +104,7 @@ export = (app: Probot.Application) => {
 
       const repoIds = R.map(({ repoId }) => repoId, repoIdsAndNames);
 
-      try {
-
-        const repoUpdateResult = await RepoModel.update(
-          { installationId },
-          { $addToSet: { "repoIds": { $each: repoIds } }}
-        ).exec();
-
-        if (repoUpdateResult.ok !== 1 || repoUpdateResult.n !== 1 || repoUpdateResult.nModified !== 1) {
-          throw { updateQueryFailure: true
-                , ok: repoUpdateResult.ok
-                , n: repoUpdateResult.n
-                , nModified: repoUpdateResult.nModified
-                }
-        }
-
-      } catch (err) {
-
-        const addReposLoggableError: AppError.GithubAppLoggableError = {
-          errorName: "add-repos-failure",
-          githubAppError: true,
-          loggable: true,
-          isSevere: true,
-          data: err,
-          stack: AppError.getStack(),
-          installationId
-        }
-
-        throw addReposLoggableError;
-      }
+      await Repo.addReposToInstallaton(installationId, repoIds, "add-repos-failure");
 
       await analyzeAlreadyOpenPrsForRepos(context, owner, repoIdsAndNames);
 
@@ -204,7 +112,6 @@ export = (app: Probot.Application) => {
   });
 
 
-  // TODO Code quality helper functions.
   app.on("installation_repositories.removed", async (context) => {
     AppError.webhookErrorWrapper("installation_repositories.removed", async () => {
 
@@ -214,83 +121,19 @@ export = (app: Probot.Application) => {
         return repoToRemove.id
       }, payload.repositories_removed);
 
-      try {
+      await Repo.removeReposFromInstallation(installationId, reposToRemove, "remove-repos-failure");
 
-        const repoUpdateResult = await RepoModel.update(
-          { installationId },
-          { $pull: { "repoIds": { $in: reposToRemove } } }
-        ).exec();
+      await CommitReview.deleteCommitReviewsForRepos(
+        installationId,
+        reposToRemove,
+        "remove-repos-delete-commit-reviews-failure"
+      );
 
-        if (repoUpdateResult.ok !== 1 || repoUpdateResult.n !== 1 || repoUpdateResult.nModified !== 1) {
-          throw { updateQueryFailed: true
-                , ok: repoUpdateResult.ok
-                , n: repoUpdateResult.n
-                , nModified: repoUpdateResult.nModified
-                }
-        }
-
-      } catch (err) {
-
-        const removeReposLoggableError: AppError.GithubAppLoggableError = {
-          errorName: "remove-repos-failure",
-          githubAppError: true,
-          loggable: true,
-          isSevere: false,
-          data: err,
-          installationId,
-          stack: AppError.getStack(),
-        };
-
-        throw removeReposLoggableError;
-
-      }
-
-      try {
-
-        const deleteCommitReviewsResult = await CommitReviewModel.deleteMany({ repoId: { $in: reposToRemove } }).exec();
-
-        if (deleteCommitReviewsResult.ok !== 1) {
-          throw `delete commit review result not ok: ${deleteCommitReviewsResult.ok}`;
-        }
-
-      } catch (err) {
-
-        const deleteCommitReviewsLoggableError: AppError.GithubAppLoggableError = {
-          errorName: "remove-repos-delete-commit-reviews-failure",
-          githubAppError: true,
-          loggable: true,
-          isSevere: false,
-          installationId,
-          stack: AppError.getStack(),
-          data: err
-        }
-
-        throw deleteCommitReviewsLoggableError;
-      }
-
-      try {
-
-        const deletePullRequestReviewsResult =
-          await PullRequestReviewModel.deleteMany({ repoId: { $in: reposToRemove } }).exec();
-
-        if (deletePullRequestReviewsResult.ok !== 1) {
-          throw `delete pull request result not ok: ${deletePullRequestReviewsResult.ok}`;
-        }
-
-      } catch (err) {
-
-        const deletePullRequestReviewLoggableError: AppError.GithubAppLoggableError = {
-          errorName: "remove-repos-delete-pull-request-reviews-failure",
-          githubAppError: true,
-          loggable: true,
-          isSevere: false,
-          data: err,
-          installationId,
-          stack: AppError.getStack()
-        }
-
-        throw deletePullRequestReviewLoggableError;
-      }
+      await PullRequestReview.deletePullRequestReviewsForRepos(
+        installationId,
+        reposToRemove,
+        "remove-repos-delete-pull-request-reviews-failure"
+      );
 
     });
   });
@@ -375,7 +218,7 @@ export = (app: Probot.Application) => {
           return;
         }
 
-        const previousPullRequestReviewObject: PullRequestReview = pullRequestReview.toObject();
+        const previousPullRequestReviewObject: PullRequestReview.PullRequestReview = pullRequestReview.toObject();
 
         // If there are already commits being analyzed in the pipeline, so there is no need to trigger the pipeline or
         // save a previous CommitReviewObject.
@@ -402,7 +245,7 @@ export = (app: Probot.Application) => {
         }
 
         // Construct the new PRO from previous one.
-        const pullRequestReviewObject: PullRequestReview =
+        const pullRequestReviewObject: PullRequestReview.PullRequestReview =
           { ...previousPullRequestReviewObject,
             ...{
               headCommitId,
@@ -440,39 +283,6 @@ export = (app: Probot.Application) => {
 }
 
 
-// Initializes the repo model.
-//
-// Throws only `AppError.GithubAppLoggableError` upon failure.
-const initializeRepoModel = async (installationId: number, owner: string, repoIds: number[]) => {
-  try {
-
-    const repoObject: Repo = {
-      installationId,
-      owner,
-      repoIds
-    };
-
-    const repo = new RepoModel(repoObject);
-
-    await repo.save();
-
-  } catch (err) {
-
-    const initRepoLoggableError: AppError.GithubAppLoggableError = {
-      githubAppError: true,
-      loggable: true,
-      isSevere: true,
-      errorName: "init-repo-failure",
-      installationId,
-      stack: AppError.getStack(),
-      data: err
-    }
-
-    throw initRepoLoggableError;
-  }
-}
-
-
 const analyzeNewPullRequest =
   async ( context: Probot.Context
   , owner: string
@@ -487,7 +297,7 @@ const analyzeNewPullRequest =
   , baseCommitId : string
   ) : Promise<void> => {
 
-  const pullRequestReviewObject: PullRequestReview = {
+  const pullRequestReviewObject: PullRequestReview.PullRequestReview = {
     repoId,
     repoName,
     repoFullName,

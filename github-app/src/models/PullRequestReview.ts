@@ -1,6 +1,7 @@
 import mongoose = require("mongoose")
 
 import { TagAndOwner } from "../review";
+import * as AppError from "../error";
 
 
 export interface PullRequestReview {
@@ -42,4 +43,39 @@ const PullRequestReviewSchema = new mongoose.Schema({
 });
 
 
-mongoose.model("PullRequestReview", PullRequestReviewSchema)
+const PullRequestReviewModel = mongoose.model("PullRequestReview", PullRequestReviewSchema);
+
+
+// Deletes all PullRequestReviews which have a repoId in `repoIds`.
+// @THROWS only `GithubAppLoggableError` upon failed deletion.
+export const deletePullRequestReviewsForRepos =
+  async ( installationId: number
+        , repoIds: number[]
+        , errorName: string
+        ) : Promise<void> => {
+
+  try {
+
+    const deletePullRequestReviewsResult =
+      await PullRequestReviewModel.deleteMany({ repoId: { $in: repoIds } }).exec();
+
+    if (deletePullRequestReviewsResult.ok !== 1) {
+      throw `delete pull request result not ok: ${deletePullRequestReviewsResult.ok}`;
+    }
+
+  } catch (err) {
+
+    const deletePullRequestReviewLoggableError: AppError.GithubAppLoggableError = {
+      errorName,
+      githubAppError: true,
+      loggable: true,
+      isSevere: false,
+      data: err,
+      installationId,
+      stack: AppError.getStack()
+    }
+
+    throw deletePullRequestReviewLoggableError;
+  }
+
+}
