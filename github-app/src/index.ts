@@ -209,7 +209,7 @@ export = (app: Probot.Application) => {
 }
 
 
-// TODO DOC
+// TODO HANDLE ERRORS
 const analyzeOldPullRequest =
   async ( installationId: number
         , context: Probot.Context
@@ -278,6 +278,7 @@ const analyzeOldPullRequest =
 }
 
 
+// TODO HANDLE ERRORS
 const analyzeNewPullRequest =
   async ( context: Probot.Context
   , owner: string
@@ -339,6 +340,7 @@ const analyzeAlreadyOpenPrsForRepos = async (context: Probot.Context, owner: str
 }
 
 
+// TODO HANDLE ERRORS
 const analyzeAlreadyOpenPrs = async (context: Probot.Context, owner: string, repoIdAndName: RepoIdAndName) => {
 
   const openPrs = await getOpenPullRequests(context, owner, repoIdAndName);
@@ -374,6 +376,7 @@ const analyzeAlreadyOpenPrs = async (context: Probot.Context, owner: string, rep
 }
 
 
+// TODO HANDLE ERRORS
 const getOpenPullRequests = async (context: Probot.Context, owner: string, { repoName }: RepoIdAndName) => {
 
   const response = await context.github.pulls.list({
@@ -387,6 +390,7 @@ const getOpenPullRequests = async (context: Probot.Context, owner: string, { rep
 }
 
 
+// TODO HANDLE ERRORS
 const getOpenPullRequestNumbersForBranch =
   async (context: Probot.Context, repoName: string, branchName: string, owner: string)
   : Promise<number[]> => {
@@ -403,6 +407,7 @@ const getOpenPullRequestNumbersForBranch =
 }
 
 
+// TODO HANDLE ERRORS
 const retrieveDiff = R.curry(
   async ( context: Probot.Context
   , owner: string
@@ -429,6 +434,7 @@ const retrieveDiff = R.curry(
 })
 
 
+// TODO HANDLE ERRORS
 const retrieveFile = R.curry(
   async ( context: Probot.Context
   , owner: string
@@ -451,6 +457,7 @@ const retrieveFile = R.curry(
 })
 
 
+// TODO HANDLE ERRORS
 const setCommitStatus = R.curry(
   async ( context: Probot.Context
   , owner: string
