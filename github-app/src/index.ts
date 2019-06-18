@@ -25,7 +25,6 @@ require("./models/Repo");
 
 
 // All imports to internal modules should be here so that all mongoose schemas have loaded first.
-const PullRequestReviewModel = mongoose.model('PullRequestReview')
 import * as Repo from "./models/Repo";
 import * as CommitReview from "./models/CommitReview";
 import * as PullRequestReview from "./models/PullRequestReview";
@@ -279,7 +278,10 @@ const analyzeOldPullRequest =
 }
 
 
-// TODO HANDLE ERRORS
+// @THROWS either:
+//  - single `GithubAppLoggableError`
+//  - array of `GithubAppLoggableError`
+//  - unknown leaked errors?
 const analyzeNewPullRequest =
   async ( installationId: number
   , context: Probot.Context
@@ -295,7 +297,8 @@ const analyzeNewPullRequest =
   , baseCommitId : string
   ) : Promise<void> => {
 
-  const pullRequestReviewObject: PullRequestReview.PullRequestReview = {
+  const pullRequestReviewObject = await PullRequestReview.newPullRequestReview(
+    installationId,
     repoId,
     repoName,
     repoFullName,
@@ -304,19 +307,8 @@ const analyzeNewPullRequest =
     pullRequestId,
     pullRequestNumber,
     headCommitId,
-    headCommitApprovedTags: null,
-    headCommitRejectedTags: null,
-    headCommitRemainingOwnersToApproveDocs: null,
-    headCommitTagsAndOwners: null,
-    pendingAnalysisForCommits: [ headCommitId ],
-    currentAnalysisLastCommitWithSuccessStatus: baseCommitId,
-    currentAnalysisLastAnalyzedCommit: null,
-    loadingHeadAnalysis: true
-  }
-
-  const pullRequestReview = new PullRequestReviewModel(pullRequestReviewObject)
-
-  await pullRequestReview.save();
+    baseCommitId
+  );
 
   await Analysis.pipeline(
     pullRequestReviewObject,
@@ -324,11 +316,8 @@ const analyzeNewPullRequest =
     GH.retrieveDiff(installationId, context, owner, repoName),
     GH.retrieveFile(installationId, context, owner, repoName),
     GH.setCommitStatus(installationId, context, owner, repoName)
-  ).catch((err) => {
-    console.log(`Analysis Pipeline Error: ${err} --- ${JSON.stringify(err)}`)
-  })
+  );
 
-  return;
 }
 
 

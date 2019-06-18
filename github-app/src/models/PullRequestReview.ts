@@ -46,6 +46,75 @@ const PullRequestReviewSchema = new mongoose.Schema({
 const PullRequestReviewModel = mongoose.model("PullRequestReview", PullRequestReviewSchema);
 
 
+// @THROWS `GithubAppLoggableError` if upon failure to create new PRReview.
+export const newPullRequestReview =
+  async ( installationId: number
+        , repoId: number
+        , repoName: string
+        , repoFullName: string
+        , branchName: string
+        , baseBranchName: string
+        , pullRequestId: number
+        , pullRequestNumber: number
+        , headCommitId: string
+        , baseCommitId: string
+      ): Promise<PullRequestReview> => {
+
+  try {
+
+    const pullRequestReviewObject: PullRequestReview = {
+      repoId,
+      repoName,
+      repoFullName,
+      branchName,
+      baseBranchName,
+      pullRequestId,
+      pullRequestNumber,
+      headCommitId,
+      headCommitApprovedTags: null,
+      headCommitRejectedTags: null,
+      headCommitRemainingOwnersToApproveDocs: null,
+      headCommitTagsAndOwners: null,
+      pendingAnalysisForCommits: [ headCommitId ],
+      currentAnalysisLastCommitWithSuccessStatus: baseCommitId,
+      currentAnalysisLastAnalyzedCommit: null,
+      loadingHeadAnalysis: true
+    };
+
+    const pullRequestReview = new PullRequestReviewModel(pullRequestReviewObject);
+
+    await pullRequestReview.save();
+
+    return pullRequestReviewObject;
+
+  } catch (err) {
+
+    const newPRLoggableError: AppError.GithubAppLoggableError = {
+      errorName: "create-new-pull-request-failure",
+      installationId,
+      githubAppError: true,
+      loggable: true,
+      isSevere: true,
+      stack: AppError.getStack(),
+      data: {
+        err,
+        repoId,
+        repoName,
+        repoFullName,
+        branchName,
+        baseBranchName,
+        pullRequestId,
+        pullRequestNumber,
+        headCommitId
+      }
+    };
+
+    throw newPRLoggableError;
+  }
+
+}
+
+
 // Deletes all PullRequestReviews which have a repoId in `repoIds`.
 // @THROWS only `GithubAppLoggableError` upon failed deletion.
 export const deletePullRequestReviewsForRepos =
