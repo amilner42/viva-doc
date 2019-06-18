@@ -222,7 +222,7 @@ export const setCommitStatus = R.curry(
       githubAppError: true,
       loggable: true,
       installationId,
-      isSevere: false,
+      isSevere: true,
       stack: AppError.getStack(),
       data: {
         err,
