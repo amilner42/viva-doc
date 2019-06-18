@@ -21,7 +21,8 @@ export interface PullRequestReview {
   pendingAnalysisForCommits: string[],
   currentAnalysisLastCommitWithSuccessStatus: string,
   currentAnalysisLastAnalyzedCommit: string | null,
-  loadingHeadAnalysis: boolean
+  loadingHeadAnalysis: boolean,
+  failedToSaveCommitReviews: string[]
 }
 
 const PullRequestReviewSchema = new mongoose.Schema({
@@ -40,7 +41,8 @@ const PullRequestReviewSchema = new mongoose.Schema({
   pendingAnalysisForCommits: { type: [ String ], required: [ true, "can't be blank"] },
   currentAnalysisLastCommitWithSuccessStatus: { type: String, required: [ true, "can't be blank" ] },
   currentAnalysisLastAnalyzedCommit: { type: String },
-  loadingHeadAnalysis: { type: Boolean, required: [true, "can't be blank"] }
+  loadingHeadAnalysis: { type: Boolean, required: [true, "can't be blank"] },
+  failedToSaveCommitReviews: { type:  [ String ], required: [true, "can't be blank"] }
 });
 
 
@@ -79,7 +81,8 @@ export const newPullRequestReview =
       pendingAnalysisForCommits: [ headCommitId ],
       currentAnalysisLastCommitWithSuccessStatus: baseCommitId,
       currentAnalysisLastAnalyzedCommit: null,
-      loadingHeadAnalysis: true
+      loadingHeadAnalysis: true,
+      failedToSaveCommitReviews: [],
     };
 
     const pullRequestReview = new PullRequestReviewModel(pullRequestReviewObject);
@@ -330,7 +333,7 @@ export const updateFieldsForHeadCommit =
 }
 
 
-// Clears a commit from the `pendingAnalysisForCommits`.
+// Clears a commit from the `pendingAnalysisForCommits` and optionally add it to `failedToSaveCommitReviews`.
 //
 // @THROWS
 //  if `andThrowError` is not null then it will always throw, either:
@@ -343,6 +346,7 @@ export const clearPendingCommitOnAnalysisFailure =
         , repoId: number
         , pullRequestNumber: number
         , commitId: string
+        , failedToSaveCommitReview: boolean
         , andThrowError: F.Maybe<any>
       ): Promise<PullRequestReview>  => {
 
@@ -350,11 +354,19 @@ export const clearPendingCommitOnAnalysisFailure =
 
   try {
 
+    const updateFields =
+      failedToSaveCommitReview
+        ? {
+            $pull: { pendingAnalysisForCommits: commitId },
+            $addToSet: { "failedToSaveCommitReviews": commitId }
+          }
+        : {
+            $pull: { pendingAnalysisForCommits: commitId }
+          }
+
     pullRequestReviewDoc = await PullRequestReviewModel.findOneAndUpdate(
       { repoId, pullRequestNumber },
-      {
-        $pull: { pendingAnalysisForCommits: commitId },
-      }
+      updateFields
     ).exec();
 
     if (pullRequestReviewDoc === null) {

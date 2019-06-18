@@ -27,7 +27,11 @@ export const pipeline = async (
 
   // Handles logging errors, clearing pending commit, optionally set commit status, and continue analysis of other
   // commits if there are more pendingAnalysisForCommits.
-  const recoverFromError = async (err: any, setStatusTo: F.Maybe<"failure">): Promise<void> => {
+  const recoverFromError =
+    async ( err: any
+          , setStatusTo: F.Maybe<"failure">
+          , failedToSaveCommitReview: boolean
+        ): Promise<void> => {
 
     const analyzingCommitId = pullRequestReview.pendingAnalysisForCommits[0];
 
@@ -42,6 +46,7 @@ export const pipeline = async (
         pullRequestReview.repoId,
         pullRequestReview.pullRequestNumber,
         analyzingCommitId,
+        failedToSaveCommitReview,
         null
       );
 
@@ -116,7 +121,7 @@ export const pipeline = async (
 
   } catch (setCommitStatusError) {
 
-    await recoverFromError(setCommitStatusError, null);
+    await recoverFromError(setCommitStatusError, null, true);
     return;
   }
 
@@ -137,7 +142,7 @@ export const pipeline = async (
 
   } catch (err) {
 
-    await recoverFromError(err, "failure");
+    await recoverFromError(err, "failure", true);
     return;
   }
 
@@ -170,7 +175,7 @@ export const pipeline = async (
 
   } catch (err) {
 
-    await recoverFromError(err, "failure");
+    await recoverFromError(err, "failure", true);
     return;
   }
 
@@ -195,7 +200,7 @@ export const pipeline = async (
 
   } catch (err) {
 
-    await recoverFromError(err, "failure");
+    await recoverFromError(err, "failure", true);
     return;
   }
 
@@ -222,7 +227,7 @@ export const pipeline = async (
 
   } catch (err) {
 
-    await recoverFromError(err, null);
+    await recoverFromError(err, null, false);
     return;
   }
 
@@ -244,7 +249,7 @@ export const pipeline = async (
 
     } catch (err) {
 
-      await recoverFromError(err, null)
+      await recoverFromError(err, null, false)
       return;
     }
 
@@ -265,7 +270,7 @@ export const pipeline = async (
       analyzingCommitId
     );
   } catch (err) {
-    await recoverFromError(err, "failure");
+    await recoverFromError(err, "failure", false);
     return;
   }
 
@@ -283,7 +288,7 @@ export const pipeline = async (
 
   } catch (err) {
 
-    await recoverFromError(err, "failure");
+    await recoverFromError(err, "failure", false);
     return;
   }
 
@@ -301,7 +306,7 @@ export const pipeline = async (
 
   } catch (err) {
 
-    await recoverFromError(err, null);
+    await recoverFromError(err, null, false);
   }
 
   pipeline(

@@ -231,16 +231,25 @@ const analyzeOldPullRequest =
 
   try {
 
-    await CommitReview.freezeCommitReviewWithFinalData(
-      installationId,
-      repoId,
-      pullRequestNumber,
+    const headCommitReviewWasPreviouslySuccessfullySaved = !R.contains(
       previousPullRequestReviewObject.headCommitId,
-      previousPullRequestReviewObject.headCommitApprovedTags as string[],
-      previousPullRequestReviewObject.headCommitRejectedTags as string[],
-      previousPullRequestReviewObject.headCommitRemainingOwnersToApproveDocs as string[],
-      "freeze-commit-review-failure"
+      previousPullRequestReviewObject.failedToSaveCommitReviews
     );
+
+    if (headCommitReviewWasPreviouslySuccessfullySaved) {
+
+      await CommitReview.freezeCommitReviewWithFinalData(
+        installationId,
+        repoId,
+        pullRequestNumber,
+        previousPullRequestReviewObject.headCommitId,
+        previousPullRequestReviewObject.headCommitApprovedTags as string[],
+        previousPullRequestReviewObject.headCommitRejectedTags as string[],
+        previousPullRequestReviewObject.headCommitRemainingOwnersToApproveDocs as string[],
+        "freeze-commit-review-failure"
+      );
+
+    }
 
   } catch (freezeCommitError) {
 
@@ -249,6 +258,7 @@ const analyzeOldPullRequest =
       repoId,
       pullRequestNumber,
       headCommitId,
+      false,
       freezeCommitError
     );
   }
