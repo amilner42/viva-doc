@@ -59,12 +59,21 @@ export type RenamedFileDiff = HasCurrentFilePath & HasPreviousFilePath & HasAlte
   diffType: "renamed";
 }
 
-// All errors from this module
-export class DiffParserError extends AppError.ProbotAppError {
-  constructor(msg: string) {
-    super(msg);
+/** ERRORS */
+
+export interface DiffParserError extends AppError.GithubAppError {
+  errorName: "diff-parser";
+  message: string;
+}
+
+const createDiffParserError = (errMssg: string): DiffParserError => {
+  return {
+    githubAppError: true,
+    errorName: "diff-parser",
+    message: errMssg
   }
 }
+
 
 /** CONSTANTS */
 
@@ -172,13 +181,13 @@ const getSingleFileDiff = (diffByLines: string[]): [string[], FileDiff] => {
         let remainingLine = line
 
         if(!remainingLine.startsWith(FILE_DIFF_FIRST_LINE)) {
-          throw new DiffParserError(`Expected diff to start with "${FILE_DIFF_FIRST_LINE}": ${line}`)
+          throw createDiffParserError(`Expected diff to start with "${FILE_DIFF_FIRST_LINE}": ${line}`)
         }
 
         remainingLine = line.substr(FILE_DIFF_FIRST_LINE.length)
 
         if(!remainingLine.startsWith(fileAPrefix)) {
-          throw new DiffParserError(
+          throw createDiffParserError(
             `Malformed first line of git diff, must have "${fileAPrefix}" after "${FILE_DIFF_FIRST_LINE}": ${line}`
           )
         }
@@ -188,14 +197,14 @@ const getSingleFileDiff = (diffByLines: string[]): [string[], FileDiff] => {
         const bothFiles = remainingLine.split(fileBPrefix)
 
         if(bothFiles.length !== 2) {
-          throw new DiffParserError(`Expected exactly 2 files on the first line: ${line}`)
+          throw createDiffParserError(`Expected exactly 2 files on the first line: ${line}`)
         }
 
         const filePathA = bothFiles[0]
         const filePathB = bothFiles[1]
 
         if(filePathA === "" || filePathB === "") {
-          throw new DiffParserError(`You can't have empty file names: ${line}`)
+          throw createDiffParserError(`You can't have empty file names: ${line}`)
         }
 
         // We have a rename situation
@@ -215,7 +224,7 @@ const getSingleFileDiff = (diffByLines: string[]): [string[], FileDiff] => {
 
         // Should always be set on the first line
         if(previousFilePath === null || currentFilePath === null) {
-          throw new DiffParserError("Internal Error: 1");
+          throw createDiffParserError("Internal Error: 1");
         }
 
         if (diffType === "renamed") {
@@ -263,7 +272,7 @@ const getSingleFileDiff = (diffByLines: string[]): [string[], FileDiff] => {
            || currentFilePath === null
            || previousFilePath === null
            ) {
-          throw new DiffParserError("Internal Error: 3")
+          throw createDiffParserError("Internal Error: 3")
         }
 
         // We should be on a diff hunk if we have no saved start line
@@ -292,7 +301,7 @@ const getSingleFileDiff = (diffByLines: string[]): [string[], FileDiff] => {
         // Otherwise we could be in the last diff or hit a new diff hunk
 
         if (modifiedFile === null) {
-          throw new DiffParserError("Internal Error: 5")
+          throw createDiffParserError("Internal Error: 5")
         }
 
         // An unaltered line
@@ -336,7 +345,7 @@ const getSingleFileDiff = (diffByLines: string[]): [string[], FileDiff] => {
 
         // Otherwise we're on to another git diff
         if (modifiedFile === null) {
-          throw new DiffParserError("Internal Error: 4")
+          throw createDiffParserError("Internal Error: 4")
         }
         return [ R.drop(lineIndex - 1, diffByLines), modifiedFile ]
 
@@ -358,7 +367,7 @@ const getSingleFileDiff = (diffByLines: string[]): [string[], FileDiff] => {
     return [ [], modifiedFile ]
   }
 
-  throw new DiffParserError("Internal Error: 2")
+  throw createDiffParserError("Internal Error: 2")
 }
 
 // Extracts the start line on the from range of a git diff hunk:
@@ -374,11 +383,11 @@ const extractStartLineNumbersFromHunk = (line: string): { previousLineNumber: nu
   }
 
   if(!line.startsWith(HUNK_PREFIX)) {
-    throw new DiffParserError(`Malformed git hunk, supposed to start with "${HUNK_PREFIX}": ${line}`)
+    throw createDiffParserError(`Malformed git hunk, supposed to start with "${HUNK_PREFIX}": ${line}`)
   }
 
   if(!line.includes(HUNK_SUFFIX)) {
-    throw new DiffParserError(`Malformed diff hunk, supposed to include "${HUNK_SUFFIX}": ${line}`)
+    throw createDiffParserError(`Malformed diff hunk, supposed to include "${HUNK_SUFFIX}": ${line}`)
   }
 
   const indexOfSuffix = line.indexOf(HUNK_SUFFIX);
@@ -386,24 +395,24 @@ const extractStartLineNumbersFromHunk = (line: string): { previousLineNumber: nu
   const previousAndCurrentLineNumberText = hunkValue.split(" ")
 
   if (previousAndCurrentLineNumberText.length !== 2) {
-    throw new DiffParserError(`Malformed diff hunk, supposed to have to and from range sep by a space: ${line}`)
+    throw createDiffParserError(`Malformed diff hunk, supposed to have to and from range sep by a space: ${line}`)
   }
 
   const previousLineNumberText = previousAndCurrentLineNumberText[0];
   const currentLineNumberText = previousAndCurrentLineNumberText[1];
 
   if(!previousLineNumberText.startsWith(HUNK_PREVIOUS_RANGE_PREFIX)) {
-    throw new DiffParserError(`Malformed diff hunk, previousLineNumberText doesn't start with a "${HUNK_PREVIOUS_RANGE_PREFIX}": ${line}`)
+    throw createDiffParserError(`Malformed diff hunk, previousLineNumberText doesn't start with a "${HUNK_PREVIOUS_RANGE_PREFIX}": ${line}`)
   }
   if (!currentLineNumberText.startsWith(HUNK_CURRENT_RANGE_PREFIX)) {
-    throw new DiffParserError(`Malformed diff hunk, currentLineNumberText doesn't start with a "${HUNK_CURRENT_RANGE_PREFIX}": ${line}`)
+    throw createDiffParserError(`Malformed diff hunk, currentLineNumberText doesn't start with a "${HUNK_CURRENT_RANGE_PREFIX}": ${line}`)
   }
 
   const previousLineNumber = getNumberFromText(previousLineNumberText, HUNK_PREVIOUS_RANGE_PREFIX)
   const currentLineNumber = getNumberFromText(currentLineNumberText, HUNK_CURRENT_RANGE_PREFIX)
 
   if (isNaN(previousLineNumber) || isNaN(currentLineNumber)) {
-    throw new DiffParserError(`Malformed diff hunk, expecting numbers for previousLineNumber and currentLineNumber: ${previousAndCurrentLineNumberText}`)
+    throw createDiffParserError(`Malformed diff hunk, expecting numbers for previousLineNumber and currentLineNumber: ${previousAndCurrentLineNumberText}`)
   }
 
   return { previousLineNumber, currentLineNumber }

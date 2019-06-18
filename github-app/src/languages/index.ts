@@ -3,8 +3,8 @@
 import R from "ramda"
 
 import * as AST from "./ast"
-import * as AppError from "../error"
 import * as Tag from "../tag"
+import * as F from "../functional"
 
 import * as c from "./c"
 import * as cplusplus from "./cplusplus"
@@ -27,26 +27,11 @@ export type Language
   | "Typescript"
 
 
-// All possible error types
-export type LanguageParserErrorType = "unsupported-file" | "unsupported-extension"
-
-export class LanguageParserError extends AppError.ProbotAppError {
-
-  public type: LanguageParserErrorType;
-
-  constructor(type: LanguageParserErrorType, mssg?: string) {
-    super(`Language Parser Error --- Type: ${type} , Optional Message: ${mssg}`)
-    this.type = type
-  }
-}
-
-
 /** EXTERNAL FUNCTIONS */
 
 
-// TODO DOC
-// TODO probably need the file content to get language as well for cases like SQL or c/c++ header files
-export const getLanguage = (extension: string): Language => {
+export const getSupportedLanguageFromExtension = (extension: string): F.Maybe<Language> => {
+
   switch(extension) {
     case "js":
       return "Javascript"
@@ -66,21 +51,23 @@ export const getLanguage = (extension: string): Language => {
 
   }
 
-  throw new LanguageParserError("unsupported-extension", `No language for file extension: ${extension}`)
+  return null;
 }
 
 
-// Extract the language from the extension or throw an error if we don't support that language.
-export const extractFileType = (filePath: string): Language => {
+export const getLanguageFromFilePath = (filePath: string): F.Maybe<Language> => {
 
-  const fileName: string = R.last(filePath.split("/")) as string
-  const [ , extension ] = fileName.split(".")
+  const fileName: string = R.last(filePath.split("/")) as string;
+  const nameSplitByPeriod = fileName.split(".");
 
-  if (extension === undefined) {
-    throw new LanguageParserError("unsupported-file", `File name is currently unsupported: ${fileName}`)
+  // In the future we may support things such as `Dockerfile` here.
+  if (nameSplitByPeriod.length === 0) {
+    return null;
   }
 
-  return getLanguage(extension)
+  const extension = R.last(nameSplitByPeriod) as string;
+
+  return getSupportedLanguageFromExtension(extension);
 }
 
 
