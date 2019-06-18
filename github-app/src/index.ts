@@ -203,7 +203,10 @@ export = (app: Probot.Application) => {
 }
 
 
-// TODO HANDLE ERRORS
+// @THROWS either:
+//  - single `GithubAppLoggableError`
+//  - array of `GithubAppLoggableError`
+//  - unknown leaked errors?
 const analyzeOldPullRequest =
   async ( installationId: number
         , context: Probot.Context
@@ -223,43 +226,47 @@ const analyzeOldPullRequest =
     "update-pull-request-review-head-commit-failure"
   );
 
-  // No need to trigger pipeline, already analyzing commits.
+  // No need to trigger pipeline if already analyzing commits.
   if (PullRequestReview.isAnalyzingCommits(previousPullRequestReviewObject)) { return; }
 
-  // Otherwise we need to save the old CommitReviewObject and trigger the analysis pipeline.
-  await CommitReview.freezeCommitReviewWithFinalData(
-    installationId,
-    repoId,
-    pullRequestNumber,
-    previousPullRequestReviewObject.headCommitId,
-    previousPullRequestReviewObject.headCommitApprovedTags as string[],
-    previousPullRequestReviewObject.headCommitRejectedTags as string[],
-    previousPullRequestReviewObject.headCommitRemainingOwnersToApproveDocs as string[],
-    "freeze-commit-review-failure"
-  );
+  try {
 
-  // Construct the new PRO from previous one.
-  const pullRequestReviewObject: PullRequestReview.PullRequestReview =
-    { ...previousPullRequestReviewObject,
-      ...{
-        headCommitId,
-        pendingAnalysisForCommits: [ headCommitId ],
-        headCommitApprovedTags: null,
-        headCommitRejectedTags: null,
-        headCommitRemainingOwnersToApproveDocs: null,
-        headCommitTagsAndOwners: null,
-        loadingHeadAnalysis: true
-      },
-    ...{
-        // An unlikely race condition, but just in case, if the last commit had no remaining owners to approve dos
-        // then it is the last success commit. Because first that is pulled and then only after is success set
-        // there is a chance this runs between the 2 db operations.
-        currentAnalysisLastCommitWithSuccessStatus:
-          (previousPullRequestReviewObject.headCommitRemainingOwnersToApproveDocs === [])
-            ? previousPullRequestReviewObject.headCommitId
-            : previousPullRequestReviewObject.currentAnalysisLastCommitWithSuccessStatus
-      }
+    await CommitReview.freezeCommitReviewWithFinalData(
+      installationId,
+      repoId,
+      pullRequestNumber,
+      previousPullRequestReviewObject.headCommitId,
+      previousPullRequestReviewObject.headCommitApprovedTags as string[],
+      previousPullRequestReviewObject.headCommitRejectedTags as string[],
+      previousPullRequestReviewObject.headCommitRemainingOwnersToApproveDocs as string[],
+      "freeze-commit-review-failure"
+    );
+
+  } catch (freezeCommitError) {
+
+    try {
+
+      await PullRequestReview.clearPendingCommitOnAnalysisFailure(
+        installationId,
+        repoId,
+        pullRequestNumber,
+        headCommitId
+      );
+
+    } catch (clearPendingCommitOnAnalysisFailureError) {
+
+      throw [ clearPendingCommitOnAnalysisFailureError, freezeCommitError ];
     }
+
+    throw freezeCommitError;
+  }
+
+  const pullRequestReviewObject: PullRequestReview.PullRequestReview =
+    PullRequestReview.newLoadingPullRequestReviewFromPrevious(
+      previousPullRequestReviewObject,
+      headCommitId,
+      [ headCommitId ]
+    );
 
   await Analysis.pipeline(
     pullRequestReviewObject,

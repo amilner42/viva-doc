@@ -137,6 +137,85 @@ export const updateHeadCommit =
 }
 
 
+// @THROWS `GithubApp.LoggableError` upon failure to clear pending commit.
+export const clearPendingCommitOnAnalysisFailure =
+  async ( installationId: number
+        , repoId: number
+        , pullRequestNumber: number
+        , commitId: string
+        ): Promise<void>  => {
+
+  try {
+
+    const updateResult = await PullRequestReviewModel.update(
+      { repoId, pullRequestNumber },
+      {
+        $pull: { pendingAnalysisForCommits: commitId },
+      }
+    ).exec();
+
+    if (updateResult.ok !== 1 || updateResult.n !== 1 || updateResult.nModified !== 1) {
+      throw { updateQueryFailure: true
+            , ok: updateResult.ok
+            , n: updateResult.n
+            , nModified: updateResult.nModified
+            }
+    }
+
+  } catch (err) {
+
+    const clearPendingAnalysisOnFailureLoggableError: AppError.GithubAppLoggableError = {
+      errorName: "clear-pending-analysis-on-analysis-failure-failure",
+      installationId,
+      githubAppError: true,
+      loggable: true,
+      isSevere: true,
+      stack: AppError.getStack(),
+      data: {
+        err,
+        repoId,
+        pullRequestNumber,
+        commitId
+      }
+    };
+
+    throw clearPendingAnalysisOnFailureLoggableError;
+  }
+
+}
+
+
 export const isAnalyzingCommits = (pullRequestReview: PullRequestReview): boolean => {
   return pullRequestReview.pendingAnalysisForCommits.length !== 0;
+}
+
+
+export const newLoadingPullRequestReviewFromPrevious =
+  ( previousPullRequestReviewObject: PullRequestReview
+  , headCommitId: string
+  , pendingAnalysisForCommits: string[]
+  ): PullRequestReview => {
+
+  return {
+    ...previousPullRequestReviewObject,
+    ...{
+      headCommitId,
+      pendingAnalysisForCommits,
+      headCommitApprovedTags: null,
+      headCommitRejectedTags: null,
+      headCommitRemainingOwnersToApproveDocs: null,
+      headCommitTagsAndOwners: null,
+      loadingHeadAnalysis: true
+    },
+  ...{
+      // An unlikely race condition, but just in case, if the last commit had no remaining owners to approve dos
+      // then it is the last success commit. Because first that is pulled and then only after is success set
+      // there is a chance this runs between the 2 db operations.
+      currentAnalysisLastCommitWithSuccessStatus:
+        (previousPullRequestReviewObject.headCommitRemainingOwnersToApproveDocs === [])
+          ? previousPullRequestReviewObject.headCommitId
+          : previousPullRequestReviewObject.currentAnalysisLastCommitWithSuccessStatus
+    }
+  }
+
 }
