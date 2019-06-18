@@ -26,6 +26,40 @@ const shiftRange = (startLineNumber, [rangeStartLine, rangeEndLine]) => {
 
 const editors = { }
 
+const getAceModeNameFromLanguage = (language) => {
+
+  let langSuffix;
+
+  switch (language) {
+
+    case "Javascript":
+      langSuffix = "javascript"
+      break;
+
+
+    case "Typescript":
+      langSuffix = "typescript"
+      break;
+
+
+    case "Java":
+      langSuffix = "java"
+      break;
+
+
+    case "Header":
+    case "CPlusPlus":
+    case "C":
+      langSuffix = "c_cpp"
+      break;
+
+    default:
+      throw "unsupported language error"
+  }
+
+  return `ace/mode/${langSuffix}`
+}
+
 const renderCodeEditor = (renderConfig) => {
 
   // Already had an editor, delete then re-render.
@@ -46,7 +80,10 @@ const renderCodeEditor = (renderConfig) => {
 
     editor.setReadOnly(true);
     editor.setTheme("ace/theme/github");
-    editor.session.setMode("ace/mode/typescript");
+
+    const aceModeName = getAceModeNameFromLanguage(renderConfig.language);
+
+    editor.session.setMode(aceModeName);
     editor.setHighlightActiveLine(false);
 
     editor.setValue(renderConfig.content.join("\n"), -1);
