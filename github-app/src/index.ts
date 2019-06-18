@@ -243,21 +243,13 @@ const analyzeOldPullRequest =
 
   } catch (freezeCommitError) {
 
-    try {
-
-      await PullRequestReview.clearPendingCommitOnAnalysisFailure(
-        installationId,
-        repoId,
-        pullRequestNumber,
-        headCommitId
-      );
-
-    } catch (clearPendingCommitOnAnalysisFailureError) {
-
-      throw [ clearPendingCommitOnAnalysisFailureError, freezeCommitError ];
-    }
-
-    throw freezeCommitError;
+    await PullRequestReview.clearPendingCommitOnAnalysisFailureAndThrowError(
+      installationId,
+      repoId,
+      pullRequestNumber,
+      headCommitId,
+      freezeCommitError
+    );
   }
 
   const pullRequestReviewObject: PullRequestReview.PullRequestReview =

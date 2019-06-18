@@ -206,12 +206,16 @@ export const updateHeadCommit =
 }
 
 
-// @THROWS `GithubApp.LoggableError` upon failure to clear pending commit.
-export const clearPendingCommitOnAnalysisFailure =
+// @THROWS always, either:
+//  - Just `errorThatCausedThis` if successfully cleared pending commit.
+//  - Array with both the original `errorThatCausedThis` and the `GithubAppLoggableError` from the failure
+//    to clear the pending commit.
+export const clearPendingCommitOnAnalysisFailureAndThrowError =
   async ( installationId: number
         , repoId: number
         , pullRequestNumber: number
         , commitId: string
+        , errorThatCausedThis: any
         ): Promise<void>  => {
 
   try {
@@ -248,8 +252,10 @@ export const clearPendingCommitOnAnalysisFailure =
       }
     };
 
-    throw clearPendingAnalysisOnFailureLoggableError;
+    throw [ errorThatCausedThis, clearPendingAnalysisOnFailureLoggableError ];
   }
+
+  throw errorThatCausedThis;
 
 }
 
