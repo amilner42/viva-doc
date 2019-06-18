@@ -15,8 +15,8 @@ const CommitReviewModel = mongoose.model("CommitReview")
 import { CommitReview } from "./models/CommitReview"
 
 
-// TODO DOC
-// TODO handle errors
+// TODO CONTINUE HERE ERRORS NEED TO BE HANDLED AND LOGGED.
+// @THROWS never. Will handle all errors internally (including logging).
 export const pipeline = async (
   pullRequestReview: PullRequestReview,
   getClientUrlForCommitReview: (commitId: string) => string,

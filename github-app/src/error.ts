@@ -26,62 +26,73 @@ export interface GithubAppLoggableError extends GithubAppError {
 }
 
 
+// For recording error information.
+// If error bubbled up to webhook then attach webhook name for better logging.
+//
+// @THROWS never.
+export const logErrors = async (err: any, webhookName: F.Maybe<string>): Promise<void> => {
+
+  if (Array.isArray(err)) {
+
+    await Promise.all(
+      err.map(async (errItem) => {
+        return await logErrors(errItem, webhookName);
+      })
+    );
+
+    return;
+  }
+
+  const githubAppLoggableError = isGithubAppLoggableError(err);
+
+  if (githubAppLoggableError !== null) {
+    await logLoggableError(githubAppLoggableError);
+    return;
+  }
+
+  logUnexpectedError(err, webhookName);
+}
+
+
 // A wrapper for all webhooks.
 //
 // Will catch and log loggable errors properly. That is the point of this wrapper. It will handle both single errors
-// and arrays of errors properly.
+// and nested arrays of errors properly.
 //
-// NOTE: All other errors will be caught but will be logged as leaked errors.
-export const webhookErrorWrapper = async (webhookName: string, webhookCode: () => Promise<void>): Promise<void> => {
-
-  // This function will always resolve.
-  const handleSingleError = async (err: any): Promise<void> => {
-
-    const githubAppLoggableError = isGithubAppLoggableError(err);
-
-    if (githubAppLoggableError !== null) {
-      await logLoggableError(githubAppLoggableError);
-      return;
-    }
-
-    logWebhookErrorLeak(webhookName, err);
-  }
-
-  // This function will always resolve.
-  const handleError = async (err: any): Promise<void> => {
-
-    if (Array.isArray(err)) {
-      await Promise.all(err.map(handleError));
-    } else {
-      await handleSingleError(err);
-    }
-
-  }
+// NOTE: All other errors will be caught but will be logged as unexpected errors and will not be saved to the db.
+export const webhookErrorWrapper =
+  async ( webhookName: string
+        , webhookCode: () => Promise<void>
+        ): Promise<void> => {
 
   try {
     await webhookCode();
   } catch (err) {
-    await handleError(err);
+    await logErrors(err, webhookName);
   }
-
 }
 
 
-// Log that an error leaked all the way to the webhook (not good).
+// Log that an error not meant for logging has occured.
 //
-// NOTE: This function will not throw any errors.
-export const logWebhookErrorLeak = (webhookName: string, err: any): void => {
+// @THROWS never.
+const logUnexpectedError = (err: any, webhookName: F.Maybe<string>): void => {
 
-  Log.error(`An unhandled error leaked all the way back to webhook ${webhookName}.`);
-  doIgnoringError(() => { Log.error(`  Error object direct log: ${err}`); });
+  if (webhookName !== null) {
+    Log.error(`An unexpected error leaked all the way back to webhook: ${webhookName}.`);
+  } else {
+    Log.error(`An unexpected error occured.`);
+  }
+
+  doIgnoringError(() => { Log.error(`  Error object: ${err}`); });
   doIgnoringError(() => { Log.error(`  Error object JSON.stringify: ${JSON.stringify(err)}`); });
 }
 
 
 // Logs the loggable error and then saves it to the database.
 //
-// NOTE: This function will not throw any errors.
-export const logLoggableError = async (err: GithubAppLoggableError): Promise<void> => {
+// @THROWS never.
+const logLoggableError = async (err: GithubAppLoggableError): Promise<void> => {
 
   Log.error(`A loggable error occured for installation ${err.installationId} with name: ${err.errorName}`);
   doIgnoringError(() => { Log.error(`  Loggable error is severe: ${err.isSevere}`); });
@@ -119,7 +130,7 @@ export const getStack = (): string => {
 }
 
 
-// This function will not throw errors.
+// @THROWS never.
 export const isGithubAppLoggableError = (err: any): F.Maybe<GithubAppLoggableError>  => {
 
   if (typeof err !== "object") {
@@ -134,7 +145,7 @@ export const isGithubAppLoggableError = (err: any): F.Maybe<GithubAppLoggableErr
 }
 
 
-// Do something and eat any errors that get thrown.
+// @THROWS never.
 const doIgnoringError = (doThis: () => void): void => {
   try { doThis(); } catch (err) { }
 }

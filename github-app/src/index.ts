@@ -203,9 +203,10 @@ export = (app: Probot.Application) => {
 
 
 // @THROWS either:
-//  - single `GithubAppLoggableError`
-//  - array of `GithubAppLoggableError`
-//  - unknown leaked errors?
+//  - single `GithubAppLoggableError` if unable to freeze commit.
+//  - array of `GithubAppLoggableError` for each of:
+//     1. unable to freeze commit
+//     2. unable to remove headCommitId from pending commit analysis
 const analyzeOldPullRequest =
   async ( installationId: number
         , context: Probot.Context
@@ -270,10 +271,7 @@ const analyzeOldPullRequest =
 }
 
 
-// @THROWS either:
-//  - single `GithubAppLoggableError`
-//  - array of `GithubAppLoggableError`
-//  - unknown leaked errors?
+// @THROWS `GithubAppLoggableError` if unable to create the new pull request review.
 const analyzeNewPullRequest =
   async ( installationId: number
   , context: Probot.Context
@@ -334,7 +332,7 @@ const analyzeAlreadyOpenPrsForRepos =
 
 // @THROWS either:
 //   - GithubApp.LoggableError
-//   - An array of errors, propogated by calls to `analyzeNewPullRequest`.
+//   - An array of `GithubApp.LoggableError`, propogated by calls to `analyzeNewPullRequest`.
 const analyzeAlreadyOpenPrs =
   async ( installationId: number
         , context: Probot.Context
