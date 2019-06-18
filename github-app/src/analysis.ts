@@ -2,55 +2,146 @@
 
 import R from "ramda"
 
+import * as AppError from "./error"
 import * as Diff from "./diff"
 import * as Tag from "./tag"
 import * as Review from "./review"
 import * as Lang from "./languages/index"
 import * as F from "./functional"
 
-import mongoose from "mongoose"
-const PullRequestReviewModel = mongoose.model("PullRequestReview")
-import { PullRequestReview } from "./models/PullRequestReview"
-const CommitReviewModel = mongoose.model("CommitReview")
-import { CommitReview } from "./models/CommitReview"
+import * as PullRequestReview from "./models/PullRequestReview"
+import * as CommitReview from "./models/CommitReview"
 
 
-// TODO CONTINUE HERE ERRORS NEED TO BE HANDLED AND LOGGED.
 // @THROWS never. Will handle all errors internally (including logging).
 export const pipeline = async (
-  pullRequestReview: PullRequestReview,
+  installationId: number,
+  pullRequestReview: PullRequestReview.PullRequestReview,
   getClientUrlForCommitReview: (commitId: string) => string,
   retrieveDiff: (baseCommitId: string, headCommitId: string) => Promise<string>,
   retrieveFile: (commitId: string, filePath: string) => Promise<string>,
   setCommitStatus: (commitId: string, statusState: "success" | "failure" | "pending", optional?: { description?: string, target_url?: string }) => Promise<any>
 ) => {
 
-  if (pullRequestReview.pendingAnalysisForCommits.length === 0) {
-    return
+  if (pullRequestReview.pendingAnalysisForCommits.length === 0) { return }
+
+  // Handles logging errors, clearing pending commit, optionally set commit status, and continue analysis of other
+  // commits if there are more pendingAnalysisForCommits.
+  const recoverFromError = async (err: any, setStatusTo: F.Maybe<"failure">): Promise<void> => {
+
+    const analyzingCommitId = pullRequestReview.pendingAnalysisForCommits[0];
+
+    await AppError.logErrors(err, null);
+
+    let newPullRequestReview: PullRequestReview.PullRequestReview;
+
+    try {
+
+      newPullRequestReview = await PullRequestReview.clearPendingCommitOnAnalysisFailure(
+        installationId,
+        pullRequestReview.repoId,
+        pullRequestReview.pullRequestNumber,
+        analyzingCommitId,
+        null
+      );
+
+    } catch (clearPendingCommitError) {
+
+      await AppError.logErrors(err, null);
+
+      if (setStatusTo !== null) {
+
+        try {
+
+          await setCommitStatus(
+            analyzingCommitId,
+            setStatusTo,
+            { description: "Viva Doc is an errored state, it won't work for a bit on this PR. Arie has been notified for review." }
+          );
+
+        } catch (setCommitStatusError) {
+
+          await AppError.logErrors(setCommitStatusError, null);
+        }
+      }
+
+      // If we can't clear the pending commit, something is really going wrong and there's no point in continuing
+      // analyzing other commits.
+      return;
+    }
+
+    if (setStatusTo !== null) {
+
+      // TODO better description from error.
+      const description =
+        "Viva Doc couldn't analyze this commit, it should be good for the next commits. Arie has been notified for review."
+
+      try {
+
+        await setCommitStatus(
+          analyzingCommitId,
+          setStatusTo,
+          { description }
+        );
+
+      } catch (setCommitStatusError) {
+
+        await AppError.logErrors(setCommitStatusError, null);
+
+      }
+    }
+
+    pipeline(
+      installationId,
+      newPullRequestReview,
+      getClientUrlForCommitReview,
+      retrieveDiff,
+      retrieveFile,
+      setCommitStatus
+    );
+
   }
 
   const analyzingCommitId = pullRequestReview.pendingAnalysisForCommits[0]
   const baseCommitId = pullRequestReview.currentAnalysisLastCommitWithSuccessStatus
   const lastAnalyzedCommitId = pullRequestReview.currentAnalysisLastAnalyzedCommit
 
-  await setCommitStatus(
-    analyzingCommitId,
-    "pending",
-    { description: `Analyzing documentation against ${pullRequestReview.baseBranchName} branch...` }
-  )
+  try {
 
-  const fileReviewsNeedingApproval = await
-    getFileReviewsWithMetadataNeedingApproval(
-      async () => { return retrieveDiff(baseCommitId, analyzingCommitId) },
-      async (previousfilePath: string, currentFilePath: string): Promise<[string, string]> => {
-        const previousFileContent = await retrieveFile(baseCommitId, previousfilePath)
-        const currentFileContent = await retrieveFile(analyzingCommitId, currentFilePath)
+    await setCommitStatus(
+      analyzingCommitId,
+      "pending",
+      { description: `Analyzing documentation against ${pullRequestReview.baseBranchName} branch...` }
+    );
 
-        return [ previousFileContent, currentFileContent ]
-      }
-    )
+  } catch (setCommitStatusError) {
 
-  // 1. Calculate carry overs and see if current
+    await recoverFromError(setCommitStatusError, null);
+    return;
+  }
+
+  let fileReviewsNeedingApproval: Review.FileReviewWithMetadata[];
+
+  try {
+
+    fileReviewsNeedingApproval = await
+      getFileReviewsWithMetadataNeedingApproval(
+        async () => { return retrieveDiff(baseCommitId, analyzingCommitId) },
+        async (previousfilePath: string, currentFilePath: string): Promise<[string, string]> => {
+          const previousFileContent = await retrieveFile(baseCommitId, previousfilePath)
+          const currentFileContent = await retrieveFile(analyzingCommitId, currentFilePath)
+
+          return [ previousFileContent, currentFileContent ]
+        }
+      );
+
+  } catch (err) {
+
+    await recoverFromError(err, "failure");
+    return;
+  }
+
+  // 1. Calculate carry overs.
 
   const owners = Review.getAllOwners(fileReviewsNeedingApproval)
   const tagsAndOwners = Review.getListOfTagsAndOwners(fileReviewsNeedingApproval)
@@ -58,96 +149,145 @@ export const pipeline = async (
   // May all have carry-overs from lastAnalyzedCommitId
   let approvedTags: string[];
   let rejectedTags: string[];
-  let remainingOwnersToApproveDocs: string[]
+  let remainingOwnersToApproveDocs: string[];
   let lastCommitWithSuccessStatus: string;
 
-  // No tags, no carry-overs
-  if (owners.length === 0) {
+  try {
 
-    approvedTags = [];
-    rejectedTags = [];
-    remainingOwnersToApproveDocs = [];
-    lastCommitWithSuccessStatus = analyzingCommitId;
-  }
-
-  // Last analyzed commit is base commit, no carry-overs
-  else if (lastAnalyzedCommitId === baseCommitId || lastAnalyzedCommitId === null) {
-
-    approvedTags = [];
-    rejectedTags = [];
-    remainingOwnersToApproveDocs = owners;
-    lastCommitWithSuccessStatus = baseCommitId;
-  }
-
-  // There are tags and an intermediate commit, calculate possible carry-overs
-  else {
-
-    const carryOverData: CarryOverResult = await calculateCarryOversFromLastAnalyzedCommit(
+    const carryOverResult: CarryOverResult = await calculateCarryOversFromLastAnalyzedCommit(
+      owners,
+      lastAnalyzedCommitId,
       baseCommitId,
       analyzingCommitId,
-      async () => { return retrieveDiff(lastAnalyzedCommitId, analyzingCommitId); },
-      async () => {
-        const commitReview = await CommitReviewModel.findOne({
-          repoId: pullRequestReview.repoId,
-          commitId: lastAnalyzedCommitId
-        }).exec();
-
-        if (commitReview === null) {
-          // TODO
-          throw { }
-        }
-
-        return commitReview.toObject();
+      retrieveDiff,
+      async (commitId) => {
+        return CommitReview.getExistantCommitReview(installationId, pullRequestReview.repoId, commitId )
       },
       fileReviewsNeedingApproval
     );
 
-    ({ approvedTags, rejectedTags, remainingOwnersToApproveDocs, lastCommitWithSuccessStatus } = carryOverData);
+    ({ approvedTags, rejectedTags, remainingOwnersToApproveDocs, lastCommitWithSuccessStatus } = carryOverResult);
+
+  } catch (err) {
+
+    await recoverFromError(err, "failure");
+    return;
   }
 
   // 2. Save new CommitReview with frozen set to false.
 
-  const commitReviewObject: CommitReview = {
-    repoId: pullRequestReview.repoId,
-    repoName: pullRequestReview.repoName,
-    repoFullName: pullRequestReview.repoFullName,
-    branchName: pullRequestReview.branchName,
-    commitId: analyzingCommitId,
-    pullRequestNumber: pullRequestReview.pullRequestNumber,
-    fileReviews: fileReviewsNeedingApproval,
-    approvedTags,
-    rejectedTags,
-    remainingOwnersToApproveDocs,
-    tagsAndOwners,
-    frozen: false
-  }
+  try {
 
-  const commitReview = new CommitReviewModel(commitReviewObject)
-  await commitReview.save()
+    await CommitReview.newCommitReview(installationId, {
+      repoId: pullRequestReview.repoId,
+      repoName: pullRequestReview.repoName,
+      repoFullName: pullRequestReview.repoFullName,
+      branchName: pullRequestReview.branchName,
+      commitId: analyzingCommitId,
+      pullRequestNumber: pullRequestReview.pullRequestNumber,
+      fileReviews: fileReviewsNeedingApproval,
+      approvedTags,
+      rejectedTags,
+      remainingOwnersToApproveDocs,
+      tagsAndOwners,
+      frozen: false
+    });
+
+  } catch (err) {
+
+    await recoverFromError(err, "failure");
+    return;
+  }
 
   // 3. Update PullRequestReview
 
   // First attempt to atomically update assuming this commit is still the most recent commit in the PR.
-  const updatePullRequestReviewResult = await PullRequestReviewModel.update(
-    {
-      repoId: pullRequestReview.repoId,
-      pullRequestNumber: pullRequestReview.pullRequestNumber,
-      headCommitId: analyzingCommitId
-    },
-    {
-      headCommitApprovedTags: approvedTags,
-      headCommitRejectedTags: rejectedTags,
-      headCommitRemainingOwnersToApproveDocs: remainingOwnersToApproveDocs,
-      headCommitTagsAndOwners: tagsAndOwners,
-      $pull: { pendingAnalysisForCommits: analyzingCommitId },
-      currentAnalysisLastCommitWithSuccessStatus: lastCommitWithSuccessStatus,
-      currentAnalysisLastAnalyzedCommit: analyzingCommitId,
-      loadingHeadAnalysis: false
-    }
-  ).exec()
 
-  // We are done, no need to re-trigger pipeline as this is the head commit so there are no more things to analyze.
-  if (updatePullRequestReviewResult.n === 1 && updatePullRequestReviewResult.nModified === 1) {
+  let atomicUpdateStatus: "success" | "no-longer-head-commit";
+
+  try {
+
+    atomicUpdateStatus = await PullRequestReview.updateFieldsForHeadCommit(
+      installationId,
+      pullRequestReview.repoId,
+      pullRequestReview.pullRequestNumber,
+      analyzingCommitId,
+      approvedTags,
+      rejectedTags,
+      remainingOwnersToApproveDocs,
+      tagsAndOwners,
+      lastCommitWithSuccessStatus,
+      analyzingCommitId
+    );
+
+  } catch (err) {
+
+    await recoverFromError(err, null);
+    return;
+  }
+
+  if ( atomicUpdateStatus === "success" ) {
+
+    try {
+
+      if (lastCommitWithSuccessStatus === analyzingCommitId) {
+        await setCommitStatus(analyzingCommitId, "success", { description: "No tags required approval" })
+      } else {
+        await setCommitStatus(
+          analyzingCommitId,
+          "failure",
+          { description: "Tags require approval", target_url: getClientUrlForCommitReview(analyzingCommitId) }
+        )
+      }
+
+      return;
+
+    } catch (err) {
+
+      await recoverFromError(err, null)
+      return;
+    }
+
+  }
+
+  // Otherwise, the atomic update failed because this is no longer the head commit
+  // This means we must:
+  //   - freeze the relevant CommitReview
+  //   - update PR with non headXXX fields
+  //   - set commit status
+  //   - retrigger pipeline
+
+  try {
+    await CommitReview.freezeCommit(
+      installationId,
+      pullRequestReview.repoId,
+      pullRequestReview.pullRequestNumber,
+      analyzingCommitId
+    );
+  } catch (err) {
+    await recoverFromError(err, "failure");
+    return;
+  }
+
+  let updatedPullRequestReviewObject: PullRequestReview.PullRequestReview;
+
+  try {
+
+    updatedPullRequestReviewObject = await PullRequestReview.updateNonHeadCommitFields(
+      installationId,
+      pullRequestReview.repoId,
+      pullRequestReview.pullRequestNumber,
+      analyzingCommitId,
+      lastCommitWithSuccessStatus
+    );
+
+  } catch (err) {
+
+    await recoverFromError(err, "failure");
+    return;
+  }
+
+  try {
 
     if (lastCommitWithSuccessStatus === analyzingCommitId) {
       await setCommitStatus(analyzingCommitId, "success", { description: "No tags required approval" })
@@ -159,65 +299,13 @@ export const pipeline = async (
       )
     }
 
-    return;
+  } catch (err) {
+
+    await recoverFromError(err, null);
   }
-
-  // Otherwise, the atomic update failed because this is no longer the head commit
-  // This means we must:
-  //   - unfreeze the relevant CommitReview
-  //   - update PR with non headXXX fields
-  //   - set commit status
-  //   - retrigger pipeline
-
-  const commitReviewUpdateResult = await CommitReviewModel.update(
-    {
-      repoId: pullRequestReview.repoId,
-      pullRequestNumber: pullRequestReview.pullRequestNumber,
-      commitId: analyzingCommitId
-    },
-    {
-      frozen: true
-    }
-  ).exec();
-
-  // TODO Handle error
-  if (commitReviewUpdateResult.n !== 1 || commitReviewUpdateResult.nModified !== 1) {
-    console.log(`Could not freeze commit: ${analyzingCommitId}`)
-  }
-
-  const updatedPullRequestReview = await PullRequestReviewModel.findOneAndUpdate(
-    {
-      repoId: pullRequestReview.repoId,
-      pullRequestNumber: pullRequestReview.pullRequestNumber
-    },
-    {
-      $pull: { pendingAnalysisForCommits: analyzingCommitId },
-      currentAnalysisLastCommitWithSuccessStatus: lastCommitWithSuccessStatus,
-      currentAnalysisLastAnalyzedCommit: analyzingCommitId
-    },
-    {
-      new: true
-    }
-  ).exec();
-
-  // TODO handle error better.
-  if (updatedPullRequestReview === null) {
-    throw new Error(`Error : Could not update pull request review with fields --- repoId : ${pullRequestReview.repoId}, pullRequestNumber: ${pullRequestReview.pullRequestNumber}`)
-  }
-
-  if (lastCommitWithSuccessStatus === analyzingCommitId) {
-    await setCommitStatus(analyzingCommitId, "success", { description: "No tags required approval" })
-  } else {
-    await setCommitStatus(
-      analyzingCommitId,
-      "failure",
-      { description: "Tags require approval", target_url: getClientUrlForCommitReview(analyzingCommitId) }
-    )
-  }
-
-  const updatedPullRequestReviewObject: PullRequestReview = updatedPullRequestReview.toObject()
 
   pipeline(
+    installationId,
     updatedPullRequestReviewObject,
     getClientUrlForCommitReview,
     retrieveDiff,
@@ -273,21 +361,45 @@ interface CarryOverResult {
 
 
 export const calculateCarryOversFromLastAnalyzedCommit = async (
+  owners: string[],
+  lastAnaylzedCommitId: string | null,
   lastCommitWithSuccessStatus: string,
   currentCommitId: string,
-  retrieveDiff: () => Promise<any>,
-  getLastAnalyzedCommitReview: () => Promise<CommitReview>,
+  retrieveDiff: (baseId: string, headId: string) => Promise<any>,
+  getCommitReview: (commitId: string) => Promise<CommitReview.CommitReview>,
   fileReviewsAgainstLastSuccess: Review.FileReviewWithMetadata[]
   ): Promise<CarryOverResult> => {
 
-  const lastAnalyzedCommitReview: CommitReview = await getLastAnalyzedCommitReview();
+  // No tags, no carry-overs.
+  if (owners.length === 0) {
+    return {
+      approvedTags: [],
+      rejectedTags: [],
+      remainingOwnersToApproveDocs: [],
+      lastCommitWithSuccessStatus: currentCommitId
+    }
+  }
+
+  // Last analyzed commit is the last commit with success state, no carry-overs
+  if (lastAnaylzedCommitId === null || lastAnaylzedCommitId === lastCommitWithSuccessStatus) {
+    return {
+      approvedTags: [],
+      rejectedTags: [],
+      remainingOwnersToApproveDocs: owners,
+      lastCommitWithSuccessStatus
+    }
+  }
+
+  // Otherwise we may have actual carry-overs to compute.
+
+  const lastAnalyzedCommitReview: CommitReview.CommitReview = await getCommitReview(lastAnaylzedCommitId);
   const lastAnalyzedTagsPerFile = Review.getTagsPerFile(
     lastAnalyzedCommitReview.approvedTags,
     lastAnalyzedCommitReview.rejectedTags,
     lastAnalyzedCommitReview.fileReviews
   );
 
-  const fileDiffs: Diff.FileDiff[] = Diff.parseDiff(await retrieveDiff());
+  const fileDiffs: Diff.FileDiff[] = Diff.parseDiff(await retrieveDiff(lastAnaylzedCommitId, currentCommitId));
   const fileDiffsToAnalyze: Diff.FileDiff[] = R.filter(isLanguageSupported, fileDiffs);
 
   const carryOverApprovedTags: string[] = [];

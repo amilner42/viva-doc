@@ -2,7 +2,8 @@ import mongoose = require("mongoose")
 
 import { TagAndOwner } from "../review";
 import * as AppError from "../error";
-
+import * as F from "../functional";
+import * as Review from "../review";
 
 export interface PullRequestReview {
   repoId: number,
@@ -206,33 +207,158 @@ export const updateHeadCommit =
 }
 
 
-// @THROWS always, either:
-//  - Just `errorThatCausedThis` if successfully cleared pending commit.
-//  - Array with both the original `errorThatCausedThis` and the `GithubAppLoggableError` from the failure
-//    to clear the pending commit.
-export const clearPendingCommitOnAnalysisFailureAndThrowError =
+// Updates the fields that are not for the head commit of the PRReview and returns the new PRReview.
+//
+// @THROWS only `GithubAppLoggableError` upon failure.
+export const updateNonHeadCommitFields =
+  async ( installationId: number
+        , repoId: number
+        , pullRequestNumber: number
+        , analyzedCommitId: string
+        , lastCommitWithSuccessStatus: string
+        ): Promise<PullRequestReview> => {
+
+  try {
+
+    const updatedPullRequestReview = await PullRequestReviewModel.findOneAndUpdate(
+      { repoId, pullRequestNumber },
+      {
+        $pull: { pendingAnalysisForCommits: analyzedCommitId },
+        currentAnalysisLastCommitWithSuccessStatus: lastCommitWithSuccessStatus,
+        currentAnalysisLastAnalyzedCommit: analyzedCommitId
+      },
+      {
+        new: true
+      }
+    ).exec();
+
+    if (updatedPullRequestReview === null) {
+      throw `Failed to find pull request review`
+    }
+
+    return updatedPullRequestReview.toObject();
+
+  } catch (err) {
+
+    const updatePullRequestLoggableError: AppError.GithubAppLoggableError = {
+      errorName: "update-non-head-fields-on-pr-failed",
+      githubAppError: true,
+      loggable: true,
+      installationId,
+      isSevere: true,
+      stack: AppError.getStack(),
+      data: {
+        err,
+        repoId,
+        pullRequestNumber,
+        analyzedCommitId
+      }
+    };
+
+    throw updatePullRequestLoggableError;
+  }
+
+}
+
+
+// Updates the fields in a PRReview assuming it is still the head commit.
+//
+// If it worked, returns "success", if it was no longer the head commit, returns "no-longer-head-commit".
+//
+// @THROWS `GithubAppLoggableError` if the mongo query failed to execute properly.
+export const updateFieldsForHeadCommit =
+  async ( installationId: number
+        , repoId: number
+        , pullRequestNumber: number
+        , headCommitId: string
+        , headCommitApprovedTags: string[]
+        , headCommitRejectedTags: string[]
+        , headCommitRemainingOwnersToApproveDocs: string[]
+        , headCommitTagsAndOwners: Review.TagAndOwner[]
+        , currentAnalysisLastCommitWithSuccessStatus: string
+        , currentAnalysisLastAnalyzedCommit: string
+        ): Promise<"success" | "no-longer-head-commit"> => {
+
+  try {
+
+    const updatePullRequestReviewResult = await PullRequestReviewModel.update(
+      {
+        repoId,
+        pullRequestNumber,
+        headCommitId
+      },
+      {
+        headCommitApprovedTags,
+        headCommitRejectedTags,
+        headCommitRemainingOwnersToApproveDocs,
+        headCommitTagsAndOwners,
+        $pull: { pendingAnalysisForCommits: currentAnalysisLastAnalyzedCommit },
+        currentAnalysisLastCommitWithSuccessStatus,
+        currentAnalysisLastAnalyzedCommit,
+        loadingHeadAnalysis: false
+      }
+    ).exec();
+
+    if (updatePullRequestReviewResult.ok !== 1) {
+      throw `mongo query was not ok: ${updatePullRequestReviewResult.ok}`;
+    }
+
+    if (updatePullRequestReviewResult.n === 1 && updatePullRequestReviewResult.nModified === 1) {
+      return "success";
+    }
+    return "no-longer-head-commit";
+
+  } catch (err) {
+
+    const updatePRLoggableError: AppError.GithubAppLoggableError = {
+      errorName: "update-pr-head-commit-fields-failure",
+      installationId,
+      githubAppError: true,
+      loggable: true,
+      isSevere: false,
+      stack: AppError.getStack(),
+      data: {
+        err,
+        repoId,
+        pullRequestNumber,
+        headCommitId
+      }
+    };
+
+    throw updatePRLoggableError;
+  }
+}
+
+
+// Clears a commit from the `pendingAnalysisForCommits`.
+//
+// @THROWS
+//  if `andThrowError` is not null then it will always throw, either:
+//   - Just `andThrowError` if successfully cleared pending commit.
+//   - Array with [ `andThrowError`, `GithubAppLoggableError` from the failure ]
+// else:
+//    will throw `GithubAppLoggableError` if it errors to clear the pending commit.
+export const clearPendingCommitOnAnalysisFailure =
   async ( installationId: number
         , repoId: number
         , pullRequestNumber: number
         , commitId: string
-        , errorThatCausedThis: any
-        ): Promise<void>  => {
+        , andThrowError: F.Maybe<any>
+      ): Promise<PullRequestReview>  => {
+
+  let pullRequestReviewDoc: mongoose.Document | null;
 
   try {
 
-    const updateResult = await PullRequestReviewModel.update(
+    pullRequestReviewDoc = await PullRequestReviewModel.findOneAndUpdate(
       { repoId, pullRequestNumber },
       {
         $pull: { pendingAnalysisForCommits: commitId },
       }
     ).exec();
 
-    if (updateResult.ok !== 1 || updateResult.n !== 1 || updateResult.nModified !== 1) {
-      throw { updateQueryFailure: true
-            , ok: updateResult.ok
-            , n: updateResult.n
-            , nModified: updateResult.nModified
-            }
+    if (pullRequestReviewDoc === null) {
+      throw `Unable to find pull request review.`
     }
 
   } catch (err) {
@@ -252,11 +378,18 @@ export const clearPendingCommitOnAnalysisFailureAndThrowError =
       }
     };
 
-    throw [ errorThatCausedThis, clearPendingAnalysisOnFailureLoggableError ];
+    if (andThrowError !== null) {
+      throw [ andThrowError, clearPendingAnalysisOnFailureLoggableError ];
+    } else {
+      throw clearPendingAnalysisOnFailureLoggableError;
+    }
   }
 
-  throw errorThatCausedThis;
+  if (andThrowError !== null) {
+    throw andThrowError;
+  }
 
+  return pullRequestReviewDoc.toObject();
 }
 
 

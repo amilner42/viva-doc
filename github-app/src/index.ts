@@ -244,7 +244,7 @@ const analyzeOldPullRequest =
 
   } catch (freezeCommitError) {
 
-    await PullRequestReview.clearPendingCommitOnAnalysisFailureAndThrowError(
+    await PullRequestReview.clearPendingCommitOnAnalysisFailure(
       installationId,
       repoId,
       pullRequestNumber,
@@ -261,6 +261,7 @@ const analyzeOldPullRequest =
     );
 
   await Analysis.pipeline(
+    installationId,
     pullRequestReviewObject,
     getClientUrlForCommitReview(repoId, pullRequestNumber),
     GH.retrieveDiff(installationId, context, owner, repoName),
@@ -301,6 +302,7 @@ const analyzeNewPullRequest =
   );
 
   await Analysis.pipeline(
+    installationId,
     pullRequestReviewObject,
     getClientUrlForCommitReview(repoId, pullRequestNumber),
     GH.retrieveDiff(installationId, context, owner, repoName),
