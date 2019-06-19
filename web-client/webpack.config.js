@@ -151,7 +151,8 @@ if (MODE === "production") {
             }),
             // Copy static assets
             new CopyWebpackPlugin([
-                { from: "src/assets", to: "assets/" }
+                { from: "src/assets", to: "assets/" },
+                { from: "src/ace", to: "ace" }
             ]),
             new MiniCssExtractPlugin({
                 // Options similar to the same options in webpackOptions.output
