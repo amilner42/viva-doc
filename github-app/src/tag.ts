@@ -31,15 +31,15 @@ export type FileDiffWithCode =
   NewFileDiffWithCode |
   DeletedFileDiffWithCode
 
-export type ModifiedFileDiffWithCode = Diff.ModifiedFileDiff & HasAttachedCode
+export type ModifiedFileDiffWithCode = Diff.ModifiedFileDiffWithLanguage & HasAttachedCode
 
-export type RenamedFileDiffWithCode = Diff.RenamedFileDiff & HasAttachedCode
-
-// The full file is present already in the diff itself
-export type NewFileDiffWithCode = Diff.NewFileDiff
+export type RenamedFileDiffWithCode = Diff.RenamedFileDiffWithLanguage & HasAttachedCode
 
 // The full file is present already in the diff itself
-export type DeletedFileDiffWithCode = Diff.DeletedFileDiff
+export type NewFileDiffWithCode = Diff.NewFileDiffWithLanguage
+
+// The full file is present already in the diff itself
+export type DeletedFileDiffWithCode = Diff.DeletedFileDiffWithLanguage
 
 /** A diff with the code for the relevant file and parsed tags attached. */
 export type FileDiffWithCodeAndTags =
@@ -99,7 +99,7 @@ Note: This does not mutate the object you pass in, it creates a new object.
 export const parseTags = (diffWF: FileDiffWithCode): FileDiffWithCodeAndTags => {
 
   // TODO we are casting here becuase we checked earlier, better to attach language earlier to avoid type casts.
-  const currentLanguage = Lang.getLanguageFromFilePath(diffWF.currentFilePath) as Lang.Language
+  const currentLanguage = diffWF.currentLanguage;
 
   switch (diffWF.diffType) {
 
@@ -118,8 +118,7 @@ export const parseTags = (diffWF: FileDiffWithCode): FileDiffWithCodeAndTags => 
     }
 
     case "renamed":
-    // TODO we are casting here becuase we checked earlier, better to attach language earlier to avoid type casts.
-      const previousLanguage = Lang.getLanguageFromFilePath(diffWF.previousFilePath) as Lang.Language
+      const previousLanguage = diffWF.previousLanguage;
 
       return R.merge(
         diffWF,

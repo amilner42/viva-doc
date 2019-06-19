@@ -3,6 +3,7 @@ module CommitReview exposing (AlteredLine, ApprovedState(..), CommitReview, Edit
 import Dict
 import Json.Decode as Decode
 import Json.Decode.Pipeline exposing (hardcoded, optional, required)
+import Language
 import Ports
 import Set
 
@@ -22,13 +23,14 @@ type alias CommitReview =
 type alias FileReview =
     { fileReviewType : FileReviewType
     , currentFilePath : String
+    , currentLanguage : Language.Language
     , isHidden : Bool
     }
 
 
 type FileReviewType
     = ModifiedFileReview (List Review)
-    | RenamedFileReview String (List Review)
+    | RenamedFileReview String Language.Language (List Review)
     | DeletedFileReview (List Tag)
     | NewFileReview (List Tag)
 
@@ -210,7 +212,7 @@ updateFileReviewForSearch searchBy fileReview =
                 , isHidden = visibleReviews == 0
             }
 
-        RenamedFileReview prevName reviews ->
+        RenamedFileReview prevName prevLang reviews ->
             let
                 updatedReviews =
                     filterReviewsForSearch reviews
@@ -219,7 +221,7 @@ updateFileReviewForSearch searchBy fileReview =
                     countVisibleReviews updatedReviews
             in
             { fileReview
-                | fileReviewType = RenamedFileReview prevName updatedReviews
+                | fileReviewType = RenamedFileReview prevName prevLang updatedReviews
                 , isHidden = visibleReviews == 0
             }
 
@@ -238,7 +240,7 @@ reviewOrTagCount { fileReviewType } =
         DeletedFileReview tags ->
             List.length tags
 
-        RenamedFileReview _ reviews ->
+        RenamedFileReview _ _ reviews ->
             List.length reviews
 
         ModifiedFileReview reviews ->
@@ -259,7 +261,7 @@ visibleReviewOrTagCount { fileReviewType } =
         DeletedFileReview tags ->
             countVisibleTags tags
 
-        RenamedFileReview _ reviews ->
+        RenamedFileReview _ _ reviews ->
             countVisibleReviews reviews
 
         ModifiedFileReview reviews ->
@@ -313,8 +315,8 @@ updateTags updateTag commitReview =
                         ModifiedFileReview reviews ->
                             ModifiedFileReview <| List.map updateReview reviews
 
-                        RenamedFileReview previousFilePath reviews ->
-                            RenamedFileReview previousFilePath <| List.map updateReview reviews
+                        RenamedFileReview previousFilePath previousLanguage reviews ->
+                            RenamedFileReview previousFilePath previousLanguage <| List.map updateReview reviews
             }
     in
     { commitReview | fileReviews = List.map fileReviewTagMap commitReview.fileReviews }
@@ -331,8 +333,8 @@ updateReviews updateReview commitReview =
                         ModifiedFileReview reviews ->
                             ModifiedFileReview <| List.map updateReview reviews
 
-                        RenamedFileReview previousFilePath reviews ->
-                            RenamedFileReview previousFilePath <| List.map updateReview reviews
+                        RenamedFileReview previousFilePath previousLanguage reviews ->
+                            RenamedFileReview previousFilePath previousLanguage <| List.map updateReview reviews
 
                         other ->
                             other
@@ -426,6 +428,22 @@ reviewOrTagFold foldFunc initAcc =
     allTagsOrReviews >> List.foldl foldFunc initAcc
 
 
+getTagsOrReviewsFromFileReview : FileReview -> List ReviewOrTag
+getTagsOrReviewsFromFileReview fileReview =
+    case fileReview.fileReviewType of
+        NewFileReview tags ->
+            List.map NewFileTag tags
+
+        DeletedFileReview tags ->
+            List.map DeletedFileTag tags
+
+        ModifiedFileReview reviews ->
+            List.map AReview reviews
+
+        RenamedFileReview _ _ reviews ->
+            List.map AReview reviews
+
+
 {-| Get all tags and reviews from all file reviews
 -}
 allTagsOrReviews : CommitReview -> List ReviewOrTag
@@ -434,18 +452,7 @@ allTagsOrReviews =
         >> List.foldl
             (\fileReview reviewsOrTags ->
                 List.append reviewsOrTags <|
-                    case fileReview.fileReviewType of
-                        NewFileReview tags ->
-                            List.map NewFileTag tags
-
-                        DeletedFileReview tags ->
-                            List.map DeletedFileTag tags
-
-                        ModifiedFileReview reviews ->
-                            List.map AReview reviews
-
-                        RenamedFileReview _ reviews ->
-                            List.map AReview reviews
+                    getTagsOrReviewsFromFileReview fileReview
             )
             []
 
@@ -471,16 +478,17 @@ tagFold foldFunc =
 
 extractRenderEditorConfigs : CommitReview -> List Ports.RenderCodeEditorConfig
 extractRenderEditorConfigs =
-    reviewOrTagFold
-        (\reviewOrTag previousRenderConfigs ->
-            renderConfigForReviewOrTag reviewOrTag
-                :: previousRenderConfigs
-        )
-        []
+    .fileReviews
+        >> List.map
+            (\fileReview ->
+                getTagsOrReviewsFromFileReview fileReview
+                    |> List.map (renderConfigForReviewOrTag fileReview.currentLanguage)
+            )
+        >> List.concat
 
 
-renderConfigForReviewOrTag : ReviewOrTag -> Ports.RenderCodeEditorConfig
-renderConfigForReviewOrTag reviewOrTag =
+renderConfigForReviewOrTag : Language.Language -> ReviewOrTag -> Ports.RenderCodeEditorConfig
+renderConfigForReviewOrTag language reviewOrTag =
     case reviewOrTag of
         AReview review ->
             let
@@ -529,15 +537,17 @@ renderConfigForReviewOrTag reviewOrTag =
             , redLineRanges = redLineRanges
             , greenLineRanges = greenLineRanges
             , customLineNumbers = customLineNumbers
+            , language = Language.toString language
             }
 
         DeletedFileTag tag ->
             { tagId = tag.tagId
             , startLineNumber = tag.startLine
             , content = tag.content
-            , redLineRanges = [ ( tag.startLine, tag.endLine ) ]
+            , redLineRanges = []
             , greenLineRanges = []
             , customLineNumbers = Nothing
+            , language = Language.toString language
             }
 
         NewFileTag tag ->
@@ -545,8 +555,9 @@ renderConfigForReviewOrTag reviewOrTag =
             , startLineNumber = tag.startLine
             , content = tag.content
             , redLineRanges = []
-            , greenLineRanges = [ ( tag.startLine, tag.endLine ) ]
+            , greenLineRanges = []
             , customLineNumbers = Nothing
+            , language = Language.toString language
             }
 
 
@@ -769,9 +780,10 @@ decodeCommitReview =
 
 decodeFileReview : ApprovedAndRejectedTags -> Decode.Decoder FileReview
 decodeFileReview tagStates =
-    Decode.map3 FileReview
+    Decode.map4 FileReview
         (decodeFileReviewType tagStates)
         (Decode.field "currentFilePath" Decode.string)
+        (Decode.field "currentLanguage" Language.decodeLanguage)
         (Decode.succeed False)
 
 
@@ -806,8 +818,9 @@ decodeModifiedfileReview tagStates =
 
 decodeRenamedFileReview : ApprovedAndRejectedTags -> Decode.Decoder FileReviewType
 decodeRenamedFileReview tagStates =
-    Decode.map2 RenamedFileReview
+    Decode.map3 RenamedFileReview
         (Decode.field "previousFilePath" Decode.string)
+        (Decode.field "previousLanguage" Language.decodeLanguage)
         (Decode.field "reviews" (Decode.list <| decodeReview tagStates))
 
 

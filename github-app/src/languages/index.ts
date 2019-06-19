@@ -26,6 +26,13 @@ export type Language
   | "Javascript"
   | "Typescript"
 
+export interface HasCurrentLanguage {
+  currentLanguage: Language;
+}
+
+export interface HasPreviousLanguage {
+  previousLanguage: Language;
+}
 
 /** EXTERNAL FUNCTIONS */
 

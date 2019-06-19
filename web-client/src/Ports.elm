@@ -19,6 +19,7 @@ type alias RenderCodeEditorConfig =
     , redLineRanges : List ( Int, Int )
     , greenLineRanges : List ( Int, Int )
     , content : List String
+    , language : String
     }
 
 

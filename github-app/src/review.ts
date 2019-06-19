@@ -3,6 +3,7 @@
 import R from "ramda"
 import mongoose from "mongoose"
 
+import * as Lang from "./languages/"
 import * as LangUtil from "./languages/util"
 import * as Diff from "./diff"
 import * as Tag from "./tag"
@@ -41,12 +42,12 @@ export interface BaseFileReview {
 }
 
 /** A new file review contains a list of tags because all tags in a new file are entirely new. */
-export type NewFileReview = BaseFileReview & HasTags & Diff.HasCurrentFilePath & {
+export type NewFileReview = BaseFileReview & HasTags & Diff.HasCurrentFilePath & Lang.HasCurrentLanguage & {
   fileReviewType: "new-file";
 }
 
 /** A deleted file review contains a list of tags because all tags in a deleted file are entirely deleted. */
-export type DeletedFileReview = BaseFileReview & HasTags & Diff.HasCurrentFilePath & {
+export type DeletedFileReview = BaseFileReview & HasTags & Diff.HasCurrentFilePath & Lang.HasCurrentLanguage & {
   fileReviewType: "deleted-file";
 }
 
@@ -56,6 +57,8 @@ export type RenamedFileReview =
   & Diff.HasPreviousFilePath
   & Diff.HasCurrentFilePath
   & HasReviews
+  & Lang.HasCurrentLanguage
+  & Lang.HasPreviousLanguage
   & {
   fileReviewType: "renamed-file";
 }
@@ -65,6 +68,7 @@ export type ModifiedFileReview =
   BaseFileReview
   & Diff.HasCurrentFilePath
   & HasReviews
+  & Lang.HasCurrentLanguage
   & {
   fileReviewType: "modified-file";
 }
@@ -129,7 +133,8 @@ export const getReviews = (diffWCAT: Tag.FileDiffWithCodeAndTags): FileReview =>
       return {
         fileReviewType: "new-file",
         currentFilePath: diffWCAT.currentFilePath,
-        tags: diffWCAT.currentFileTags
+        tags: diffWCAT.currentFileTags,
+        currentLanguage: diffWCAT.currentLanguage
       }
 
     case "deleted":
@@ -137,7 +142,8 @@ export const getReviews = (diffWCAT: Tag.FileDiffWithCodeAndTags): FileReview =>
       return {
         fileReviewType: "deleted-file",
         currentFilePath: diffWCAT.currentFilePath,
-        tags: diffWCAT.currentFileTags
+        tags: diffWCAT.currentFileTags,
+        currentLanguage: diffWCAT.currentLanguage
       }
 
     case "renamed":
@@ -146,6 +152,8 @@ export const getReviews = (diffWCAT: Tag.FileDiffWithCodeAndTags): FileReview =>
         fileReviewType: "renamed-file",
         currentFilePath: diffWCAT.currentFilePath,
         previousFilePath: diffWCAT.previousFilePath,
+        currentLanguage: diffWCAT.currentLanguage,
+        previousLanguage: diffWCAT.previousLanguage,
         reviews: calculateReviewsFromModification(
           diffWCAT.previousFileTags,
           diffWCAT.currentFileTags,
@@ -158,6 +166,7 @@ export const getReviews = (diffWCAT: Tag.FileDiffWithCodeAndTags): FileReview =>
       return {
         fileReviewType: "modified-file",
         currentFilePath: diffWCAT.currentFilePath,
+        currentLanguage: diffWCAT.currentLanguage,
         reviews: calculateReviewsFromModification(
           diffWCAT.previousFileTags,
           diffWCAT.currentFileTags,
