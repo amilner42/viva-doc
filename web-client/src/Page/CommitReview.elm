@@ -9,6 +9,7 @@ import CommitReview
 import Html exposing (Html, a, button, div, dl, dt, hr, i, p, section, span, table, tbody, td, text, th, thead, tr)
 import Html.Attributes exposing (class, classList, disabled, style)
 import Html.Events exposing (onClick)
+import Language
 import Ports
 import RemoteData
 import Route
@@ -405,6 +406,7 @@ renderFileReview username remainingOwnersToApproveDocs approveDocsState isCommit
                     remainingOwnersToApproveDocs
                     approveDocsState
                     isCommitStale
+                    fileReview.currentLanguage
                     tags
 
             CommitReview.DeletedFileReview tags ->
@@ -414,6 +416,7 @@ renderFileReview username remainingOwnersToApproveDocs approveDocsState isCommit
                     remainingOwnersToApproveDocs
                     approveDocsState
                     isCommitStale
+                    fileReview.currentLanguage
                     tags
 
             CommitReview.ModifiedFileReview reviews ->
@@ -422,14 +425,16 @@ renderFileReview username remainingOwnersToApproveDocs approveDocsState isCommit
                     remainingOwnersToApproveDocs
                     approveDocsState
                     isCommitStale
+                    fileReview.currentLanguage
                     reviews
 
-            CommitReview.RenamedFileReview _ reviews ->
+            CommitReview.RenamedFileReview _ _ reviews ->
                 renderReviews
                     username
                     remainingOwnersToApproveDocs
                     approveDocsState
                     isCommitStale
+                    fileReview.currentLanguage
                     reviews
         ]
 
@@ -456,7 +461,7 @@ renderFileReviewHeader fileReview =
                     CommitReview.DeletedFileReview _ ->
                         "deleted file"
 
-                    CommitReview.RenamedFileReview _ _ ->
+                    CommitReview.RenamedFileReview _ _ _ ->
                         "renamed file"
             ]
         ]
@@ -468,9 +473,10 @@ renderTags :
     -> Set.Set String
     -> ApproveDocsState err
     -> Bool
+    -> Language.Language
     -> List CommitReview.Tag
     -> Html.Html Msg
-renderTags username description remainingOwnersToApproveDocs approveDocsState isCommitStale tags =
+renderTags username description remainingOwnersToApproveDocs approveDocsState isCommitStale language tags =
     div [ class "tile is-ancestor is-vertical" ] <|
         List.map
             (renderTagOrReview
@@ -480,6 +486,7 @@ renderTags username description remainingOwnersToApproveDocs approveDocsState is
                 , approveDocsState = approveDocsState
                 , isCommitStale = isCommitStale
                 , maybeReview = Nothing
+                , language = language
                 }
             )
             tags
@@ -490,9 +497,10 @@ renderReviews :
     -> Set.Set String
     -> ApproveDocsState err
     -> Bool
+    -> Language.Language
     -> List CommitReview.Review
     -> Html.Html Msg
-renderReviews username remainingOwnersToApproveDocs approveDocsState isCommitStale reviews =
+renderReviews username remainingOwnersToApproveDocs approveDocsState isCommitStale language reviews =
     div [ class "tile is-ancestor is-vertical" ] <|
         List.map
             (\review ->
@@ -512,6 +520,7 @@ renderReviews username remainingOwnersToApproveDocs approveDocsState isCommitSta
                     , approveDocsState = approveDocsState
                     , isCommitStale = isCommitStale
                     , maybeReview = Just review
+                    , language = language
                     }
                     review.tag
             )
@@ -525,6 +534,7 @@ renderTagOrReview :
     , remainingOwnersToApproveDocs : Set.Set String
     , isCommitStale : Bool
     , maybeReview : Maybe CommitReview.Review
+    , language : Language.Language
     }
     -> CommitReview.Tag
     -> Html.Html Msg
@@ -699,7 +709,7 @@ renderTagOrReview config tag =
                                             diffButton showingDiff =
                                                 button
                                                     [ class "button is-info is-fullwidth"
-                                                    , onClick <| SetShowAlteredLines review
+                                                    , onClick <| SetShowAlteredLines config.language review
                                                     ]
                                                     [ text <|
                                                         if showingDiff then
@@ -817,7 +827,7 @@ type Msg
     = CompletedGetCommitReview (Result.Result (Core.HttpError GcrError.GetCommitReviewError) CommitReview.CommitReview)
     | SetDisplayOnlyUsersTags (Maybe String) String
     | SetDisplayOnlyTagsNeedingApproval Bool
-    | SetShowAlteredLines CommitReview.Review
+    | SetShowAlteredLines Language.Language CommitReview.Review
     | ApproveTags (Set.Set String)
     | CompletedApproveTags (Set.Set String) (Result.Result (Core.HttpError CraError.CommitReviewActionError) ())
     | RemoveApprovalOnTag String
@@ -919,7 +929,7 @@ update msg model =
             , Cmd.none
             )
 
-        SetShowAlteredLines forReview ->
+        SetShowAlteredLines language forReview ->
             let
                 updatedReview =
                     { forReview
@@ -949,7 +959,8 @@ update msg model =
                         )
                         model.commitReview
               }
-            , Ports.rerenderCodeEditor <| CommitReview.renderConfigForReviewOrTag <| CommitReview.AReview updatedReview
+            , Ports.rerenderCodeEditor <|
+                CommitReview.renderConfigForReviewOrTag language (CommitReview.AReview updatedReview)
             )
 
         ApproveTags tags ->
