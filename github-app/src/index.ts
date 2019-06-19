@@ -1,13 +1,13 @@
 // Base module for probot app.
 
-// WARNING: Do not import internal modules here, import them below.
+// WARNING: Do not import internal modules that use mongoose here, import them below.
+import { config } from "./config";
 import * as Probot from 'probot' // eslint-disable-line no-unused-vars
 import R from "ramda"
 import mongoose = require("mongoose")
 
 
-// TODO add prod env for mongo uri
-mongoose.connect('mongodb://localhost/viva-doc-dev', { useNewUrlParser: true }, (err) => {
+mongoose.connect(config.mongoDbUri, { useNewUrlParser: true }, (err) => {
   if (err) {
    console.log(err.message);
    console.log(err);
@@ -392,7 +392,6 @@ const analyzeAlreadyOpenPrs =
 
 
 // @THROWS never.
-// TODO add env for prod.
 const getClientUrlForCommitReview = R.curry((repoId: number, prNumber: number, commitId: string): string => {
-  return `http://localhost:8080/review/repo/${repoId}/pr/${prNumber}/commit/${commitId}`
+  return `${config.webClientOrigin}/review/repo/${repoId}/pr/${prNumber}/commit/${commitId}`
 })
