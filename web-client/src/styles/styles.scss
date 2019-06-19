@@ -25,4 +25,23 @@
 
 
 /** External CSS */
-@import "~bulma/bulma";
+
+@import "~bulma/sass/utilities/_all.sass";
+@import "~bulma/sass/base/_all.sass";
+
+@import "~bulma/sass/components/level.sass";
+@import "~bulma/sass/components/modal.sass";
+@import "~bulma/sass/components/navbar.sass";
+
+@import "~bulma/sass/elements/box.sass";
+@import "~bulma/sass/elements/button.sass";
+@import "~bulma/sass/elements/container.sass";
+@import "~bulma/sass/elements/content.sass";
+@import "~bulma/sass/elements/icon.sass";
+@import "~bulma/sass/elements/table.sass";
+@import "~bulma/sass/elements/title.sass";
+
+@import "~bulma/sass/grid/columns.sass";
+@import "~bulma/sass/grid/tiles.sass";
+
+@import "~bulma/sass/layout/section.sass";
