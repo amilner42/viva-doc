@@ -79,7 +79,7 @@ const renderCodeEditor = (renderConfig) => {
     editors[renderConfig.tagId] = editor;
 
     editor.setReadOnly(true);
-    editor.setTheme("ace/theme/github");
+    editor.setTheme("ace/theme/ambiance");
 
     const aceModeName = getAceModeNameFromLanguage(renderConfig.language);
 

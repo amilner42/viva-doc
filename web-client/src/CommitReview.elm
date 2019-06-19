@@ -544,7 +544,7 @@ renderConfigForReviewOrTag language reviewOrTag =
             { tagId = tag.tagId
             , startLineNumber = tag.startLine
             , content = tag.content
-            , redLineRanges = [ ( tag.startLine, tag.endLine ) ]
+            , redLineRanges = []
             , greenLineRanges = []
             , customLineNumbers = Nothing
             , language = Language.toString language
@@ -555,7 +555,7 @@ renderConfigForReviewOrTag language reviewOrTag =
             , startLineNumber = tag.startLine
             , content = tag.content
             , redLineRanges = []
-            , greenLineRanges = [ ( tag.startLine, tag.endLine ) ]
+            , greenLineRanges = []
             , customLineNumbers = Nothing
             , language = Language.toString language
             }

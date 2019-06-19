@@ -9,12 +9,14 @@
       border: 1px solid lightgrey;
 
       .green-line {
-        background-color: #E6FFED;
+        background: #002800;
+        border-color: #060;
         position: absolute;
       }
 
       .red-line {
-        background-color: #FFEEF0;
+        background: #380000;
+        border-color: #600;
         position: absolute;
       }
 
