@@ -327,8 +327,7 @@ export const getFileReviewsWithMetadataNeedingApproval = async (
 ): Promise<Review.FileReviewWithMetadata[]> => {
 
   const fileDiffs: Diff.FileDiff[] = Diff.parseDiff(await retrieveDiff())
-
-  const filesDiffsToAnalyze: Diff.FileDiff[] = R.filter(isLanguageSupported, fileDiffs);
+  const filesDiffsToAnalyze: Diff.FileDiffWithLanguage[] = Diff.toFileDiffsWithLanguage(fileDiffs);
 
   if (filesDiffsToAnalyze.length === 0) {
     return []
@@ -405,7 +404,7 @@ export const calculateCarryOversFromLastAnalyzedCommit = async (
   );
 
   const fileDiffs: Diff.FileDiff[] = Diff.parseDiff(await retrieveDiff(lastAnaylzedCommitId, currentCommitId));
-  const fileDiffsToAnalyze: Diff.FileDiff[] = R.filter(isLanguageSupported, fileDiffs);
+  const fileDiffsToAnalyze: Diff.FileDiffWithLanguage[] = Diff.toFileDiffsWithLanguage(fileDiffs);
 
   const carryOverApprovedTags: string[] = [];
   const carryOverRejectedTags: string[] = [];
@@ -562,7 +561,7 @@ export const calculateCarryOversFromLastAnalyzedCommit = async (
 
 
 const attachCode = async (
-  fileDiff: Diff.FileDiff,
+  fileDiff: Diff.FileDiffWithLanguage,
   retrieveFiles: (previousFilePath: string, currentFilePath: string) => Promise<[string, string]>
   ): Promise<Tag.FileDiffWithCode> => {
 
@@ -585,22 +584,4 @@ const attachCode = async (
     case "new":
       return fileDiff
   }
-}
-
-
-const isLanguageSupported = (fileDiff: Diff.FileDiff): boolean => {
-
-  switch (fileDiff.diffType) {
-
-    case "renamed":
-      return F.isJust(Lang.getLanguageFromFilePath(fileDiff.previousFilePath))
-              && F.isJust(Lang.getLanguageFromFilePath(fileDiff.currentFilePath));
-
-    case "deleted":
-    case "new":
-    case "modified":
-      return F.isJust(Lang.getLanguageFromFilePath(fileDiff.currentFilePath));
-
-  }
-
 }

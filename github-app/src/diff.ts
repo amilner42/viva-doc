@@ -2,6 +2,7 @@
 
 import R from "ramda"
 
+import * as Lang from "./languages/"
 import * as File from "./file"
 import * as F from "./functional"
 import * as AppError from "./error"
@@ -59,6 +60,17 @@ export type RenamedFileDiff = HasCurrentFilePath & HasPreviousFilePath & HasAlte
   diffType: "renamed";
 }
 
+export type FileDiffWithLanguage =
+  NewFileDiffWithLanguage | ModifiedFileDiffWithLanguage | RenamedFileDiffWithLanguage | DeletedFileDiffWithLanguage
+
+export type NewFileDiffWithLanguage = NewFileDiff & Lang.HasCurrentLanguage
+
+export type ModifiedFileDiffWithLanguage = ModifiedFileDiff & Lang.HasCurrentLanguage
+
+export type RenamedFileDiffWithLanguage = RenamedFileDiff & Lang.HasCurrentLanguage & Lang.HasPreviousLanguage
+
+export type DeletedFileDiffWithLanguage = DeletedFileDiff & Lang.HasCurrentLanguage
+
 /** ERRORS */
 
 export interface DiffParserError extends AppError.GithubAppError {
@@ -103,6 +115,44 @@ export const parseDiff = (diffAsStr: string): FileDiff[] => {
 
   return fileDiffs;
 }
+
+
+// Keeps only languages we support.
+export const toFileDiffsWithLanguage = (fileDiffs: FileDiff[]): FileDiffWithLanguage[] => {
+
+  return R.reduce<FileDiff, FileDiffWithLanguage[]>(
+    (acc, fileDiff) => {
+      switch (fileDiff.diffType) {
+
+        case "renamed": {
+          const previousLanguage = Lang.getLanguageFromFilePath(fileDiff.previousFilePath);
+          const currentLanguage = Lang.getLanguageFromFilePath(fileDiff.currentFilePath);
+
+          if (currentLanguage === null || previousLanguage === null) {
+            return acc;
+          }
+
+          return acc.concat({ ...fileDiff, currentLanguage, previousLanguage })
+        }
+
+        case "deleted":
+        case "new":
+        case "modified":
+          const currentLanguage = Lang.getLanguageFromFilePath(fileDiff.currentFilePath);
+
+          if (currentLanguage === null) {
+            return acc;
+          }
+
+          return acc.concat({ ...fileDiff, currentLanguage });
+      }
+    },
+    [],
+    fileDiffs
+  );
+
+}
+
 
 /** INTERNAL */
 
