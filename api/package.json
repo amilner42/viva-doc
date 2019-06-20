@@ -23,6 +23,7 @@
     "errorhandler": "1.4.3",
     "express": "4.13.4",
     "express-session": "1.13.0",
+    "forever": "^1.0.0",
     "github-api": "^3.0.0",
     "github-app": "^4.0.1",
     "method-override": "2.3.5",
@@ -36,7 +37,6 @@
     "ramda": "^0.26.1"
   },
   "devDependencies": {
-    "forever": "^1.0.0",
     "newman": "^3.8.2",
     "nodemon": "^1.11.0"
   }
