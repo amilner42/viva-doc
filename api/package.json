@@ -9,7 +9,6 @@
     "forever-start": "forever start app.js",
     "forever-list": "forever list",
     "forever-stop": "forever stop"
-
   },
   "repository": {
     "type": "git",
