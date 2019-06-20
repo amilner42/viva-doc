@@ -6,9 +6,9 @@
   "scripts": {
     "start": "node ./app.js",
     "dev": "nodemon ./app.js",
-    "list": "forever list",
-    "forever": "forever start app.js",
-    "kill": "forever stop"
+    "forever-start": "forever start app.js",
+    "forever-list": "forever list",
+    "forever-stop": "forever stop"
 
   },
   "repository": {
