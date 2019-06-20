@@ -6,7 +6,10 @@
   "scripts": {
     "start": "node ./app.js",
     "dev": "nodemon ./app.js",
-    "stop": "lsof -ti :3001 | xargs kill"
+    "list": "forever list",
+    "forever": "forever start app.js",
+    "kill": "forever stop"
+
   },
   "repository": {
     "type": "git",
@@ -34,6 +37,7 @@
     "ramda": "^0.26.1"
   },
   "devDependencies": {
+    "forever": "^1.0.0",
     "newman": "^3.8.2",
     "nodemon": "^1.11.0"
   }
