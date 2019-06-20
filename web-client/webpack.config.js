@@ -10,8 +10,7 @@ const StringReplacePlugin = require("string-replace-webpack-plugin");
 // to extract the css as a separate file
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 
-// TODO update for prod
-const PROD_API_URL = "http://localhost:3001/api"
+const PROD_API_URL = "http://52.53.218.152:8888/api"
 
 var MODE =
     process.env.npm_lifecycle_event === "prod" ? "production" : "development";
