@@ -15,6 +15,7 @@
 | [Web client README](/web-client/README.md) | Information about the web client |
 | [Github App README](/github-app/README.md) | Information about the github app |
 | [Language Parsing](/github-app/src/languages/README.md) | Information for working with the parsers |
+| [Deployment](/DEPLOY.md) | Information about deplyoment. |
 
 ### Local Dependencies
 
