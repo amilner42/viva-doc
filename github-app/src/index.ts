@@ -18,11 +18,12 @@ mongoose.connect(config.mongoDbUri, { useNewUrlParser: true }, (err) => {
 })
 
 // NOTE: Order of these requires matters, LoggableError must be first.
+// @VD amilner42 block
 require("./models/LoggableError");
 require("./models/PullRequestReview");
 require("./models/CommitReview");
 require("./models/Repo");
-
+// @VD end-block
 
 // All imports to internal modules should be here so that all mongoose schemas have loaded first.
 import * as Repo from "./models/Repo";

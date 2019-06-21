@@ -12,6 +12,7 @@ export interface SettledRejectedPromise<E> {
 
 
 // Settle all promises, regardless of whether they reject / resolve.
+// @VD amilner42 block
 export const settleAll = <T, E>(promiseArray: Promise<T>[]): Promise<SettledPromise<T, E>[]> => {
 
   const wrappedPromises = promiseArray.map(async (promise) => {
@@ -40,6 +41,7 @@ export const settleAll = <T, E>(promiseArray: Promise<T>[]): Promise<SettledProm
 
   return Promise.all(wrappedPromises);
 }
+// @VD end-block
 
 
 export const getResolvedSettlements = <T, E>(settledPromises: SettledPromise<T, E>[]): T[] => {

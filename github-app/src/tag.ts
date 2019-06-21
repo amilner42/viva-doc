@@ -59,6 +59,8 @@ export type DeletedFileDiffWithCodeAndTags= DeletedFileDiffWithCode & HasCurrent
 /** All possible VD tag types
  *
  * Tags are the core of VivaDoc, allowing the user to tag some documentation that they'd like to be responsible for.
+ *
+ * @VD amilner42 line
  */
 export type VdTag = VdFileTag | VdBlockTag | VdLineTag
 
@@ -66,6 +68,7 @@ export type VdTag = VdFileTag | VdBlockTag | VdLineTag
 export type VdTagType = "file" | "block" | "line"
 
 // All tags should have these properties.
+// @VD amilner42 block
 export interface BaseTag {
   tagType: VdTagType;
   owner: string;
@@ -74,6 +77,7 @@ export interface BaseTag {
   startLine: number;
   endLine: number;
 }
+// @VD end-block
 
 // A tag representing documentation ownership of an entire file.
 export type VdFileTag = BaseTag & {
@@ -95,6 +99,8 @@ export type VdLineTag = BaseTag & {
 /** Attach tags to a `FileDiffWithCode` object.
 
 Note: This does not mutate the object you pass in, it creates a new object.
+
+@VD amilner42 block
 */
 export const parseTags = (diffWF: FileDiffWithCode): FileDiffWithCodeAndTags => {
 
@@ -139,6 +145,7 @@ export const parseTags = (diffWF: FileDiffWithCode): FileDiffWithCodeAndTags => 
 
   } // end switch
 }
+// @VD end-block
 
 /** Get all the tags for a given file of a specific programming language. */
 export const getFileTags = (language: Lang.Language, fileContent: string): VdTag[] => {
@@ -149,6 +156,8 @@ export const getFileTags = (language: Lang.Language, fileContent: string): VdTag
 /** Retrieve the index tag from a list of tags based on the tag annotation line number.
 
   @throws A TODO error when there is more than one tag annotation on that line.
+
+  @VD amilner42 block
 */
 export const getTagIndexFromAnnotationLine = (tags: VdTag[], tagAnnotationLine: number): F.Maybe<number> => {
 
@@ -170,3 +179,4 @@ export const getTagIndexFromAnnotationLine = (tags: VdTag[], tagAnnotationLine: 
 
   return index;
 }
+// @VD end-block

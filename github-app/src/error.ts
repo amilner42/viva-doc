@@ -7,16 +7,19 @@ const LoggableErrorModel = mongoose.model("LoggableError");
 
 
 // The base error type for all errors thrown within github-app.
+// @VD amilner42 block
 export interface GithubAppError {
   githubAppError: true;
   errorName: string;
 }
+// @VD end-block
 
 
 // All errors that are meant to be logged for manual review later.
 //
 // `isSevere` should be set to `true` if the error needs immediete attention
 //    - for instance if the error is blocking the app from working
+// @VD amilner42 block
 export interface GithubAppLoggableError extends GithubAppError {
   loggable: true;
   isSevere: boolean;
@@ -24,12 +27,14 @@ export interface GithubAppLoggableError extends GithubAppError {
   data: any;
   stack: string;
 }
+// @VD end-block
 
 
 // For recording error information.
 // If error bubbled up to webhook then attach webhook name for better logging.
 //
 // @THROWS never.
+// @VD amilner42 block
 export const logErrors = async (err: any, webhookName: F.Maybe<string>): Promise<void> => {
 
   if (Array.isArray(err)) {
@@ -52,6 +57,7 @@ export const logErrors = async (err: any, webhookName: F.Maybe<string>): Promise
 
   logUnexpectedError(err, webhookName);
 }
+// @VD end-block
 
 
 // A wrapper for all webhooks.
@@ -60,6 +66,7 @@ export const logErrors = async (err: any, webhookName: F.Maybe<string>): Promise
 // and nested arrays of errors properly.
 //
 // NOTE: All other errors will be caught but will be logged as unexpected errors and will not be saved to the db.
+// @VD amilner42 block
 export const webhookErrorWrapper =
   async ( webhookName: string
         , webhookCode: () => Promise<void>
@@ -71,11 +78,13 @@ export const webhookErrorWrapper =
     await logErrors(err, webhookName);
   }
 }
+// @VD end-block
 
 
 // Log that an error not meant for logging has occured.
 //
 // @THROWS never.
+// @VD amilner42 block
 const logUnexpectedError = (err: any, webhookName: F.Maybe<string>): void => {
 
   if (webhookName !== null) {
@@ -87,11 +96,13 @@ const logUnexpectedError = (err: any, webhookName: F.Maybe<string>): void => {
   doIgnoringError(() => { Log.error(`  Error object: ${err}`); });
   doIgnoringError(() => { Log.error(`  Error object JSON.stringify: ${JSON.stringify(err)}`); });
 }
+// @VD end-block
 
 
 // Logs the loggable error and then saves it to the database.
 //
 // @THROWS never.
+// @VD amilner42 block
 const logLoggableError = async (err: GithubAppLoggableError): Promise<void> => {
 
   Log.error(`A loggable error occured for installation ${err.installationId} with name: ${err.errorName}`);
@@ -115,6 +126,7 @@ const logLoggableError = async (err: GithubAppLoggableError): Promise<void> => {
     Log.error(`  Could not save loggable error to database`);
   }
 }
+// @VD end-block
 
 
 // Returns the stack string if it exists, otherwise returns "no stack available.".
