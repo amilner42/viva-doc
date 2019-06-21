@@ -6,13 +6,13 @@ import * as AppError from "./error"
 import * as Diff from "./diff"
 import * as Tag from "./tag"
 import * as Review from "./review"
-import * as Lang from "./languages/index"
 import * as F from "./functional"
 
 import * as PullRequestReview from "./models/PullRequestReview"
 import * as CommitReview from "./models/CommitReview"
 
 
+// TODO DOC
 // @THROWS never. Will handle all errors internally (including logging).
 export const pipeline = async (
   installationId: number,

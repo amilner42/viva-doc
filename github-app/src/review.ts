@@ -26,6 +26,8 @@ export interface HasReviews {
  * The review for every file paired with all metadata related to the user.
  *
  * Currently all tags are updated to be of type `TagWithMetadata`.
+ *
+ * @VD amilner42 block
  */
 export type FileReviewWithMetadata =
   T.ReplaceTypeIfExsits<
@@ -33,6 +35,7 @@ export type FileReviewWithMetadata =
     "reviews",
     ReviewWithMetadata[]
   >
+// @VD end-block
 
 /** The review needed for every file. */
 export type FileReview = NewFileReview | DeletedFileReview | RenamedFileReview | ModifiedFileReview
@@ -243,6 +246,8 @@ export const getListOfTagsAndOwners =
   NOTE: You must provide ALL the previous file tags and ALL the current file tags.
 
   This is the core functionality of the app.
+
+  @VD amilner42 block
  */
 export const calculateReviewsFromModification =
     ( allPreviousTags: Tag.VdTag[]
@@ -255,15 +260,19 @@ export const calculateReviewsFromModification =
   const tagMap: TagMap = getTagMapBetweenAllTags(allPreviousTags, allCurrentTags, alteredLines)
   return reviewsFromTagMapAndAlteredLines(tagMap, alteredLines)
 }
+// @VD end-block
 
 
 /** A map between all old and all new tags across a diff.
+
+  @VD amilner42 block
 */
 export type TagMap = {
   deletedTags: Tag.VdTag[],
   newTags: Tag.VdTag[],
   tagPairs: R.KeyValuePair<Tag.VdTag, Tag.VdTag>[]
 }
+// @VD end-block
 
 
 /** Creates a map between the old tags and the new tags given the line diffs.
@@ -274,6 +283,8 @@ export type TagMap = {
   NOTE: The provided tags must be provided in-order for the algorithm to produce correct results.
 
   NOTE: The alteredLines should be passed in-order.
+
+  @VD amilner42 block
 */
 export const getTagMapBetweenAllTags =
   ( allPreviousTags: Tag.VdTag[]
@@ -334,6 +345,7 @@ export const getTagMapBetweenAllTags =
 
   return tagMapFromPartial(partialTagMap, allPreviousTags, allCurrentTags)
 }
+// @VD end-block
 
 
 /** Detect links (if any) between some previous tags and some new tags.
@@ -348,6 +360,8 @@ export const getTagMapBetweenAllTags =
   RETURNS: An array of length `somePreviousTags.length` with either null representing no link to
           any of the `someCurrentTags` or a number representing the index of the matching tag in
           `someCurrentTags`.
+
+  @VD amilner42 block
 */
 export const getTagLinksBetweenSomeTags =
   <BaseTag extends Tag.VdTag>
@@ -364,6 +378,7 @@ export const getTagLinksBetweenSomeTags =
 
   return result;
 }
+// @VD end-block
 
 
 // An ID for a reference
@@ -450,6 +465,8 @@ Because we don't have the tag both before and after, this could provide more alt
 certain git diffs (for instance, if the git diff puts 3 functions as deleted and then one new line for the final
 closing paren of your function, it will include all 3 of those removed functions even though they are unrelated because
 they were before the final closing paren).
+
+@VD amilner42 block
 */
 export const alteredLineInTagOwnership = R.curry(
   (tag: Tag.VdTag, tagType: "deleted" | "new", alteredLine: Diff.AlteredLine): boolean => {
@@ -464,12 +481,15 @@ export const alteredLineInTagOwnership = R.curry(
     }
   }
 )
+// @VD end-block
 
 
 /** Checking if an `alteredLine` altered a modified tag.
 
 Because we have both the tag before and after it was modified we can be 100% sure whether an `alteredLine` altered
 the tag by checking deleted lines against the previous tag and new lines against the current tag.
+
+@VD amilner42 block
 */
 export const alteredLineInTagPairOwnership = R.curry(
   ([previousTag, currentTag]: R.KeyValuePair<Tag.VdTag, Tag.VdTag>, alteredLine: Diff.AlteredLine): boolean => {
@@ -484,6 +504,7 @@ export const alteredLineInTagPairOwnership = R.curry(
     }
   }
 )
+// @VD end-block
 
 
 /** INTERNAL */
@@ -498,11 +519,14 @@ export const alteredLineInTagPairOwnership = R.curry(
   list.
 
   NOTE: A `TagMapPartial` should have the same amount of `undefined` in each list.
+
+  @VD amilner42 block
 */
 type TagMapPartial = {
   oldTagsToNewTags: (undefined | null)[];
   newTagsToOldTags: (undefined | null)[];
 }
+// @VD end-block
 
 const addMetadataToTag = (tag: Tag.VdTag): TagWithMetadata => {
   return { ...tag, tagId: mongoose.Types.ObjectId() }
@@ -512,6 +536,8 @@ const addMetadataToTag = (tag: Tag.VdTag): TagWithMetadata => {
 /** Converts a `PartialTagMap` to a full `TagMap`
 
   Will throw an error if the `partialTagMap` is invalid.
+
+  @VD amilner42 block
 */
 const tagMapFromPartial =
     ( partialTagMap: TagMapPartial
@@ -563,6 +589,8 @@ const tagMapFromPartial =
 
   return tagMap
 }
+// @VD end-block
+
 
 const calculateCurrentFileStartLineNumberFromPreviousFileTag =
   ( tag: Tag.VdTag
@@ -577,6 +605,7 @@ const calculateCurrentFileStartLineNumberFromPreviousFileTag =
 
   return firstAlCurrentLineNumber - (firstAlPreviousLineNumber - tagPreviousStartLineNumber);
 }
+
 
 /** TODO DOC */
 const reviewsFromTagMapAndAlteredLines = (tagMap: TagMap, alteredLines: Diff.AlteredLine[]): Review[] => {

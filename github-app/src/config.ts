@@ -2,13 +2,15 @@
 
 Currently this module works through environment variables. It's better to use flags because you
 can avoid state-related bugs when spinning up new instances but it's not urgent to switch.
-*/
 
-// Env variables to set:
-//
-// [ prod ] env.NODE_ENV = 'production'
-// [ prod ] env.VD_WEB_CLIENT_ORIGIN
-// [ prod ] env.VD_MONGODB_URI
+  Env variables to set:
+
+  [ prod ] env.NODE_ENV = 'production'
+  [ prod ] env.VD_WEB_CLIENT_ORIGIN
+  [ prod ] env.VD_MONGODB_URI
+
+  @VD amilner42 file
+*/
 
 
 const env = process.env;
