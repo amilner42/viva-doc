@@ -66,7 +66,7 @@ export const pipeline = async (
         try {
 
           const description =
-            "Our apologies, Viva Doc messed up and is an errored state, it won't work on this PR. Arie has been notified for review.";
+            "VivaDoc had an internal issue and is in an errored state, it won't work on this PR. Arie has been notified for review.";
 
           await setCommitStatus(
             analyzingCommitId,
@@ -87,17 +87,14 @@ export const pipeline = async (
 
     if (setStatusTo !== null) {
 
-      const description = F.withDefault(
-        commitReviewError.clientExplanation,
-        PullRequestReview.COMMIT_REVIEW_ERROR_MESSAGES.internal
-      );
+      const description = "VivaDoc failed to process this commit."
 
       try {
 
         await setCommitStatus(
           analyzingCommitId,
           setStatusTo,
-          { description }
+          { description, target_url: getClientUrlForCommitReview(analyzingCommitId) }
         );
 
       } catch (setCommitStatusError) {
@@ -129,7 +126,10 @@ export const pipeline = async (
     await setCommitStatus(
       analyzingCommitId,
       "pending",
-      { description: `Analyzing documentation against ${pullRequestReview.baseBranchName} branch...` }
+      {
+        description: `Analyzing documentation against ${pullRequestReview.baseBranchName} branch...`,
+        target_url: getClientUrlForCommitReview(analyzingCommitId)
+      }
     );
 
   } catch (setCommitStatusError) {
@@ -310,12 +310,22 @@ export const pipeline = async (
     try {
 
       if (lastCommitWithSuccessStatus === analyzingCommitId) {
-        await setCommitStatus(analyzingCommitId, "success", { description: "No tags required approval" })
+        await setCommitStatus(
+          analyzingCommitId,
+          "success",
+          {
+            description: "No tags required approval",
+            target_url: getClientUrlForCommitReview(analyzingCommitId)
+          }
+        );
       } else {
         await setCommitStatus(
           analyzingCommitId,
           "failure",
-          { description: "Tags require approval", target_url: getClientUrlForCommitReview(analyzingCommitId) }
+          {
+            description: "Tags require approval",
+            target_url: getClientUrlForCommitReview(analyzingCommitId)
+          }
         )
       }
 
@@ -397,13 +407,23 @@ export const pipeline = async (
   try {
 
     if (lastCommitWithSuccessStatus === analyzingCommitId) {
-      await setCommitStatus(analyzingCommitId, "success", { description: "No tags required approval" })
+      await setCommitStatus(
+        analyzingCommitId,
+        "success",
+        {
+          description: "No tags required approval",
+          target_url: getClientUrlForCommitReview(analyzingCommitId)
+        }
+      );
     } else {
       await setCommitStatus(
         analyzingCommitId,
         "failure",
-        { description: "Tags require approval", target_url: getClientUrlForCommitReview(analyzingCommitId) }
-      )
+        {
+          description: "Tags require approval",
+          target_url: getClientUrlForCommitReview(analyzingCommitId)
+        }
+      );
     }
 
   } catch (err) {
