@@ -27,16 +27,22 @@ export const pipeline = async (
 
   // Handles logging errors, clearing pending commit, optionally set commit status, and continue analysis of other
   // commits if there are more pendingAnalysisForCommits.
+  //
+  // Note `err` is optional because it may be the case that nothing in the app errored, we simply have just a
+  //       `commitReviewError` because the user mis-used the app.
+  //
   // @VD amilner42 block
   const recoverFromError =
-    async ( err: any
+    async ( err: F.Maybe<any>
           , setStatusTo: F.Maybe<"failure">
           , commitReviewError: PullRequestReview.CommitReviewError
         ): Promise<void> => {
 
     const analyzingCommitId = pullRequestReview.pendingAnalysisForCommits[0];
 
-    await AppError.logErrors(err, null);
+    if (F.isJust(err)) {
+      await AppError.logErrors(err, null);
+    }
 
     let newPullRequestReview: PullRequestReview.PullRequestReview;
 
@@ -53,7 +59,7 @@ export const pipeline = async (
 
     } catch (clearPendingCommitError) {
 
-      await AppError.logErrors(err, null);
+      await AppError.logErrors(clearPendingCommitError, null);
 
       if (setStatusTo !== null) {
 
@@ -156,7 +162,23 @@ export const pipeline = async (
         }
       );
 
-  } catch (err) {
+  } catch (err) { 
+
+    const maybeParseTagError = AppError.isGithubAppParseTagError(err);
+
+    if (maybeParseTagError !== null) {
+      await recoverFromError(
+        null,
+        "failure",
+        {
+          commitReviewError: true,
+          commitId: analyzingCommitId,
+          clientExplanation: maybeParseTagError.clientExplanation,
+          failedToSaveCommitReview: true
+        }
+      );
+      return;
+    }
 
     await recoverFromError(
       err,
@@ -164,7 +186,7 @@ export const pipeline = async (
       {
         commitReviewError: true,
         commitId: analyzingCommitId,
-        clientExplanation: "TODO",
+        clientExplanation: PullRequestReview.COMMIT_REVIEW_ERROR_MESSAGES.internal, // TODO could be made better.
         failedToSaveCommitReview: true
       }
     );
@@ -206,7 +228,7 @@ export const pipeline = async (
       {
         commitReviewError: true,
         commitId: analyzingCommitId,
-        clientExplanation: "TODO",
+        clientExplanation: PullRequestReview.COMMIT_REVIEW_ERROR_MESSAGES.internal, // TODO could be better error.
         failedToSaveCommitReview: true
       }
     );

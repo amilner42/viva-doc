@@ -104,7 +104,6 @@ Note: This does not mutate the object you pass in, it creates a new object.
 */
 export const parseTags = (diffWF: FileDiffWithCode): FileDiffWithCodeAndTags => {
 
-  // TODO we are casting here becuase we checked earlier, better to attach language earlier to avoid type casts.
   const currentLanguage = diffWF.currentLanguage;
 
   switch (diffWF.diffType) {
@@ -113,14 +112,14 @@ export const parseTags = (diffWF: FileDiffWithCode): FileDiffWithCodeAndTags => 
 
       const file = File.mergeLinesIntoFileContent(diffWF.lines);
 
-      return R.merge(diffWF, { currentFileTags: getFileTags(currentLanguage, file) })
+      return R.merge(diffWF, { currentFileTags: getFileTags(currentLanguage, file, diffWF.currentFilePath) })
     }
 
     case "deleted": {
 
       const file = File.mergeLinesIntoFileContent(diffWF.lines);
 
-      return R.merge(diffWF, { currentFileTags: getFileTags(currentLanguage, file) })
+      return R.merge(diffWF, { currentFileTags: getFileTags(currentLanguage, file, diffWF.currentFilePath) })
     }
 
     case "renamed":
@@ -129,8 +128,8 @@ export const parseTags = (diffWF: FileDiffWithCode): FileDiffWithCodeAndTags => 
       return R.merge(
         diffWF,
         {
-          currentFileTags: getFileTags(currentLanguage, diffWF.currentFileContent),
-          previousFileTags: getFileTags(previousLanguage, diffWF.previousFileContent),
+          currentFileTags: getFileTags(currentLanguage, diffWF.currentFileContent, diffWF.currentFilePath),
+          previousFileTags: getFileTags(previousLanguage, diffWF.previousFileContent, diffWF.previousFilePath),
         }
       )
 
@@ -138,8 +137,8 @@ export const parseTags = (diffWF: FileDiffWithCode): FileDiffWithCodeAndTags => 
       return R.merge(
         diffWF,
         {
-          currentFileTags: getFileTags(currentLanguage, diffWF.currentFileContent),
-          previousFileTags: getFileTags(currentLanguage, diffWF.previousFileContent)
+          currentFileTags: getFileTags(currentLanguage, diffWF.currentFileContent, diffWF.currentFilePath),
+          previousFileTags: getFileTags(currentLanguage, diffWF.previousFileContent, diffWF.currentFilePath)
         }
       )
 
@@ -147,10 +146,13 @@ export const parseTags = (diffWF: FileDiffWithCode): FileDiffWithCodeAndTags => 
 }
 // @VD end-block
 
-/** Get all the tags for a given file of a specific programming language. */
-export const getFileTags = (language: Lang.Language, fileContent: string): VdTag[] => {
-  const fileAst = Lang.parse(language, fileContent)
-  return Lang.astToTags(language, fileAst, fileContent)
+/** Get all the tags for a given file of a specific programming language.
+
+  @THROWS [not only] `GithubAppParseTagError`.
+*/
+export const getFileTags = (language: Lang.Language, fileContent: string, filePath: string): VdTag[] => {
+  const fileAst = Lang.parse(language, fileContent, filePath);
+  return Lang.astToTags(language, fileAst, fileContent, filePath);
 }
 
 /** Retrieve the index tag from a list of tags based on the tag annotation line number.

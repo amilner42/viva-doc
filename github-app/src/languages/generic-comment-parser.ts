@@ -1,6 +1,7 @@
 import * as SH from "../string-helpers"
 import * as AST from "./ast"
 import * as LangUtil from "./util"
+import * as AppError from "../error"
 
 import { ANTLRInputStream, CommonTokenStream } from 'antlr4ts'
 import { ParseTreeWalker } from "antlr4ts/tree/ParseTreeWalker"
@@ -10,7 +11,7 @@ import { ParseTreeListener } from "antlr4ts/tree/ParseTreeListener"
 // A poorly typed generic function for creating comment parsers.
 export const createCommentParser = (LanguageLexer: any, LanguageParser: any) => {
 
-  const parser = (fileContent: string): AST.ReducedFileAst  => {
+  const parser = (fileContent: string, filePath: string): AST.ReducedFileAst  => {
 
     // Create lexer and parser
     const inputStream = new ANTLRInputStream(fileContent)
@@ -19,17 +20,25 @@ export const createCommentParser = (LanguageLexer: any, LanguageParser: any) => 
     const parser = new LanguageParser(tokenStream)
     parser.errorHandler = new LangUtil.ErrorHappenedStrategy()
     const parseTree = parser.program()
-    const listener = new ExtractCommentsAndFunctionsListener();
+    const listener = new ExtractCommentsListener();
 
     if((parser.errorHandler as LangUtil.ErrorHappenedStrategy).hasError) {
-      throw new Error("TODO - Parser error handler?")
+      // TODO make this better if we parse more than just comments, right now it can't even error.
+      const err: AppError.GithubAppParseTagError = {
+        errorName: "parse-error",
+        parseTagError: true,
+        githubAppError: true,
+        clientExplanation: `There was an error parsing ${filePath}`
+      }
+
+      throw err;
     }
 
     // Visit the parse tree
     ParseTreeWalker.DEFAULT.walk(listener as CommentParserListener, parseTree)
 
     const fileAst: AST.FileAst = AST.getFileAstFromRawFileAst(listener.rawFileAst);
-    const reducedFileAst = AST.getReducedFileAstFromFileAst(fileAst);
+    const reducedFileAst = AST.getReducedFileAstFromFileAst(fileAst, filePath);
 
     return reducedFileAst;
   }
@@ -100,7 +109,7 @@ interface CommentParserListener extends ParseTreeListener {
 /**
  * A listener which extracts a `AST.RawFileAst`.
  */
-class ExtractCommentsAndFunctionsListener implements CommentParserListener {
+class ExtractCommentsListener implements CommentParserListener {
 
   public rawFileAst: AST.RawFileAst;
 

@@ -30,6 +30,16 @@ export interface GithubAppLoggableError extends GithubAppError {
 // @VD end-block
 
 
+// Errors related to parsing tags.
+//
+// NOTE: These do not extend loggable errors because they are not an app failure, they are most likely caused by the
+//       user mis-using VD tags.
+export interface GithubAppParseTagError extends GithubAppError {
+  parseTagError: true;
+  clientExplanation: string;
+}
+
+
 // For recording error information.
 // If error bubbled up to webhook then attach webhook name for better logging.
 //
@@ -150,6 +160,20 @@ export const isGithubAppLoggableError = (err: any): F.Maybe<GithubAppLoggableErr
   }
 
   if ((err as GithubAppLoggableError).githubAppError && (err as GithubAppLoggableError).loggable) {
+    return err;
+  }
+
+  return null;
+}
+
+
+export const isGithubAppParseTagError = (err: any): F.Maybe<GithubAppParseTagError> => {
+
+  if (typeof err !== "object") {
+    return null;
+  }
+
+  if ((err as GithubAppParseTagError).githubAppError && (err as GithubAppParseTagError).parseTagError) {
     return err;
   }
 
