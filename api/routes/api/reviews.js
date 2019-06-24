@@ -30,7 +30,7 @@ router.get('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId'
     if (pullRequestReviewObject.headCommitId === commitId) {
 
       // Commit still being analyzed.
-      if (pullRequestReviewObject.loadingHeadAnalysis) {
+      if (pullRequestReviewObject.pendingAnalysisForCommits[0] === commitId) {
         throw { httpCode: 423, ...errors.commitStillLoading };
       }
 

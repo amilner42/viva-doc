@@ -22,7 +22,6 @@ export interface PullRequestReview {
   pendingAnalysisForCommits: string[],
   currentAnalysisLastCommitWithSuccessStatus: string,
   currentAnalysisLastAnalyzedCommit: string | null,
-  loadingHeadAnalysis: boolean,
   commitReviewErrors: CommitReviewError[]
 }
 
@@ -57,7 +56,6 @@ const PullRequestReviewSchema = new mongoose.Schema({
   pendingAnalysisForCommits: { type: [ String ], required: [ true, "can't be blank"] },
   currentAnalysisLastCommitWithSuccessStatus: { type: String, required: [ true, "can't be blank" ] },
   currentAnalysisLastAnalyzedCommit: { type: String },
-  loadingHeadAnalysis: { type: Boolean, required: [true, "can't be blank"] },
   commitReviewErrors: { type:  [ mongoose.Schema.Types.Mixed ], required: [true, "can't be blank"] }
 });
 
@@ -97,7 +95,6 @@ export const newPullRequestReview =
       pendingAnalysisForCommits: [ headCommitId ],
       currentAnalysisLastCommitWithSuccessStatus: baseCommitId,
       currentAnalysisLastAnalyzedCommit: null,
-      loadingHeadAnalysis: true,
       commitReviewErrors: [],
     };
 
@@ -192,7 +189,6 @@ export const updateHeadCommit =
         headCommitRejectedTags: null,
         headCommitRemainingOwnersToApproveDocs: null,
         headCommitTagsAndOwners: null,
-        loadingHeadAnalysis: true
       },
       {
         new: false
@@ -314,7 +310,6 @@ export const updateFieldsForHeadCommit =
         $pull: { pendingAnalysisForCommits: currentAnalysisLastAnalyzedCommit },
         currentAnalysisLastCommitWithSuccessStatus,
         currentAnalysisLastAnalyzedCommit,
-        loadingHeadAnalysis: false
       }
     ).exec();
 
@@ -441,7 +436,6 @@ export const newLoadingPullRequestReviewFromPrevious =
       headCommitRejectedTags: null,
       headCommitRemainingOwnersToApproveDocs: null,
       headCommitTagsAndOwners: null,
-      loadingHeadAnalysis: true
     },
   ...{
       // An unlikely race condition, but just in case, if the last commit had no remaining owners to approve dos

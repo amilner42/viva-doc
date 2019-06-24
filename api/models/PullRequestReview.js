@@ -17,7 +17,6 @@ const PullRequestReviewSchema = new mongoose.Schema({
   pendingAnalysisForCommits: { type: [ String ], required: [ true, "can't be blank"] },
   currentAnalysisLastCommitWithSuccessStatus: { type: String, required: [ true, "can't be blank" ] },
   currentAnalysisLastAnalyzedCommit: { type: String },
-  loadingHeadAnalysis: { type: Boolean, required: [true, "can't be blank"] }
 })
 
 
