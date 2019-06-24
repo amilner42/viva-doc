@@ -16,6 +16,13 @@ export const isNull = <T>(val: Maybe<T>) => {
   return !isJust(val);
 }
 
+export const withDefault = <T>(val: Maybe<T>, defaultValue: T): T => {
+
+  if (val !== null) { return val; }
+
+  return defaultValue;
+}
+
 /** UNIONS */
 
 // A type with 2 options

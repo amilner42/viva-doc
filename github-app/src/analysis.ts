@@ -27,10 +27,11 @@ export const pipeline = async (
 
   // Handles logging errors, clearing pending commit, optionally set commit status, and continue analysis of other
   // commits if there are more pendingAnalysisForCommits.
+  // @VD amilner42 block
   const recoverFromError =
     async ( err: any
           , setStatusTo: F.Maybe<"failure">
-          , failedToSaveCommitReview: boolean
+          , commitReviewError: PullRequestReview.CommitReviewError
         ): Promise<void> => {
 
     const analyzingCommitId = pullRequestReview.pendingAnalysisForCommits[0];
@@ -46,7 +47,7 @@ export const pipeline = async (
         pullRequestReview.repoId,
         pullRequestReview.pullRequestNumber,
         analyzingCommitId,
-        failedToSaveCommitReview,
+        commitReviewError,
         null
       );
 
@@ -58,10 +59,13 @@ export const pipeline = async (
 
         try {
 
+          const description =
+            "Our apologies, Viva Doc messed up and is an errored state, it won't work on this PR. Arie has been notified for review.";
+
           await setCommitStatus(
             analyzingCommitId,
             setStatusTo,
-            { description: "Viva Doc is an errored state, it won't work for a bit on this PR. Arie has been notified for review." }
+            { description }
           );
 
         } catch (setCommitStatusError) {
@@ -77,9 +81,10 @@ export const pipeline = async (
 
     if (setStatusTo !== null) {
 
-      // TODO better description from error.
-      const description =
-        "Viva Doc couldn't analyze this commit, it should be good for the next commits. Arie has been notified for review."
+      const description = F.withDefault(
+        commitReviewError.clientExplanation,
+        PullRequestReview.COMMIT_REVIEW_ERROR_MESSAGES.internal
+      );
 
       try {
 
@@ -106,6 +111,8 @@ export const pipeline = async (
     );
 
   }
+  // @VD end-block
+
 
   const analyzingCommitId = pullRequestReview.pendingAnalysisForCommits[0]
   const baseCommitId = pullRequestReview.currentAnalysisLastCommitWithSuccessStatus
@@ -121,7 +128,16 @@ export const pipeline = async (
 
   } catch (setCommitStatusError) {
 
-    await recoverFromError(setCommitStatusError, null, true);
+    await recoverFromError(
+      setCommitStatusError,
+      null,
+      {
+        commitReviewError: true,
+        commitId: analyzingCommitId,
+        clientExplanation: PullRequestReview.COMMIT_REVIEW_ERROR_MESSAGES.githubIssue,
+        failedToSaveCommitReview: true
+      }
+    );
     return;
   }
 
@@ -142,7 +158,16 @@ export const pipeline = async (
 
   } catch (err) {
 
-    await recoverFromError(err, "failure", true);
+    await recoverFromError(
+      err,
+      "failure",
+      {
+        commitReviewError: true,
+        commitId: analyzingCommitId,
+        clientExplanation: "TODO",
+        failedToSaveCommitReview: true
+      }
+    );
     return;
   }
 
@@ -175,7 +200,16 @@ export const pipeline = async (
 
   } catch (err) {
 
-    await recoverFromError(err, "failure", true);
+    await recoverFromError(
+      err,
+      "failure",
+      {
+        commitReviewError: true,
+        commitId: analyzingCommitId,
+        clientExplanation: "TODO",
+        failedToSaveCommitReview: true
+      }
+    );
     return;
   }
 
@@ -200,7 +234,16 @@ export const pipeline = async (
 
   } catch (err) {
 
-    await recoverFromError(err, "failure", true);
+    await recoverFromError(
+      err,
+      "failure",
+      {
+        commitReviewError: true,
+        commitId: analyzingCommitId,
+        clientExplanation: PullRequestReview.COMMIT_REVIEW_ERROR_MESSAGES.internal,
+        failedToSaveCommitReview: true
+      }
+    );
     return;
   }
 
@@ -227,7 +270,16 @@ export const pipeline = async (
 
   } catch (err) {
 
-    await recoverFromError(err, null, false);
+    await recoverFromError(
+      err,
+      null,
+      {
+        commitReviewError: true,
+        commitId: analyzingCommitId,
+        clientExplanation: PullRequestReview.COMMIT_REVIEW_ERROR_MESSAGES.internal,
+        failedToSaveCommitReview: false
+      }
+    );
     return;
   }
 
@@ -249,7 +301,17 @@ export const pipeline = async (
 
     } catch (err) {
 
-      await recoverFromError(err, null, false)
+      await recoverFromError(
+        err,
+        null,
+        {
+          commitReviewError: true,
+          commitId: analyzingCommitId,
+          clientExplanation: PullRequestReview.COMMIT_REVIEW_ERROR_MESSAGES.githubIssue,
+          failedToSaveCommitReview: false
+        }
+      );
+
       return;
     }
 
@@ -270,7 +332,16 @@ export const pipeline = async (
       analyzingCommitId
     );
   } catch (err) {
-    await recoverFromError(err, "failure", false);
+    await recoverFromError(
+      err,
+      "failure",
+      {
+        commitReviewError: true,
+        commitId: analyzingCommitId,
+        clientExplanation: PullRequestReview.COMMIT_REVIEW_ERROR_MESSAGES.internal,
+        failedToSaveCommitReview: false
+      }
+    );
     return;
   }
 
@@ -288,7 +359,16 @@ export const pipeline = async (
 
   } catch (err) {
 
-    await recoverFromError(err, "failure", false);
+    await recoverFromError(
+      err,
+      "failure",
+      {
+        commitReviewError: true,
+        commitId: analyzingCommitId,
+        clientExplanation: PullRequestReview.COMMIT_REVIEW_ERROR_MESSAGES.internal,
+        failedToSaveCommitReview: false
+      }
+    );
     return;
   }
 
@@ -306,7 +386,16 @@ export const pipeline = async (
 
   } catch (err) {
 
-    await recoverFromError(err, null, false);
+    await recoverFromError(
+      err,
+      null,
+      {
+        commitReviewError: true,
+        commitId: analyzingCommitId,
+        clientExplanation: PullRequestReview.COMMIT_REVIEW_ERROR_MESSAGES.githubIssue,
+        failedToSaveCommitReview: false
+      }
+    );
   }
 
   pipeline(
