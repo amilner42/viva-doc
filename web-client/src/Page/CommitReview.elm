@@ -7,7 +7,7 @@ import Api.Errors.GetCommitReview as GcrError
 import Api.Responses.GetCommitReview as GcrResponse
 import CodeEditor
 import CommitReview
-import Html exposing (Html, a, button, div, dl, dt, hr, i, p, section, span, table, tbody, td, text, th, thead, tr)
+import Html exposing (Html, a, button, div, dl, dt, hr, i, li, ol, p, progress, section, span, table, tbody, td, text, th, thead, tr)
 import Html.Attributes exposing (class, classList, disabled, style)
 import Html.Events exposing (onClick)
 import Language
@@ -108,10 +108,10 @@ view model =
                         RemoteData.Success commitReviewResponse ->
                             case commitReviewResponse of
                                 GcrResponse.Pending forCommits ->
-                                    renderPendingAnalysisModal forCommits
+                                    renderPendingAnalysisPane model.commitId forCommits
 
                                 GcrResponse.AnalysisFailed withReason ->
-                                    renderAnalysisFailedModal withReason
+                                    renderAnalysisFailedPane withReason
 
                                 GcrResponse.Complete commitReview ->
                                     if commitReview.headCommitId == model.commitId || model.modalClosed then
@@ -777,14 +777,61 @@ renderHeadUpdatedModal commitReview modalText headCommitRoute =
     ]
 
 
-renderPendingAnalysisModal : List String -> List (Html.Html Msg)
-renderPendingAnalysisModal forCommits =
-    [ text "pending" ]
+renderPendingAnalysisPane : String -> List String -> List (Html.Html Msg)
+renderPendingAnalysisPane currentCommitId forCommits =
+    [ div
+        [ class "section has-text-centered" ]
+        [ div [ class "title" ] [ text "Documentation Being Analyzed" ]
+        , div [ class "subtitle" ] [ text "refresh the page in a bit..." ]
+        , progress
+            [ class "progress is-small is-success"
+            , style "width" "50%"
+            , style "margin" "auto"
+            , style "margin-bottom" "20px"
+            ]
+            []
+        , div
+            [ class "content" ]
+            (case forCommits of
+                [ _ ] ->
+                    [ text "this commit is being analyzed" ]
+
+                _ ->
+                    [ text "Commits Queued for Analysis"
+                    , ol [] <|
+                        List.map
+                            (\commitId ->
+                                li
+                                    [ classList
+                                        [ ( "has-text-weight-bold"
+                                          , commitId == currentCommitId
+                                          )
+                                        ]
+                                    ]
+                                    [ text commitId ]
+                            )
+                            forCommits
+                    ]
+            )
+        ]
+    ]
 
 
-renderAnalysisFailedModal : String -> List (Html.Html Msg)
-renderAnalysisFailedModal withReason =
-    [ text "failed" ]
+renderAnalysisFailedPane : String -> List (Html.Html Msg)
+renderAnalysisFailedPane withReason =
+    [ div
+        [ class "section has-text-centered" ]
+        [ div [ class "title" ] [ text "Analysis Error" ]
+        , div [ class "subtitle" ] [ text "VivaDoc was unable to analyze this commit" ]
+        , hr
+            [ style "width" "50%"
+            , style "margin" "auto"
+            , style "margin-bottom" "20px"
+            ]
+            []
+        , p [ class "content has-text-grey" ] [ text withReason ]
+        ]
+    ]
 
 
 renderGetCommitReviewErrorModal : Core.HttpError GcrError.GetCommitReviewError -> List (Html.Html Msg)
