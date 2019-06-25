@@ -105,33 +105,33 @@ view model =
                         RemoteData.Failure err ->
                             renderGetCommitReviewErrorModal err
 
-                        RemoteData.Success commitReviewResponse ->
-                            case commitReviewResponse of
-                                GcrResponse.Pending forCommits ->
-                                    renderPendingAnalysisPane model.commitId forCommits
+                        RemoteData.Success { headCommitId, responseType } ->
+                            if headCommitId /= model.commitId && not model.modalClosed then
+                                renderHeadUpdatedModal
+                                    responseType
+                                    """This commit is stale! You can continue to browse to see what was previosly
+                                approved/rejected but if you would like to make changes you must go to the most
+                                recent commit in the PR.
+                                """
+                                    (Route.CommitReview model.repoId model.prNumber headCommitId)
 
-                                GcrResponse.AnalysisFailed withReason ->
-                                    renderAnalysisFailedPane withReason
+                            else
+                                case responseType of
+                                    GcrResponse.Pending forCommits ->
+                                        renderPendingAnalysisPane model.commitId forCommits
 
-                                GcrResponse.Complete commitReview ->
-                                    if commitReview.headCommitId == model.commitId || model.modalClosed then
+                                    GcrResponse.AnalysisFailed withReason ->
+                                        renderAnalysisFailedPane withReason
+
+                                    GcrResponse.Complete commitReview ->
                                         renderCommitReview
                                             { username = Viewer.getUsername viewer
                                             , approveDocsState = model.approveDocsState
                                             , displayOnlyUsersTags = model.displayOnlyUsersTags
                                             , displayOnlyTagsNeedingApproval = model.displayOnlyTagsNeedingApproval
-                                            , isCommitStale = model.commitId /= commitReview.headCommitId
+                                            , isCommitStale = model.commitId /= headCommitId
                                             }
                                             commitReview
-
-                                    else
-                                        renderHeadUpdatedModal
-                                            commitReview
-                                            """This commit is stale! You can continue to browse to see what was previosly
-                                    approved/rejected but if you would like to make changes you must go to the most
-                                    recent commit in the PR.
-                                    """
-                                            (Route.CommitReview model.repoId model.prNumber commitReview.headCommitId)
     }
 
 
@@ -744,8 +744,8 @@ renderTagOrReview config tag =
         ]
 
 
-renderHeadUpdatedModal : CommitReview.CommitReview -> String -> Route.Route -> List (Html.Html Msg)
-renderHeadUpdatedModal commitReview modalText headCommitRoute =
+renderHeadUpdatedModal : GcrResponse.CommitReviewResponseType -> String -> Route.Route -> List (Html.Html Msg)
+renderHeadUpdatedModal gcrResponseType modalText headCommitRoute =
     [ div
         [ class "modal is-active" ]
         [ div [ class "modal-background" ] []
@@ -762,7 +762,7 @@ renderHeadUpdatedModal commitReview modalText headCommitRoute =
                     [ class "buttons are-large is-centered" ]
                     [ button
                         [ class "button is-info is-fullwidth"
-                        , onClick <| SetModalClosed True commitReview
+                        , onClick <| SetModalClosed True gcrResponseType
                         ]
                         [ text "browse stale commit" ]
                     , a
@@ -899,7 +899,7 @@ type Msg
     | CompletedRemoveRejectionOnTag String (Result.Result (Core.HttpError CraError.CommitReviewActionError) ())
     | ApproveDocs String
     | CompletedApproveDocs String (Result.Result (Core.HttpError CraError.CommitReviewActionError) ())
-    | SetModalClosed Bool CommitReview.CommitReview
+    | SetModalClosed Bool GcrResponse.CommitReviewResponseType
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -914,20 +914,28 @@ update msg model =
             }
 
         handleCommitReviewActionErrorOnTag tagIds err =
-            ( updateCompleteCommitReview model <|
-                case err of
-                    Core.BadStatus _ (CraError.StaleCommitError newHeadCommitId) ->
-                        (\commitReview -> { commitReview | headCommitId = newHeadCommitId })
-                            >> CommitReview.updateTags
-                                (\tag ->
-                                    if Set.member tag.tagId tagIds then
-                                        { tag | approvedState = CommitReview.Neutral }
+            ( case err of
+                Core.BadStatus _ (CraError.StaleCommitError newHeadCommitId) ->
+                    { model
+                        | commitReview =
+                            model.commitReview
+                                |> RemoteData.map (\x -> { x | headCommitId = newHeadCommitId })
+                                |> RemoteData.map
+                                    (GcrResponse.mapComplete
+                                        (CommitReview.updateTags
+                                            (\tag ->
+                                                if Set.member tag.tagId tagIds then
+                                                    { tag | approvedState = CommitReview.Neutral }
 
-                                    else
-                                        tag
-                                )
+                                                else
+                                                    tag
+                                            )
+                                        )
+                                    )
+                    }
 
-                    _ ->
+                _ ->
+                    updateCompleteCommitReview model <|
                         CommitReview.updateTags
                             (\tag ->
                                 if Set.member tag.tagId tagIds then
@@ -940,18 +948,20 @@ update msg model =
             )
     in
     case msg of
-        CompletedGetCommitReview (Result.Ok ((GcrResponse.Complete commitReview) as response)) ->
+        CompletedGetCommitReview (Result.Ok response) ->
             ( { model | commitReview = RemoteData.Success response }
-            , if commitReview.headCommitId == model.commitId then
-                Ports.renderCodeEditors <| CommitReview.extractRenderEditorConfigs commitReview
+            , case response.responseType of
+                GcrResponse.Complete commitReview ->
+                    if response.headCommitId == model.commitId then
+                        Ports.renderCodeEditors <|
+                            CommitReview.extractRenderEditorConfigs commitReview
 
-              else
-                -- Opening modal, render code editor when modal closes.
-                Cmd.none
+                    else
+                        Cmd.none
+
+                _ ->
+                    Cmd.none
             )
-
-        CompletedGetCommitReview (Result.Ok gcrResponse) ->
-            ( { model | commitReview = RemoteData.Success gcrResponse }, Cmd.none )
 
         CompletedGetCommitReview (Result.Err err) ->
             ( { model | commitReview = RemoteData.Failure err }, Cmd.none )
@@ -1170,22 +1180,26 @@ update msg model =
         CompletedApproveDocs username (Result.Err err) ->
             case err of
                 Core.BadStatus _ (CraError.StaleCommitError newHeadCommitId) ->
-                    ( updateCompleteCommitReview model <|
-                        \commitReview ->
-                            { commitReview | headCommitId = newHeadCommitId }
+                    ( { model
+                        | commitReview =
+                            model.commitReview
+                                |> RemoteData.map
+                                    (\x -> { x | headCommitId = newHeadCommitId })
+                      }
                     , Cmd.none
                     )
 
                 _ ->
                     ( { model | approveDocsState = RequestForDocApprovalErrored () }, Cmd.none )
 
-        SetModalClosed modalClosed commitReview ->
+        SetModalClosed modalClosed gcrResponseType ->
             ( { model | modalClosed = modalClosed }
-            , if modalClosed then
-                Ports.renderCodeEditors <| CommitReview.extractRenderEditorConfigs commitReview
+            , case ( gcrResponseType, modalClosed ) of
+                ( GcrResponse.Complete commitReview, True ) ->
+                    Ports.renderCodeEditors <| CommitReview.extractRenderEditorConfigs commitReview
 
-              else
-                Cmd.none
+                _ ->
+                    Cmd.none
             )
 
 

@@ -27,16 +27,27 @@ router.get('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId'
     const pullRequestReviewObject = await verify.getPullRequestReviewObject(repoId, pullRequestNumber);
 
     if (R.contains(commitId, pullRequestReviewObject.pendingAnalysisForCommits)) {
-      return res.json({ responseTag: "pending", data: pullRequestReviewObject.pendingAnalysisForCommits });
+      return res.json(
+        {
+          responseTag: "pending",
+          headCommitId: pullRequestReviewObject.headCommitId,
+          forCommits: pullRequestReviewObject.pendingAnalysisForCommits
+        }
+      );
     }
 
     const err = R.find(R.propEq("commitId", commitId), pullRequestReviewObject.commitReviewErrors);
     if (err !== undefined) {
-      return res.json({ responseTag: "analysis-failed", data: err.clientExplanation });
+      return res.json(
+        {
+          responseTag: "analysis-failed",
+          headCommitId: pullRequestReviewObject.headCommitId,
+          clientExplanation: err.clientExplanation
+        }
+      );
     }
 
     const commitReviewObject = await verify.getCommitReviewObject(repoId, pullRequestNumber, commitId);
-    commitReviewObject.headCommitId = pullRequestReviewObject.headCommitId;
 
     if (pullRequestReviewObject.headCommitId === commitId) {
       commitReviewObject.approvedTags = pullRequestReviewObject.headCommitApprovedTags;
@@ -44,7 +55,11 @@ router.get('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId'
       commitReviewObject.remainingOwnersToApproveDocs = pullRequestReviewObject.headCommitRemainingOwnersToApproveDocs;
     }
 
-    return res.json({ responseTag: "complete", data: commitReviewObject });
+    return res.json({
+      responseTag: "complete",
+      headCommitId: pullRequestReviewObject.headCommitId,
+      commitReview: commitReviewObject
+    });
 
   } catch (err) {
     next(err);

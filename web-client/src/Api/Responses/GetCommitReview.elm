@@ -1,10 +1,16 @@
-module Api.Responses.GetCommitReview exposing (CommitReviewResponse(..), decodeCommitReviewResponse, mapComplete)
+module Api.Responses.GetCommitReview exposing (CommitReviewResponse, CommitReviewResponseType(..), decodeCommitReviewResponse, mapComplete)
 
 import CommitReview
 import Json.Decode as Decode
 
 
-type CommitReviewResponse
+type alias CommitReviewResponse =
+    { headCommitId : String
+    , responseType : CommitReviewResponseType
+    }
+
+
+type CommitReviewResponseType
     = Pending (List String)
     | Complete CommitReview.CommitReview
     | AnalysisFailed String
@@ -12,31 +18,41 @@ type CommitReviewResponse
 
 mapComplete : (CommitReview.CommitReview -> CommitReview.CommitReview) -> CommitReviewResponse -> CommitReviewResponse
 mapComplete updater crr =
-    case crr of
-        Complete commitReview ->
-            Complete <| updater commitReview
+    { crr
+        | responseType =
+            case crr.responseType of
+                Complete commitReview ->
+                    Complete <| updater commitReview
 
-        _ ->
-            crr
+                _ ->
+                    crr.responseType
+    }
 
 
 decodeCommitReviewResponse : Decode.Decoder CommitReviewResponse
 decodeCommitReviewResponse =
+    Decode.map2 CommitReviewResponse
+        (Decode.field "headCommitId" Decode.string)
+        decodeResponseType
+
+
+decodeResponseType : Decode.Decoder CommitReviewResponseType
+decodeResponseType =
     Decode.field "responseTag" Decode.string
         |> Decode.andThen
             (\responseTag ->
                 case responseTag of
                     "pending" ->
                         Decode.map Pending <|
-                            Decode.field "data" (Decode.list Decode.string)
+                            Decode.field "forCommits" (Decode.list Decode.string)
 
                     "complete" ->
                         Decode.map Complete <|
-                            Decode.field "data" CommitReview.decodeCommitReview
+                            Decode.field "commitReview" CommitReview.decodeCommitReview
 
                     "analysis-failed" ->
                         Decode.map AnalysisFailed <|
-                            Decode.field "data" Decode.string
+                            Decode.field "clientExplanation" Decode.string
 
                     _ ->
                         Decode.fail <| "Response tag not valid: " ++ responseTag
