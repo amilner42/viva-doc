@@ -4,6 +4,7 @@ import Api.Api as Api
 import Api.Core as Core
 import Api.Errors.CommitReviewAction as CraError
 import Api.Errors.GetCommitReview as GcrError
+import Api.Responses.GetCommitReview as GcrResponse
 import CodeEditor
 import CommitReview
 import Html exposing (Html, a, button, div, dl, dt, hr, i, p, section, span, table, tbody, td, text, th, thead, tr)
@@ -33,7 +34,7 @@ type alias Model =
     , repoId : Int
     , prNumber : Int
     , commitId : String
-    , commitReview : RemoteData.RemoteData (Core.HttpError GcrError.GetCommitReviewError) CommitReview.CommitReview
+    , commitReview : RemoteData.RemoteData (Core.HttpError GcrError.GetCommitReviewError) GcrResponse.CommitReviewResponse
     , displayOnlyUsersTags : Maybe String
     , displayOnlyTagsNeedingApproval : Bool
     , modalClosed : Bool
@@ -104,25 +105,33 @@ view model =
                         RemoteData.Failure err ->
                             renderGetCommitReviewErrorModal err
 
-                        RemoteData.Success commitReview ->
-                            if commitReview.headCommitId == model.commitId || model.modalClosed then
-                                renderCommitReview
-                                    { username = Viewer.getUsername viewer
-                                    , approveDocsState = model.approveDocsState
-                                    , displayOnlyUsersTags = model.displayOnlyUsersTags
-                                    , displayOnlyTagsNeedingApproval = model.displayOnlyTagsNeedingApproval
-                                    , isCommitStale = model.commitId /= commitReview.headCommitId
-                                    }
-                                    commitReview
+                        RemoteData.Success commitReviewResponse ->
+                            case commitReviewResponse of
+                                GcrResponse.Pending forCommits ->
+                                    renderPendingAnalysisModal forCommits
 
-                            else
-                                renderHeadUpdatedModal
-                                    commitReview
-                                    """This commit is stale! You can continue to browse to see what was previosly
+                                GcrResponse.AnalysisFailed withReason ->
+                                    renderAnalysisFailedModal withReason
+
+                                GcrResponse.Complete commitReview ->
+                                    if commitReview.headCommitId == model.commitId || model.modalClosed then
+                                        renderCommitReview
+                                            { username = Viewer.getUsername viewer
+                                            , approveDocsState = model.approveDocsState
+                                            , displayOnlyUsersTags = model.displayOnlyUsersTags
+                                            , displayOnlyTagsNeedingApproval = model.displayOnlyTagsNeedingApproval
+                                            , isCommitStale = model.commitId /= commitReview.headCommitId
+                                            }
+                                            commitReview
+
+                                    else
+                                        renderHeadUpdatedModal
+                                            commitReview
+                                            """This commit is stale! You can continue to browse to see what was previosly
                                     approved/rejected but if you would like to make changes you must go to the most
                                     recent commit in the PR.
                                     """
-                                    (Route.CommitReview model.repoId model.prNumber commitReview.headCommitId)
+                                            (Route.CommitReview model.repoId model.prNumber commitReview.headCommitId)
     }
 
 
@@ -768,6 +777,16 @@ renderHeadUpdatedModal commitReview modalText headCommitRoute =
     ]
 
 
+renderPendingAnalysisModal : List String -> List (Html.Html Msg)
+renderPendingAnalysisModal forCommits =
+    [ text "pending" ]
+
+
+renderAnalysisFailedModal : String -> List (Html.Html Msg)
+renderAnalysisFailedModal withReason =
+    [ text "failed" ]
+
+
 renderGetCommitReviewErrorModal : Core.HttpError GcrError.GetCommitReviewError -> List (Html.Html Msg)
 renderGetCommitReviewErrorModal httpError =
     let
@@ -795,11 +814,6 @@ renderGetCommitReviewErrorModal httpError =
                     case getCommitReviewErrorGcrError of
                         GcrError.UnknownError ->
                             internalErrorText
-
-                        GcrError.CommitAnalysisPending ->
-                            """The analysis for this commit is currently being computed, refresh the page in a little
-                                bit. Once the status for this commit is set on Github, you can be sure you can find the
-                                commit here."""
     in
     [ div
         [ class "modal is-active" ]
@@ -824,7 +838,7 @@ renderGetCommitReviewErrorModal httpError =
 
 
 type Msg
-    = CompletedGetCommitReview (Result.Result (Core.HttpError GcrError.GetCommitReviewError) CommitReview.CommitReview)
+    = CompletedGetCommitReview (Result.Result (Core.HttpError GcrError.GetCommitReviewError) GcrResponse.CommitReviewResponse)
     | SetDisplayOnlyUsersTags (Maybe String) String
     | SetDisplayOnlyTagsNeedingApproval Bool
     | SetShowAlteredLines Language.Language CommitReview.Review
@@ -844,49 +858,43 @@ type Msg
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     let
+        updateCompleteCommitReview modelToUpdate updater =
+            { modelToUpdate
+                | commitReview =
+                    model.commitReview
+                        |> RemoteData.map
+                            (GcrResponse.mapComplete updater)
+            }
+
         handleCommitReviewActionErrorOnTag tagIds err =
-            ( case err of
-                Core.BadStatus _ (CraError.StaleCommitError newHeadCommitId) ->
-                    { model
-                        | commitReview =
-                            model.commitReview
-                                |> RemoteData.map
-                                    (\commitReview ->
-                                        { commitReview | headCommitId = newHeadCommitId }
-                                    )
-                                |> RemoteData.map
-                                    (CommitReview.updateTags
-                                        (\tag ->
-                                            if Set.member tag.tagId tagIds then
-                                                { tag | approvedState = CommitReview.Neutral }
+            ( updateCompleteCommitReview model <|
+                case err of
+                    Core.BadStatus _ (CraError.StaleCommitError newHeadCommitId) ->
+                        (\commitReview -> { commitReview | headCommitId = newHeadCommitId })
+                            >> CommitReview.updateTags
+                                (\tag ->
+                                    if Set.member tag.tagId tagIds then
+                                        { tag | approvedState = CommitReview.Neutral }
 
-                                            else
-                                                tag
-                                        )
-                                    )
-                    }
-
-                _ ->
-                    { model
-                        | commitReview =
-                            RemoteData.map
-                                (CommitReview.updateTags
-                                    (\tag ->
-                                        if Set.member tag.tagId tagIds then
-                                            { tag | approvedState = CommitReview.RequestFailed () }
-
-                                        else
-                                            tag
-                                    )
+                                    else
+                                        tag
                                 )
-                                model.commitReview
-                    }
+
+                    _ ->
+                        CommitReview.updateTags
+                            (\tag ->
+                                if Set.member tag.tagId tagIds then
+                                    { tag | approvedState = CommitReview.RequestFailed () }
+
+                                else
+                                    tag
+                            )
             , Cmd.none
             )
     in
     case msg of
-        CompletedGetCommitReview (Result.Ok commitReview) ->
-            ( { model | commitReview = RemoteData.Success commitReview }
+        CompletedGetCommitReview (Result.Ok ((GcrResponse.Complete commitReview) as response)) ->
+            ( { model | commitReview = RemoteData.Success response }
             , if commitReview.headCommitId == model.commitId then
                 Ports.renderCodeEditors <| CommitReview.extractRenderEditorConfigs commitReview
 
@@ -895,37 +903,31 @@ update msg model =
                 Cmd.none
             )
 
-        -- TODO handle error
+        CompletedGetCommitReview (Result.Ok gcrResponse) ->
+            ( { model | commitReview = RemoteData.Success gcrResponse }, Cmd.none )
+
         CompletedGetCommitReview (Result.Err err) ->
             ( { model | commitReview = RemoteData.Failure err }, Cmd.none )
 
         SetDisplayOnlyUsersTags displayOnlyUsersTags username ->
-            ( { model
-                | displayOnlyUsersTags = displayOnlyUsersTags
-                , commitReview =
-                    model.commitReview
-                        |> RemoteData.map
-                            (CommitReview.updateCommitReviewForSearch
-                                { filterForUser = displayOnlyUsersTags
-                                , filterApprovedTags = model.displayOnlyTagsNeedingApproval
-                                }
-                            )
-              }
+            ( updateCompleteCommitReview
+                { model | displayOnlyUsersTags = displayOnlyUsersTags }
+                (CommitReview.updateCommitReviewForSearch
+                    { filterForUser = displayOnlyUsersTags
+                    , filterApprovedTags = model.displayOnlyTagsNeedingApproval
+                    }
+                )
             , Cmd.none
             )
 
         SetDisplayOnlyTagsNeedingApproval displayOnlyTagsNeedingApproval ->
-            ( { model
-                | displayOnlyTagsNeedingApproval = displayOnlyTagsNeedingApproval
-                , commitReview =
-                    model.commitReview
-                        |> RemoteData.map
-                            (CommitReview.updateCommitReviewForSearch
-                                { filterForUser = model.displayOnlyUsersTags
-                                , filterApprovedTags = displayOnlyTagsNeedingApproval
-                                }
-                            )
-              }
+            ( updateCompleteCommitReview
+                { model | displayOnlyTagsNeedingApproval = displayOnlyTagsNeedingApproval }
+                (CommitReview.updateCommitReviewForSearch
+                    { filterForUser = model.displayOnlyUsersTags
+                    , filterApprovedTags = displayOnlyTagsNeedingApproval
+                    }
+                )
             , Cmd.none
             )
 
@@ -945,63 +947,48 @@ update msg model =
                                     CommitReview.ReviewDeletedTag currentFileStartLineNumber
                     }
             in
-            ( { model
-                | commitReview =
-                    RemoteData.map
-                        (CommitReview.updateReviews
-                            (\review ->
-                                if review.tag.tagId == updatedReview.tag.tagId then
-                                    updatedReview
+            ( updateCompleteCommitReview model
+                (CommitReview.updateReviews
+                    (\review ->
+                        if review.tag.tagId == updatedReview.tag.tagId then
+                            updatedReview
 
-                                else
-                                    review
-                            )
-                        )
-                        model.commitReview
-              }
+                        else
+                            review
+                    )
+                )
             , Ports.rerenderCodeEditor <|
                 CommitReview.renderConfigForReviewOrTag language (CommitReview.AReview updatedReview)
             )
 
         ApproveTags tags ->
-            ( { model
-                | commitReview =
-                    RemoteData.map
-                        (CommitReview.updateTags
-                            (\tag ->
-                                if Set.member tag.tagId tags then
-                                    { tag | approvedState = CommitReview.RequestingApproval }
+            ( updateCompleteCommitReview model
+                (CommitReview.updateTags
+                    (\tag ->
+                        if Set.member tag.tagId tags then
+                            { tag | approvedState = CommitReview.RequestingApproval }
 
-                                else
-                                    tag
-                            )
-                        )
-                        model.commitReview
-              }
+                        else
+                            tag
+                    )
+                )
             , Api.postApproveTags model.repoId model.prNumber model.commitId tags (CompletedApproveTags tags)
             )
 
         CompletedApproveTags approvedTags (Ok ()) ->
-            ( { model
-                | commitReview =
-                    model.commitReview
-                        |> RemoteData.map
-                            (CommitReview.updateTags
-                                (\tag ->
-                                    if Set.member tag.tagId approvedTags then
-                                        { tag | approvedState = CommitReview.Approved }
+            ( updateCompleteCommitReview model <|
+                CommitReview.updateTags
+                    (\tag ->
+                        if Set.member tag.tagId approvedTags then
+                            { tag | approvedState = CommitReview.Approved }
 
-                                    else
-                                        tag
-                                )
-                            )
-                        |> RemoteData.map
-                            (CommitReview.updateCommitReviewForSearch
-                                { filterForUser = model.displayOnlyUsersTags
-                                , filterApprovedTags = model.displayOnlyTagsNeedingApproval
-                                }
-                            )
-              }
+                        else
+                            tag
+                    )
+                    >> CommitReview.updateCommitReviewForSearch
+                        { filterForUser = model.displayOnlyUsersTags
+                        , filterApprovedTags = model.displayOnlyTagsNeedingApproval
+                        }
             , Cmd.none
             )
 
@@ -1009,44 +996,32 @@ update msg model =
             handleCommitReviewActionErrorOnTag attemptedApprovedTags err
 
         RemoveApprovalOnTag tagId ->
-            ( { model
-                | commitReview =
-                    RemoteData.map
-                        (CommitReview.updateTags
-                            (\tag ->
-                                if tag.tagId == tagId then
-                                    { tag | approvedState = CommitReview.RequestingRemoveApproval }
+            ( updateCompleteCommitReview model <|
+                CommitReview.updateTags
+                    (\tag ->
+                        if tag.tagId == tagId then
+                            { tag | approvedState = CommitReview.RequestingRemoveApproval }
 
-                                else
-                                    tag
-                            )
-                        )
-                        model.commitReview
-              }
+                        else
+                            tag
+                    )
             , Api.deleteApprovedTag model.repoId model.prNumber model.commitId tagId (CompletedRemoveApprovalOnTag tagId)
             )
 
         CompletedRemoveApprovalOnTag tagId (Result.Ok ()) ->
-            ( { model
-                | commitReview =
-                    model.commitReview
-                        |> RemoteData.map
-                            (CommitReview.updateTags
-                                (\tag ->
-                                    if tag.tagId == tagId then
-                                        { tag | approvedState = CommitReview.Neutral }
+            ( updateCompleteCommitReview model <|
+                CommitReview.updateTags
+                    (\tag ->
+                        if tag.tagId == tagId then
+                            { tag | approvedState = CommitReview.Neutral }
 
-                                    else
-                                        tag
-                                )
-                            )
-                        |> RemoteData.map
-                            (CommitReview.updateCommitReviewForSearch
-                                { filterForUser = model.displayOnlyUsersTags
-                                , filterApprovedTags = model.displayOnlyTagsNeedingApproval
-                                }
-                            )
-              }
+                        else
+                            tag
+                    )
+                    >> CommitReview.updateCommitReviewForSearch
+                        { filterForUser = model.displayOnlyUsersTags
+                        , filterApprovedTags = model.displayOnlyTagsNeedingApproval
+                        }
             , Cmd.none
             )
 
@@ -1054,20 +1029,15 @@ update msg model =
             handleCommitReviewActionErrorOnTag (Set.singleton tagId) err
 
         RejectTags tags ->
-            ( { model
-                | commitReview =
-                    RemoteData.map
-                        (CommitReview.updateTags
-                            (\tag ->
-                                if Set.member tag.tagId tags then
-                                    { tag | approvedState = CommitReview.RequestingRejection }
+            ( updateCompleteCommitReview model <|
+                CommitReview.updateTags
+                    (\tag ->
+                        if Set.member tag.tagId tags then
+                            { tag | approvedState = CommitReview.RequestingRejection }
 
-                                else
-                                    tag
-                            )
-                        )
-                        model.commitReview
-              }
+                        else
+                            tag
+                    )
             , Api.postRejectTags
                 model.repoId
                 model.prNumber
@@ -1077,26 +1047,19 @@ update msg model =
             )
 
         CompletedRejectTags tags (Ok ()) ->
-            ( { model
-                | commitReview =
-                    model.commitReview
-                        |> RemoteData.map
-                            (CommitReview.updateTags
-                                (\tag ->
-                                    if Set.member tag.tagId tags then
-                                        { tag | approvedState = CommitReview.Rejected }
+            ( updateCompleteCommitReview model <|
+                CommitReview.updateTags
+                    (\tag ->
+                        if Set.member tag.tagId tags then
+                            { tag | approvedState = CommitReview.Rejected }
 
-                                    else
-                                        tag
-                                )
-                            )
-                        |> RemoteData.map
-                            (CommitReview.updateCommitReviewForSearch
-                                { filterForUser = model.displayOnlyUsersTags
-                                , filterApprovedTags = model.displayOnlyTagsNeedingApproval
-                                }
-                            )
-              }
+                        else
+                            tag
+                    )
+                    >> CommitReview.updateCommitReviewForSearch
+                        { filterForUser = model.displayOnlyUsersTags
+                        , filterApprovedTags = model.displayOnlyTagsNeedingApproval
+                        }
             , Cmd.none
             )
 
@@ -1104,20 +1067,15 @@ update msg model =
             handleCommitReviewActionErrorOnTag attemptedRejectTags err
 
         RemoveRejectionOnTag tagId ->
-            ( { model
-                | commitReview =
-                    RemoteData.map
-                        (CommitReview.updateTags
-                            (\tag ->
-                                if tag.tagId == tagId then
-                                    { tag | approvedState = CommitReview.RequestingRemoveRejection }
+            ( updateCompleteCommitReview model <|
+                CommitReview.updateTags
+                    (\tag ->
+                        if tag.tagId == tagId then
+                            { tag | approvedState = CommitReview.RequestingRemoveRejection }
 
-                                else
-                                    tag
-                            )
-                        )
-                        model.commitReview
-              }
+                        else
+                            tag
+                    )
             , Api.deleteRejectedTag
                 model.repoId
                 model.prNumber
@@ -1127,26 +1085,19 @@ update msg model =
             )
 
         CompletedRemoveRejectionOnTag tagId (Result.Ok ()) ->
-            ( { model
-                | commitReview =
-                    model.commitReview
-                        |> RemoteData.map
-                            (CommitReview.updateTags
-                                (\tag ->
-                                    if tag.tagId == tagId then
-                                        { tag | approvedState = CommitReview.Neutral }
+            ( updateCompleteCommitReview model <|
+                CommitReview.updateTags
+                    (\tag ->
+                        if tag.tagId == tagId then
+                            { tag | approvedState = CommitReview.Neutral }
 
-                                    else
-                                        tag
-                                )
-                            )
-                        |> RemoteData.map
-                            (CommitReview.updateCommitReviewForSearch
-                                { filterForUser = model.displayOnlyUsersTags
-                                , filterApprovedTags = model.displayOnlyTagsNeedingApproval
-                                }
-                            )
-              }
+                        else
+                            tag
+                    )
+                    >> CommitReview.updateCommitReviewForSearch
+                        { filterForUser = model.displayOnlyUsersTags
+                        , filterApprovedTags = model.displayOnlyTagsNeedingApproval
+                        }
             , Cmd.none
             )
 
@@ -1159,18 +1110,12 @@ update msg model =
             )
 
         CompletedApproveDocs username (Ok _) ->
-            ( { model
-                | commitReview =
-                    RemoteData.map
-                        (\commitReview ->
-                            { commitReview
-                                | remainingOwnersToApproveDocs =
-                                    Set.remove username commitReview.remainingOwnersToApproveDocs
-                            }
-                        )
-                        model.commitReview
-                , approveDocsState = NotRequesting
-              }
+            ( updateCompleteCommitReview model <|
+                \commitReview ->
+                    { commitReview
+                        | remainingOwnersToApproveDocs =
+                            Set.remove username commitReview.remainingOwnersToApproveDocs
+                    }
             , Cmd.none
             )
 
@@ -1178,14 +1123,9 @@ update msg model =
         CompletedApproveDocs username (Result.Err err) ->
             case err of
                 Core.BadStatus _ (CraError.StaleCommitError newHeadCommitId) ->
-                    ( { model
-                        | commitReview =
-                            RemoteData.map
-                                (\commitReview ->
-                                    { commitReview | headCommitId = newHeadCommitId }
-                                )
-                                model.commitReview
-                      }
+                    ( updateCompleteCommitReview model <|
+                        \commitReview ->
+                            { commitReview | headCommitId = newHeadCommitId }
                     , Cmd.none
                     )
 
