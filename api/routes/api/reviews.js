@@ -351,6 +351,8 @@ router.post('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/approve
       repoObject.installationId,
       repoObject.owner,
       repoName,
+      repoId,
+      pullRequestNumber,
       commitId
     );
 
