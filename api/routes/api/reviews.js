@@ -19,7 +19,7 @@ router.get('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId'
   try {
 
     const { pullRequestNumber, commitId } = req.params;
-    const repoId = parseInt(req.params.repoId, 10);
+    const repoId = verify.isInt(req.params.repoId, errors.invalidUrlParams("Repo ID must be a number."));
 
     const user = verify.getLoggedInUser(req);
     await verify.hasAccessToRepo(user, repoId);
