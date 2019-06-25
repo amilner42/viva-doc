@@ -26,43 +26,40 @@ router.get('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId'
 
     const pullRequestReviewObject = await verify.getPullRequestReviewObject(repoId, pullRequestNumber);
 
-    // Commit is head commit.
-    if (pullRequestReviewObject.headCommitId === commitId) {
-
-      // Commit still being analyzed.
-      if (pullRequestReviewObject.loadingHeadAnalysis) {
-        throw { httpCode: 423, ...errors.commitStillLoading };
-      }
-
-      // Commit analyzed and ready for retrieval, merge newest data from PullRequestReviewObject.
-      const commitReviewObject = await verify.getCommitReviewObject(repoId, pullRequestNumber, commitId);
-
-      commitReviewObject.approvedTags = pullRequestReviewObject.headCommitApprovedTags;
-      commitReviewObject.rejectTags = pullRequestReviewObject.headCommitRejectedTags;
-      commitReviewObject.remainingOwnersToApproveDocs = pullRequestReviewObject.headCommitRemainingOwnersToApproveDocs;
-
-      // Add head commit for web client.
-      commitReviewObject.headCommitId = commitId;
-
-      return res.json(commitReviewObject);
+    if (R.contains(commitId, pullRequestReviewObject.pendingAnalysisForCommits)) {
+      return res.json(
+        {
+          responseTag: "pending",
+          headCommitId: pullRequestReviewObject.headCommitId,
+          forCommits: pullRequestReviewObject.pendingAnalysisForCommits
+        }
+      );
     }
 
-    // Otherwise commit is not head commit.
-
-    if (R.contains(commitId, pullRequestReviewObject.pendingAnalysisForCommits)) {
-      throw { httpCode: 423, ...errors.commitStillLoading }
+    const err = R.find(R.propEq("commitId", commitId), pullRequestReviewObject.commitReviewErrors);
+    if (err !== undefined) {
+      return res.json(
+        {
+          responseTag: "analysis-failed",
+          headCommitId: pullRequestReviewObject.headCommitId,
+          clientExplanation: err.clientExplanation
+        }
+      );
     }
 
     const commitReviewObject = await verify.getCommitReviewObject(repoId, pullRequestNumber, commitId);
 
-    if (commitReviewObject.frozen === false) {
-      // TODO this could be a sep error although it's so likely to occur it's not a big deal.
-      throw { httpCode: 423, ...errors.commitStillLoading }
+    if (pullRequestReviewObject.headCommitId === commitId) {
+      commitReviewObject.approvedTags = pullRequestReviewObject.headCommitApprovedTags;
+      commitReviewObject.rejectTags = pullRequestReviewObject.headCommitRejectedTags;
+      commitReviewObject.remainingOwnersToApproveDocs = pullRequestReviewObject.headCommitRemainingOwnersToApproveDocs;
     }
 
-    commitReviewObject.headCommitId = pullRequestReviewObject.headCommitId;
-
-    return res.json(commitReviewObject);
+    return res.json({
+      responseTag: "complete",
+      headCommitId: pullRequestReviewObject.headCommitId,
+      commitReview: commitReviewObject
+    });
 
   } catch (err) {
     next(err);
@@ -354,6 +351,8 @@ router.post('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/approve
       repoObject.installationId,
       repoObject.owner,
       repoName,
+      repoId,
+      pullRequestNumber,
       commitId
     );
 

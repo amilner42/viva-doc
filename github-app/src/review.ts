@@ -160,7 +160,8 @@ export const getReviews = (diffWCAT: Tag.FileDiffWithCodeAndTags): FileReview =>
         reviews: calculateReviewsFromModification(
           diffWCAT.previousFileTags,
           diffWCAT.currentFileTags,
-          diffWCAT.alteredLines
+          diffWCAT.alteredLines,
+          diffWCAT.currentFilePath
         )
       }
 
@@ -173,7 +174,8 @@ export const getReviews = (diffWCAT: Tag.FileDiffWithCodeAndTags): FileReview =>
         reviews: calculateReviewsFromModification(
           diffWCAT.previousFileTags,
           diffWCAT.currentFileTags,
-          diffWCAT.alteredLines
+          diffWCAT.alteredLines,
+          diffWCAT.currentFilePath
         )
       }
 
@@ -253,11 +255,12 @@ export const calculateReviewsFromModification =
     ( allPreviousTags: Tag.VdTag[]
     , allCurrentTags: Tag.VdTag[]
     , alteredLines: Diff.AlteredLine[]
+    , filePath: string
     ): Review[] => {
 
   if (allPreviousTags.length === 0 && allCurrentTags.length === 0) { return [] }
 
-  const tagMap: TagMap = getTagMapBetweenAllTags(allPreviousTags, allCurrentTags, alteredLines)
+  const tagMap: TagMap = getTagMapBetweenAllTags(allPreviousTags, allCurrentTags, alteredLines, filePath)
   return reviewsFromTagMapAndAlteredLines(tagMap, alteredLines)
 }
 // @VD end-block
@@ -284,12 +287,16 @@ export type TagMap = {
 
   NOTE: The alteredLines should be passed in-order.
 
+  TODO BUG: Minor, but altered line isn't checked to be a comment. Is there any reason to have this function? Can we
+            just wire everything through `getTagLinksBetweenSomeTags`. Seems more robust.
+
   @VD amilner42 block
 */
 export const getTagMapBetweenAllTags =
   ( allPreviousTags: Tag.VdTag[]
   , allCurrentTags: Tag.VdTag[]
   , alteredLines: Diff.AlteredLine[]
+  , filePath: string
   ): TagMap => {
 
   // Initialize tagMap to be entirely `null` for all entries.
@@ -300,7 +307,11 @@ export const getTagMapBetweenAllTags =
 
   for (let alteredLine of alteredLines) {
 
-    const matchTag = LangUtil.matchSingleVdTagAnnotation(alteredLine.content)
+    const matchTag = LangUtil.matchSingleVdTagAnnotation(
+      alteredLine.content,
+      filePath,
+      `${alteredLine.currentLineNumber}`
+    );
 
     switch (matchTag.branchTag) {
 

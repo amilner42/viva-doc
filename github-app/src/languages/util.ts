@@ -2,6 +2,7 @@
 
 import { DefaultErrorStrategy } from 'antlr4ts/DefaultErrorStrategy';
 
+import * as AppError from "../error"
 import * as File from "../file"
 import * as SH from "../string-helpers"
 import * as Tag from "../tag"
@@ -57,12 +58,16 @@ export class ErrorHappenedStrategy extends DefaultErrorStrategy {
   Throws an error if the string doesn't follow VD annotation rules:
     1. Can only have 1 tag annotation prefix (` @VD`)
       - This thereby prevents multiple full tag annotations
+        - Prevents a tag and an end block in the same comment.
     2. Must have a full tag/end-block if you have the @VD prefix somewhere
-    3. Cannot have both a tag and an end block
+
+  @THROWS only `AppError.GithubAppParseTagError`.
 */
 export const matchSingleVdTagAnnotation =
-    ( str: string )
-    : F.Tri<"no-match", "match-block", { owner: string, tagType: Tag.VdTagType, tagAnnotationLineOffset: number }> => {
+    ( str: string
+    , filePath: string
+    , lineNumber: string
+    ): F.Tri<"no-match", "match-block", { owner: string, tagType: Tag.VdTagType, tagAnnotationLineOffset: number }> => {
 
   const matchVdTagAnnotationPrefix = str.match(MATCH_VD_COMMENT_PREFIX_REGEX)
 
@@ -70,9 +75,15 @@ export const matchSingleVdTagAnnotation =
     return F.branch1<"no-match">("no-match");
   }
 
-  // Breaks rule 1
   if (matchVdTagAnnotationPrefix.length > 1) {
-    throw new Error("TODO - Breaks rule 1")
+    const multiPrefixErr: AppError.GithubAppParseTagError = {
+      githubAppError: true,
+      parseTagError: true,
+      errorName: "multiple-vd-annotation-prefixes",
+      clientExplanation: `You cannot have multiple @VD prefixes in the same comment. File: ${filePath}, line number: ${lineNumber}`
+    }
+
+    throw multiPrefixErr;
   }
 
   const matchTagAnnotation = str.match(MATCH_VD_COMMENT_TAG_ANNOTATION_REGEX)
@@ -80,14 +91,15 @@ export const matchSingleVdTagAnnotation =
   const hasMatchedTag = matchTagAnnotation !== null
   const hasMatchedEndBlock =  matchEndBlock !== null
 
-  // Breaks rule 2
   if(!hasMatchedEndBlock && !hasMatchedTag) {
-    throw new Error("TODO - Breaks rule 2")
-  }
+    const prefixWithNoAnnotationErr: AppError.GithubAppParseTagError = {
+      errorName: "prefix-with-no-annotation-or-end-block",
+      githubAppError: true,
+      parseTagError: true,
+      clientExplanation: `You must have a VD tag annotation or end-block if you declare the @VD prefix. File: ${filePath}, line number: ${lineNumber}`
+    }
 
-  // Breaks rule 3
-  if(hasMatchedEndBlock && hasMatchedTag) {
-    throw new Error("TODO - Breaks rule 3")
+    throw prefixWithNoAnnotationErr;
   }
 
   // Matched a single tag

@@ -2,6 +2,7 @@
 
 import * as R from "ramda";
 
+import * as AppError from "../error"
 import * as File from "../file"
 import * as Tag from "../tag"
 import * as LangUtil from "./util"
@@ -135,8 +136,10 @@ export const getFileAstFromRawFileAst = (rawFileAst: RawFileAst): FileAst => {
 
 
 /** Reduce an AST to only contain relevant information.
+
+  @THROWS only `AppError.GithubAppParseTagError`
  */
-export const getReducedFileAstFromFileAst = (fileAst: FileAst): ReducedFileAst => {
+export const getReducedFileAstFromFileAst = (fileAst: FileAst, filePath: string): ReducedFileAst => {
 
   const reducedFileAst = newEmptyReducedFileAst()
 
@@ -145,13 +148,20 @@ export const getReducedFileAstFromFileAst = (fileAst: FileAst): ReducedFileAst =
 
     const commentNodes = fileAst.comments[commentLineNumber]
 
-    // TODO More than one commment ending on the same line? Support use-case?
     if(commentNodes.length > 1) {
-      throw Error("TODO3")
+      const multiCommentPerLineErr: AppError.GithubAppParseTagError = {
+        githubAppError: true,
+        parseTagError: true,
+        errorName: "multiple-comments-on-single-line",
+        clientExplanation: `Viva Doc does not support having multiple comments on the same line. File: ${filePath}, line number: ${commentLineNumber}`
+      }
+
+      throw multiCommentPerLineErr;
     }
 
     const commentNode = commentNodes[0]
-    const match = LangUtil.matchSingleVdTagAnnotation(commentNode.content)
+    const match = LangUtil.matchSingleVdTagAnnotation(commentNode.content, filePath, commentLineNumber)
+
     switch (match.branchTag) {
 
       case "case-1":
@@ -190,8 +200,14 @@ export const getReducedFileAstFromFileAst = (fileAst: FileAst): ReducedFileAst =
 
   Noteable exceptions are languages like python which can have comments under the function declarations instead of
   before.
+
+  @THROWS [not only] `AppError.GithubAppParseTagError`.
  */
-export const standardTagsFromReducedFileAst = (reducedFileAst: ReducedFileAst, fileContent: string): Tag.VdTag[] => {
+export const standardTagsFromReducedFileAst =
+  ( reducedFileAst: ReducedFileAst
+  , fileContent: string
+  , filePath: string
+  ): Tag.VdTag[] => {
 
   const vdTags: Tag.VdTag[] = []
 
@@ -249,9 +265,15 @@ export const standardTagsFromReducedFileAst = (reducedFileAst: ReducedFileAst, f
 
               if (currentCommentNode.data.dataType === "tag-end-block" ) {
 
-                // Can't use the same end-block twice
                 if (currentCommentNode.data.seen) {
-                  throw new Error("TODO - End block already used")
+                  const overusedEndBlockErr: AppError.GithubAppParseTagError = {
+                    githubAppError: true,
+                    parseTagError: true,
+                    errorName: "end-block-used-multiple-times",
+                    clientExplanation: `You cannot have the same end-block used by multiple block tags. File: ${filePath}, line number: ${currentCommentNode.startLine}`
+                  }
+
+                  throw overusedEndBlockErr;
                 }
 
                 const startLine = reducedCommentNode.startLine
@@ -270,8 +292,14 @@ export const standardTagsFromReducedFileAst = (reducedFileAst: ReducedFileAst, f
               }
             }
 
-            // Otherwise we have no ending block?
-            throw new Error("TODO4")
+            const noEndBlockErr: AppError.GithubAppParseTagError = {
+              githubAppError: true,
+              parseTagError: true,
+              errorName: "no-end-block",
+              clientExplanation: `Every block tag needs an end-block. File: ${filePath}, line number: ${reducedCommentNode.startLine}`
+            }
+
+            throw noEndBlockErr;
           }
 
         } // end inner switch

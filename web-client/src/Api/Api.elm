@@ -11,6 +11,7 @@ import Api.Core as Core
 import Api.Endpoint as Endpoint
 import Api.Errors.CommitReviewAction as CraError
 import Api.Errors.GetCommitReview as GcrError
+import Api.Responses.GetCommitReview as GcrResponse
 import CommitReview
 import Http
 import Json.Decode as Decode
@@ -60,14 +61,14 @@ getCommitReview :
     Int
     -> Int
     -> String
-    -> (Result.Result (Core.HttpError GcrError.GetCommitReviewError) CommitReview.CommitReview -> msg)
+    -> (Result.Result (Core.HttpError GcrError.GetCommitReviewError) GcrResponse.CommitReviewResponse -> msg)
     -> Cmd.Cmd msg
 getCommitReview repoId prNumber commitId handleResult =
     Core.get
         (Endpoint.commitReview repoId prNumber commitId)
         standardTimeout
         Nothing
-        (Core.expectJson handleResult CommitReview.decodeCommitReview GcrError.decodeGetCommitReviewError)
+        (Core.expectJson handleResult GcrResponse.decodeCommitReviewResponse GcrError.decodeGetCommitReviewError)
 
 
 {-| TODO handle errors.

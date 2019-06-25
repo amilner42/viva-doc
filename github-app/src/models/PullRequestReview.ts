@@ -1,5 +1,6 @@
 import mongoose = require("mongoose")
 
+import * as R from "ramda";
 import { TagAndOwner } from "../review";
 import * as AppError from "../error";
 import * as F from "../functional";
@@ -21,9 +22,23 @@ export interface PullRequestReview {
   pendingAnalysisForCommits: string[],
   currentAnalysisLastCommitWithSuccessStatus: string,
   currentAnalysisLastAnalyzedCommit: string | null,
-  loadingHeadAnalysis: boolean,
-  failedToSaveCommitReviews: string[]
+  commitReviewErrors: CommitReviewError[]
 }
+
+
+// Errors on commit reviews with a possbile `clientExplanation` meant to be rendered to the user.
+//
+// Set the explanation to "null" if there is nothing helpful to tell the user.
+//
+// @VD amilner42 block
+export interface CommitReviewError {
+  commitReviewError: true;
+  commitId: string;
+  failedToSaveCommitReview: boolean;
+  clientExplanation: string;
+}
+// @VD end-block
+
 
 const PullRequestReviewSchema = new mongoose.Schema({
   repoId: { type: Number, required: [true, "can't be blank"], index: true },
@@ -41,8 +56,7 @@ const PullRequestReviewSchema = new mongoose.Schema({
   pendingAnalysisForCommits: { type: [ String ], required: [ true, "can't be blank"] },
   currentAnalysisLastCommitWithSuccessStatus: { type: String, required: [ true, "can't be blank" ] },
   currentAnalysisLastAnalyzedCommit: { type: String },
-  loadingHeadAnalysis: { type: Boolean, required: [true, "can't be blank"] },
-  failedToSaveCommitReviews: { type:  [ String ], required: [true, "can't be blank"] }
+  commitReviewErrors: { type:  [ mongoose.Schema.Types.Mixed ], required: [true, "can't be blank"] }
 });
 
 
@@ -81,8 +95,7 @@ export const newPullRequestReview =
       pendingAnalysisForCommits: [ headCommitId ],
       currentAnalysisLastCommitWithSuccessStatus: baseCommitId,
       currentAnalysisLastAnalyzedCommit: null,
-      loadingHeadAnalysis: true,
-      failedToSaveCommitReviews: [],
+      commitReviewErrors: [],
     };
 
     const pullRequestReview = new PullRequestReviewModel(pullRequestReviewObject);
@@ -176,7 +189,6 @@ export const updateHeadCommit =
         headCommitRejectedTags: null,
         headCommitRemainingOwnersToApproveDocs: null,
         headCommitTagsAndOwners: null,
-        loadingHeadAnalysis: true
       },
       {
         new: false
@@ -298,7 +310,6 @@ export const updateFieldsForHeadCommit =
         $pull: { pendingAnalysisForCommits: currentAnalysisLastAnalyzedCommit },
         currentAnalysisLastCommitWithSuccessStatus,
         currentAnalysisLastAnalyzedCommit,
-        loadingHeadAnalysis: false
       }
     ).exec();
 
@@ -333,7 +344,7 @@ export const updateFieldsForHeadCommit =
 }
 
 
-// Clears a commit from the `pendingAnalysisForCommits` and optionally add it to `failedToSaveCommitReviews`.
+// Clears a commit from the `pendingAnalysisForCommits` and optionally add err to `commitReviewErrors`.
 //
 // @THROWS
 //  if `andThrowError` is not null then it will always throw, either:
@@ -346,7 +357,7 @@ export const clearPendingCommitOnAnalysisFailure =
         , repoId: number
         , pullRequestNumber: number
         , commitId: string
-        , failedToSaveCommitReview: boolean
+        , commitReviewError: F.Maybe<CommitReviewError>
         , andThrowError: F.Maybe<any>
       ): Promise<PullRequestReview>  => {
 
@@ -355,10 +366,10 @@ export const clearPendingCommitOnAnalysisFailure =
   try {
 
     const updateFields =
-      failedToSaveCommitReview
+      commitReviewError !== null
         ? {
             $pull: { pendingAnalysisForCommits: commitId },
-            $addToSet: { "failedToSaveCommitReviews": commitId }
+            $addToSet: { "commitReviewErrors": commitReviewError }
           }
         : {
             $pull: { pendingAnalysisForCommits: commitId }
@@ -425,7 +436,6 @@ export const newLoadingPullRequestReviewFromPrevious =
       headCommitRejectedTags: null,
       headCommitRemainingOwnersToApproveDocs: null,
       headCommitTagsAndOwners: null,
-      loadingHeadAnalysis: true
     },
   ...{
       // An unlikely race condition, but just in case, if the last commit had no remaining owners to approve dos
@@ -438,4 +448,47 @@ export const newLoadingPullRequestReviewFromPrevious =
     }
   }
 
+}
+
+
+export const getErrorForCommitReview =
+  ( pullRequestReview: PullRequestReview
+  , commitId: string
+  ): F.Maybe<CommitReviewError> => {
+
+  const err = R.find(R.propEq("commitId", commitId), pullRequestReview.commitReviewErrors);
+
+  if (err === undefined) { return null; }
+
+  return err;
+}
+
+
+export const hasErrorForCommitReview =
+  ( pullRequestReview: PullRequestReview
+  , commitId: string
+  ): boolean => {
+
+  const err = getErrorForCommitReview(pullRequestReview, commitId);
+
+  return F.isJust(err);
+}
+
+
+export const commitSavedSuccessfully =
+  ( pullRequestReview: PullRequestReview
+  , commitId: string
+  ): boolean => {
+
+  const err = getErrorForCommitReview(pullRequestReview, commitId);
+
+  if (err === null) { return true; }
+
+  return !err.failedToSaveCommitReview;
+}
+
+
+export const COMMIT_REVIEW_ERROR_MESSAGES = {
+  internal: "An internal error occurred, Arie has been notified to review the problem.",
+  githubIssue: "The github API was not responding to our queries so we couldn't analyze this commit..."
 }

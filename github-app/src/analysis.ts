@@ -27,15 +27,22 @@ export const pipeline = async (
 
   // Handles logging errors, clearing pending commit, optionally set commit status, and continue analysis of other
   // commits if there are more pendingAnalysisForCommits.
+  //
+  // Note `err` is optional because it may be the case that nothing in the app errored, we simply have just a
+  //       `commitReviewError` because the user mis-used the app.
+  //
+  // @VD amilner42 block
   const recoverFromError =
-    async ( err: any
+    async ( err: F.Maybe<any>
           , setStatusTo: F.Maybe<"failure">
-          , failedToSaveCommitReview: boolean
+          , commitReviewError: PullRequestReview.CommitReviewError
         ): Promise<void> => {
 
     const analyzingCommitId = pullRequestReview.pendingAnalysisForCommits[0];
 
-    await AppError.logErrors(err, null);
+    if (F.isJust(err)) {
+      await AppError.logErrors(err, null);
+    }
 
     let newPullRequestReview: PullRequestReview.PullRequestReview;
 
@@ -46,22 +53,25 @@ export const pipeline = async (
         pullRequestReview.repoId,
         pullRequestReview.pullRequestNumber,
         analyzingCommitId,
-        failedToSaveCommitReview,
+        commitReviewError,
         null
       );
 
     } catch (clearPendingCommitError) {
 
-      await AppError.logErrors(err, null);
+      await AppError.logErrors(clearPendingCommitError, null);
 
       if (setStatusTo !== null) {
 
         try {
 
+          const description =
+            "VivaDoc had an internal issue and is in an errored state, it won't work on this PR. Arie has been notified for review.";
+
           await setCommitStatus(
             analyzingCommitId,
             setStatusTo,
-            { description: "Viva Doc is an errored state, it won't work for a bit on this PR. Arie has been notified for review." }
+            { description }
           );
 
         } catch (setCommitStatusError) {
@@ -77,16 +87,14 @@ export const pipeline = async (
 
     if (setStatusTo !== null) {
 
-      // TODO better description from error.
-      const description =
-        "Viva Doc couldn't analyze this commit, it should be good for the next commits. Arie has been notified for review."
+      const description = "VivaDoc failed to process this commit."
 
       try {
 
         await setCommitStatus(
           analyzingCommitId,
           setStatusTo,
-          { description }
+          { description, target_url: getClientUrlForCommitReview(analyzingCommitId) }
         );
 
       } catch (setCommitStatusError) {
@@ -106,6 +114,8 @@ export const pipeline = async (
     );
 
   }
+  // @VD end-block
+
 
   const analyzingCommitId = pullRequestReview.pendingAnalysisForCommits[0]
   const baseCommitId = pullRequestReview.currentAnalysisLastCommitWithSuccessStatus
@@ -116,12 +126,24 @@ export const pipeline = async (
     await setCommitStatus(
       analyzingCommitId,
       "pending",
-      { description: `Analyzing documentation against ${pullRequestReview.baseBranchName} branch...` }
+      {
+        description: `Analyzing documentation against ${pullRequestReview.baseBranchName} branch...`,
+        target_url: getClientUrlForCommitReview(analyzingCommitId)
+      }
     );
 
   } catch (setCommitStatusError) {
 
-    await recoverFromError(setCommitStatusError, null, true);
+    await recoverFromError(
+      setCommitStatusError,
+      null,
+      {
+        commitReviewError: true,
+        commitId: analyzingCommitId,
+        clientExplanation: PullRequestReview.COMMIT_REVIEW_ERROR_MESSAGES.githubIssue,
+        failedToSaveCommitReview: true
+      }
+    );
     return;
   }
 
@@ -140,9 +162,34 @@ export const pipeline = async (
         }
       );
 
-  } catch (err) {
+  } catch (err) { 
 
-    await recoverFromError(err, "failure", true);
+    const maybeParseTagError = AppError.isGithubAppParseTagError(err);
+
+    if (maybeParseTagError !== null) {
+      await recoverFromError(
+        null,
+        "failure",
+        {
+          commitReviewError: true,
+          commitId: analyzingCommitId,
+          clientExplanation: maybeParseTagError.clientExplanation,
+          failedToSaveCommitReview: true
+        }
+      );
+      return;
+    }
+
+    await recoverFromError(
+      err,
+      "failure",
+      {
+        commitReviewError: true,
+        commitId: analyzingCommitId,
+        clientExplanation: PullRequestReview.COMMIT_REVIEW_ERROR_MESSAGES.internal, // TODO could be made better.
+        failedToSaveCommitReview: true
+      }
+    );
     return;
   }
 
@@ -175,7 +222,16 @@ export const pipeline = async (
 
   } catch (err) {
 
-    await recoverFromError(err, "failure", true);
+    await recoverFromError(
+      err,
+      "failure",
+      {
+        commitReviewError: true,
+        commitId: analyzingCommitId,
+        clientExplanation: PullRequestReview.COMMIT_REVIEW_ERROR_MESSAGES.internal, // TODO could be better error.
+        failedToSaveCommitReview: true
+      }
+    );
     return;
   }
 
@@ -200,7 +256,16 @@ export const pipeline = async (
 
   } catch (err) {
 
-    await recoverFromError(err, "failure", true);
+    await recoverFromError(
+      err,
+      "failure",
+      {
+        commitReviewError: true,
+        commitId: analyzingCommitId,
+        clientExplanation: PullRequestReview.COMMIT_REVIEW_ERROR_MESSAGES.internal,
+        failedToSaveCommitReview: true
+      }
+    );
     return;
   }
 
@@ -227,7 +292,16 @@ export const pipeline = async (
 
   } catch (err) {
 
-    await recoverFromError(err, null, false);
+    await recoverFromError(
+      err,
+      null,
+      {
+        commitReviewError: true,
+        commitId: analyzingCommitId,
+        clientExplanation: PullRequestReview.COMMIT_REVIEW_ERROR_MESSAGES.internal,
+        failedToSaveCommitReview: false
+      }
+    );
     return;
   }
 
@@ -236,12 +310,22 @@ export const pipeline = async (
     try {
 
       if (lastCommitWithSuccessStatus === analyzingCommitId) {
-        await setCommitStatus(analyzingCommitId, "success", { description: "No tags required approval" })
+        await setCommitStatus(
+          analyzingCommitId,
+          "success",
+          {
+            description: "No tags required approval",
+            target_url: getClientUrlForCommitReview(analyzingCommitId)
+          }
+        );
       } else {
         await setCommitStatus(
           analyzingCommitId,
           "failure",
-          { description: "Tags require approval", target_url: getClientUrlForCommitReview(analyzingCommitId) }
+          {
+            description: "Tags require approval",
+            target_url: getClientUrlForCommitReview(analyzingCommitId)
+          }
         )
       }
 
@@ -249,7 +333,17 @@ export const pipeline = async (
 
     } catch (err) {
 
-      await recoverFromError(err, null, false)
+      await recoverFromError(
+        err,
+        null,
+        {
+          commitReviewError: true,
+          commitId: analyzingCommitId,
+          clientExplanation: PullRequestReview.COMMIT_REVIEW_ERROR_MESSAGES.githubIssue,
+          failedToSaveCommitReview: false
+        }
+      );
+
       return;
     }
 
@@ -270,7 +364,16 @@ export const pipeline = async (
       analyzingCommitId
     );
   } catch (err) {
-    await recoverFromError(err, "failure", false);
+    await recoverFromError(
+      err,
+      "failure",
+      {
+        commitReviewError: true,
+        commitId: analyzingCommitId,
+        clientExplanation: PullRequestReview.COMMIT_REVIEW_ERROR_MESSAGES.internal,
+        failedToSaveCommitReview: false
+      }
+    );
     return;
   }
 
@@ -288,25 +391,53 @@ export const pipeline = async (
 
   } catch (err) {
 
-    await recoverFromError(err, "failure", false);
+    await recoverFromError(
+      err,
+      "failure",
+      {
+        commitReviewError: true,
+        commitId: analyzingCommitId,
+        clientExplanation: PullRequestReview.COMMIT_REVIEW_ERROR_MESSAGES.internal,
+        failedToSaveCommitReview: false
+      }
+    );
     return;
   }
 
   try {
 
     if (lastCommitWithSuccessStatus === analyzingCommitId) {
-      await setCommitStatus(analyzingCommitId, "success", { description: "No tags required approval" })
+      await setCommitStatus(
+        analyzingCommitId,
+        "success",
+        {
+          description: "No tags required approval",
+          target_url: getClientUrlForCommitReview(analyzingCommitId)
+        }
+      );
     } else {
       await setCommitStatus(
         analyzingCommitId,
         "failure",
-        { description: "Tags require approval", target_url: getClientUrlForCommitReview(analyzingCommitId) }
-      )
+        {
+          description: "Tags require approval",
+          target_url: getClientUrlForCommitReview(analyzingCommitId)
+        }
+      );
     }
 
   } catch (err) {
 
-    await recoverFromError(err, null, false);
+    await recoverFromError(
+      err,
+      null,
+      {
+        commitReviewError: true,
+        commitId: analyzingCommitId,
+        clientExplanation: PullRequestReview.COMMIT_REVIEW_ERROR_MESSAGES.githubIssue,
+        failedToSaveCommitReview: false
+      }
+    );
   }
 
   pipeline(

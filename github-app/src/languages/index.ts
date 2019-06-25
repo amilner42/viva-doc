@@ -79,27 +79,27 @@ export const getLanguageFromFilePath = (filePath: string): F.Maybe<Language> => 
 
 
 /** Parse the AST from the file given the language. */
-export const parse = (language: Language, fileContent: string): AST.ReducedFileAst => {
+export const parse = (language: Language, fileContent: string, filePath: string): AST.ReducedFileAst => {
 
   switch (language) {
 
     case "Javascript":
-      return javascript.parse(fileContent)
+      return javascript.parse(fileContent, filePath);
 
     case "Typescript":
-      return typescript.parse(fileContent)
+      return typescript.parse(fileContent, filePath);
 
     case "Java":
-      return java.parse(fileContent)
+      return java.parse(fileContent, filePath);
 
     case "CPlusPlus":
-      return cplusplus.parse(fileContent)
+      return cplusplus.parse(fileContent, filePath);
 
     case "C":
-      return c.parse(fileContent)
+      return c.parse(fileContent, filePath);
 
     case "Header":
-      return header.parse(fileContent)
+      return header.parse(fileContent, filePath);
 
   }
 }
@@ -110,27 +110,28 @@ export const astToTags =
   ( language: Language
   , reducedFileAst: AST.ReducedFileAst
   , fileContent: string
+  , filePath: string
   ): Tag.VdTag[] => {
 
   switch (language) {
 
     case "Javascript":
-      return javascript.astToTags(reducedFileAst, fileContent)
+      return javascript.astToTags(reducedFileAst, fileContent, filePath)
 
     case "Typescript":
-      return typescript.astToTags(reducedFileAst, fileContent)
+      return typescript.astToTags(reducedFileAst, fileContent, filePath)
 
     case "Java":
-      return java.astToTags(reducedFileAst, fileContent)
+      return java.astToTags(reducedFileAst, fileContent, filePath)
 
     case "CPlusPlus":
-      return cplusplus.astToTags(reducedFileAst, fileContent)
+      return cplusplus.astToTags(reducedFileAst, fileContent, filePath)
 
     case "C":
-      return c.astToTags(reducedFileAst, fileContent)
+      return c.astToTags(reducedFileAst, fileContent, filePath)
 
     case "Header":
-      return header.astToTags(reducedFileAst, fileContent)
+      return header.astToTags(reducedFileAst, fileContent, filePath)
 
   }
 }

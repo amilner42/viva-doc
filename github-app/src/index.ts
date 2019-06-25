@@ -232,9 +232,9 @@ const analyzeOldPullRequest =
 
   try {
 
-    const headCommitReviewWasPreviouslySuccessfullySaved = !R.contains(
-      previousPullRequestReviewObject.headCommitId,
-      previousPullRequestReviewObject.failedToSaveCommitReviews
+    const headCommitReviewWasPreviouslySuccessfullySaved = PullRequestReview.commitSavedSuccessfully(
+      previousPullRequestReviewObject,
+      previousPullRequestReviewObject.headCommitId
     );
 
     if (headCommitReviewWasPreviouslySuccessfullySaved) {
@@ -259,7 +259,12 @@ const analyzeOldPullRequest =
       repoId,
       pullRequestNumber,
       headCommitId,
-      false,
+      {
+        commitReviewError: true,
+        commitId: previousPullRequestReviewObject.headCommitId,
+        clientExplanation: PullRequestReview.COMMIT_REVIEW_ERROR_MESSAGES.internal,
+        failedToSaveCommitReview: false
+      },
       freezeCommitError
     );
   }
