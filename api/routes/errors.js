@@ -68,6 +68,13 @@ const noRemovingRejectionOnUnrejectedTag =
 const commitStillLoading =
   createErrorObject(18, "The analysis for the commit is still being calculated");
 
+const invalidRequestBodyType = (errMssg) => {
+  return createErrorObject(19, errMssg)
+}
+
+const invalidUrlParams = (errMssg) => {
+  return createErrorObject(20, errMssg);
+}
 
 module.exports = {
   notLoggedInError,
@@ -87,5 +94,7 @@ module.exports = {
   noRejectingApprovedTag,
   noRemovingApprovalOnUnapprovedTag,
   noRemovingRejectionOnUnrejectedTag,
-  commitStillLoading
+  commitStillLoading,
+  invalidRequestBodyType,
+  invalidUrlParams
 }

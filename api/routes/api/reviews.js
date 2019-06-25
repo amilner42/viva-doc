@@ -19,7 +19,7 @@ router.get('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId'
   try {
 
     const { pullRequestNumber, commitId } = req.params;
-    const repoId = parseInt(req.params.repoId, 10);
+    const repoId = verify.isInt(req.params.repoId, errors.invalidUrlParams("Repo ID must be a number."));
 
     const user = verify.getLoggedInUser(req);
     await verify.hasAccessToRepo(user, repoId);
@@ -73,8 +73,8 @@ router.post('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/approve
   try {
 
     const { pullRequestNumber, commitId } = req.params;
-    const repoId = parseInt(req.params.repoId, 10);
-    const tagsToApprove = req.body.approveTags;
+    const repoId = verify.isInt(req.params.repoId, errors.invalidUrlParams("Repo ID must be a number."));
+    const tagsToApprove = verify.isArrayOfString(req.body.approveTags, errors.invalidRequestBodyType(`Field 'approveTags' must contain an array of string.`));
 
     const user = verify.getLoggedInUser(req);
     await verify.hasAccessToRepo(user, repoId);
@@ -133,7 +133,7 @@ router.delete('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/appro
 
   try {
     const { pullRequestNumber, commitId, tagId } = req.params;
-    const repoId = parseInt(req.params.repoId, 10);
+    const repoId = verify.isInt(req.params.repoId, errors.invalidUrlParams("Repo ID must be a number."));
 
     const user = verify.getLoggedInUser(req);
     await verify.hasAccessToRepo(user, repoId);
@@ -188,8 +188,8 @@ router.post('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/rejecte
   try {
 
     const { pullRequestNumber, commitId } = req.params;
-    const repoId = parseInt(req.params.repoId, 10);
-    const tagsToReject = req.body.rejectTags; // TODO Validate this?
+    const repoId = verify.isInt(req.params.repoId, errors.invalidUrlParams("Repo ID must be a number."));
+    const tagsToReject = verify.isArrayOfString(req.body.rejectTags, errors.invalidRequestBodyType(`Field 'rejectTags' must contain an array of string.`));
 
     const user = verify.getLoggedInUser(req);
     await verify.hasAccessToRepo(user, repoId);
@@ -249,7 +249,7 @@ router.delete('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/rejec
   try {
 
     const { pullRequestNumber, commitId, tagId } = req.params;
-    const repoId = parseInt(req.params.repoId, 10);
+    const repoId = verify.isInt(req.params.repoId, errors.invalidUrlParams("Repo ID must be a number."));
 
     const user = verify.getLoggedInUser(req);
     await verify.hasAccessToRepo(user, repoId);
@@ -304,7 +304,7 @@ router.post('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/approve
   try {
 
     const { pullRequestNumber, commitId } = req.params;
-    const repoId = parseInt(req.params.repoId, 10);
+    const repoId = verify.isInt(req.params.repoId, errors.invalidUrlParams("Repo ID must be a number."));
 
     const user = verify.getLoggedInUser(req);
     await verify.hasAccessToRepo(user, repoId);

@@ -176,6 +176,29 @@ const updateModifiedOneResult = (updateResult) => {
 }
 
 
+const isArrayOfString = (val, err) => {
+
+  const errWithHttpCode = { httpCode: 400,  ...err };
+
+  if (!Array.isArray(val)) { throw errWithHttpCode; }
+  if (!R.all((elem) => typeof elem === "string", val)) { throw errWithHttpCode; }
+
+  return val;
+}
+
+const isInt = (val, err) => {
+
+  const errWithHttpCode = { httpCode: 400, ...err };
+  const valAsInt = parseInt(val, 10);
+
+  if (isNaN(valAsInt)) {
+    throw errWithHttpCode;
+  }
+
+  return val;
+}
+
+
 // INTERNAL
 
 
@@ -202,5 +225,7 @@ module.exports = {
   userHasNotApprovedDocs,
   updateMatchedOneResult,
   updateMatchedBecauseHeadCommitHasNotChanged,
-  updateModifiedOneResult
+  updateModifiedOneResult,
+  isArrayOfString,
+  isInt
 }
