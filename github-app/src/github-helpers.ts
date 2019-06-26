@@ -49,57 +49,16 @@ export const getOpenPullRequests =
 }
 
 
-// @THROWS only `GithubApp.LoggableError` upon failure to retrieve open PRs for branch.
-export const getOpenPullRequestNumbersForBranch =
-  async ( installationId: number
-        , context: Probot.Context
-        , repoName: string
-        , branchName: string
-        , owner: string
-        ) : Promise<number[]> => {
-
-  try {
-
-    const pullListResponse = await context.github.pulls.list({
-      owner,
-      repo: repoName,
-      state: "open",
-      head: `${owner}:${branchName}`
-    })
-
-    return R.map((datum) => { return datum.number },  pullListResponse.data)
-
-  } catch (err) {
-
-    const getPullRequestsLoggableError: AppError.GithubAppLoggableError = {
-      errorName: "github-retrieve-open-pull-requests-for-branch-failure",
-      githubAppError: true,
-      loggable: true,
-      isSevere: false,
-      installationId,
-      stack: AppError.getStack(),
-      data: {
-        err,
-        repoName,
-        branchName,
-        owner
-      }
-    };
-
-    throw getPullRequestsLoggableError;
-  }
-
-}
-
-
 // @THROWS only `GithubApp.LoggableError` upon failure to retrieve diff.
+// @REFER https://developer.github.com/v3/repos/commits/#compare-two-commits
+//     - Refer to GitHub API to see format of `baseRef` and `headRef`
 export const retrieveDiff = R.curry(
   async ( installationId: number
   , context: Probot.Context
   , owner: string
   , repoName: string
-  , baseBranchNameOrCommitSHA: string
-  , headBranchNameOrCommitSHA: string
+  , baseRef: string
+  , headRef: string
   ) : Promise<string> => {
 
   try {
@@ -114,8 +73,8 @@ export const retrieveDiff = R.curry(
       headers: diffAcceptHeader,
       owner,
       repo: repoName,
-      base: baseBranchNameOrCommitSHA,
-      head: headBranchNameOrCommitSHA
+      base: baseRef,
+      head: headRef
     } as any);
 
     return diffResponse.data;
@@ -133,8 +92,8 @@ export const retrieveDiff = R.curry(
         err,
         owner,
         repoName,
-        baseBranchNameOrCommitSHA,
-        headBranchNameOrCommitSHA
+        baseRef,
+        headRef
       }
     };
 
@@ -145,6 +104,7 @@ export const retrieveDiff = R.curry(
 
 
 // @THROWS only `GithubApp.LoggableError` upon failure to retrieve file.
+// @REFER https://developer.github.com/v3/repos/contents/#get-contents
 export const retrieveFile = R.curry(
   async ( installationId: number
         , context: Probot.Context
@@ -198,7 +158,7 @@ export const setCommitStatus = R.curry(
   , repoName: string
   , commitId: string
   , statusState: "success" | "failure" | "pending"
-  , optional?: { description?: string, target_url?: string }
+  , optional: { description?: string, target_url?: string }
   ): Promise<void> => {
 
   try {
