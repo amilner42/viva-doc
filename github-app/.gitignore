@@ -5,3 +5,4 @@ lib/
 src/languages/**/*.java
 src/languages/**/*.interp
 src/languages/**/*.class
+responses/
