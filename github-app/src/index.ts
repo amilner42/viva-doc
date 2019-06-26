@@ -167,35 +167,26 @@ export = (app: Probot.Application) => {
   });
 
 
-  app.on("push", async (context) => {
-    AppError.webhookErrorWrapper("push", async () => {
+  app.on("pull_request.synchronize", async (context) => {
+    AppError.webhookErrorWrapper("pull_request.synchronize", async () => {
 
-      const pushPayload = context.payload
-
-      // The push was for a tag or a new branch (set upstream...), couldn't be for an open PR, no need for analysis.
-      if (pushPayload.before === "0000000000000000000000000000000000000000") {
-        return;
-      }
-
-      const repoId: number = (pushPayload.repository as any).id
-      const installationId = (pushPayload.installation as any).id;
-      const repoName: string = (pushPayload.repository as any).name
-      const branchName: string = (R.last(pushPayload.ref.split("/")) as any) // TODO errors?
+      const syncPayload = context.payload;
+      const installationId = (syncPayload.installation as any).id
+      const repoId = (syncPayload.repository as any).id
+      const repoName: string = (syncPayload.repository as any).name
       const { owner } = context.repo()
-      const headCommitId: string = pushPayload.after
+      const pullRequestNumber = (syncPayload.pull_request as any).number;
+      const headCommitId = (syncPayload.pull_request as any).head.sha;
 
-      const prNumbers = await GH.getOpenPullRequestNumbersForBranch(installationId, context, repoName, branchName, owner)
-
-      const settledPromises = await PromisesExtra.settleAll<void, any>(
-        prNumbers.map(async (pullRequestNumber) => {
-          return analyzeOldPullRequest(
-            installationId, context, repoId, owner, repoName, pullRequestNumber, headCommitId
-          );
-        })
+      await analyzeOldPullRequest(
+        installationId,
+        context,
+        repoId,
+        owner,
+        repoName,
+        pullRequestNumber,
+        headCommitId
       );
-
-      const rejectedSettlements = PromisesExtra.getRejectedSettlements(settledPromises);
-      if (rejectedSettlements.length > 0) { throw rejectedSettlements; }
 
     });
   });
