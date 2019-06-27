@@ -28,8 +28,6 @@ export interface PullRequestReview {
 
 // Errors on commit reviews with a possbile `clientExplanation` meant to be rendered to the user.
 //
-// Set the explanation to "null" if there is nothing helpful to tell the user.
-//
 // @VD amilner42 block
 export interface CommitReviewError {
   commitReviewError: true;
