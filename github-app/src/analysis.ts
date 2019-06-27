@@ -25,97 +25,25 @@ export const pipeline = async (
 
   if (pullRequestReview.pendingAnalysisForCommits.length === 0) { return }
 
-  // Handles logging errors, clearing pending commit, optionally set commit status, and continue analysis of other
-  // commits if there are more pendingAnalysisForCommits.
-  //
-  // Note `err` is optional because it may be the case that nothing in the app errored, we simply have just a
-  //       `commitReviewError` because the user mis-used the app.
-  //
-  // @VD amilner42 block
+  // Helper for calling `recoverFromErrorInPipeline` with all params.
   const recoverFromError =
-    async ( err: F.Maybe<any>
-          , setStatusTo: F.Maybe<"failure">
-          , commitReviewError: PullRequestReview.CommitReviewError
-        ): Promise<void> => {
+    async ( maybeErr: F.Maybe<any>
+    , maybeStatus: F.Maybe<"failure">
+    , commitReviewError: PullRequestReview.CommitReviewError
+    ): Promise<void> => {
 
-    const analyzingCommitId = pullRequestReview.pendingAnalysisForCommits[0];
-
-    if (F.isJust(err)) {
-      await AppError.logErrors(err, null);
-    }
-
-    let newPullRequestReview: PullRequestReview.PullRequestReview;
-
-    try {
-
-      newPullRequestReview = await PullRequestReview.clearPendingCommitOnAnalysisFailure(
-        installationId,
-        pullRequestReview.repoId,
-        pullRequestReview.pullRequestNumber,
-        analyzingCommitId,
-        commitReviewError,
-        null
-      );
-
-    } catch (clearPendingCommitError) {
-
-      await AppError.logErrors(clearPendingCommitError, null);
-
-      if (setStatusTo !== null) {
-
-        try {
-
-          const description =
-            "VivaDoc had an internal issue and is in an errored state, it won't work on this PR. Arie has been notified for review.";
-
-          await setCommitStatus(
-            analyzingCommitId,
-            setStatusTo,
-            { description }
-          );
-
-        } catch (setCommitStatusError) {
-
-          await AppError.logErrors(setCommitStatusError, null);
-        }
-      }
-
-      // If we can't clear the pending commit, something is really going wrong and there's no point in continuing
-      // analyzing other commits.
-      return;
-    }
-
-    if (setStatusTo !== null) {
-
-      const description = "VivaDoc failed to process this commit."
-
-      try {
-
-        await setCommitStatus(
-          analyzingCommitId,
-          setStatusTo,
-          { description, target_url: getClientUrlForCommitReview(analyzingCommitId) }
-        );
-
-      } catch (setCommitStatusError) {
-
-        await AppError.logErrors(setCommitStatusError, null);
-
-      }
-    }
-
-    pipeline(
+    recoverFromErrorInPipeline(
+      maybeErr,
+      maybeStatus,
+      commitReviewError,
       installationId,
-      newPullRequestReview,
+      pullRequestReview,
       getClientUrlForCommitReview,
       retrieveDiff,
       retrieveFile,
       setCommitStatus
     );
-
   }
-  // @VD end-block
-
 
   const analyzingCommitId = pullRequestReview.pendingAnalysisForCommits[0]
   const baseCommitId = pullRequestReview.currentAnalysisLastCommitWithSuccessStatus
@@ -689,6 +617,107 @@ export const calculateCarryOversFromLastAnalyzedCommit = async (
   };
 
 }
+
+
+// Handles logging errors, clearing pending commit, optionally set commit status, and continue analysis of other
+// commits if there are more pendingAnalysisForCommits.
+//
+// Note `err` is optional because it may be the case that nothing in the app errored, we simply have just a
+//       `commitReviewError` because the user mis-used the app.
+//
+// @VD amilner42 block
+const recoverFromErrorInPipeline =
+  async ( err: F.Maybe<any>
+        , setStatusTo: F.Maybe<"failure">
+        , commitReviewError: PullRequestReview.CommitReviewError
+        , installationId: number
+        , pullRequestReview: PullRequestReview.PullRequestReview
+        , getClientUrlForCommitReview: (commitId: string) => string
+        , retrieveDiff: (baseCommitId: string, headCommitId: string) => Promise<string>
+        , retrieveFile: (commitId: string, filePath: string) => Promise<string>
+        , setCommitStatus: ( commitId: string
+                           , statusState: "success" | "failure" | "pending"
+                           , optional?: { description?: string, target_url?: string }
+                           ) => Promise<any>
+        ): Promise<void> => {
+
+  const analyzingCommitId = pullRequestReview.pendingAnalysisForCommits[0];
+
+  if (F.isJust(err)) {
+    await AppError.logErrors(err, null);
+  }
+
+  let newPullRequestReview: PullRequestReview.PullRequestReview;
+
+  try {
+
+    newPullRequestReview = await PullRequestReview.clearPendingCommitOnAnalysisFailure(
+      installationId,
+      pullRequestReview.repoId,
+      pullRequestReview.pullRequestNumber,
+      analyzingCommitId,
+      commitReviewError,
+      null
+    );
+
+  } catch (clearPendingCommitError) {
+
+    await AppError.logErrors(clearPendingCommitError, null);
+
+    if (setStatusTo !== null) {
+
+      try {
+
+        const description =
+          "VivaDoc had an internal issue and is in an errored state, it won't work on this PR. Arie has been notified for review.";
+
+        await setCommitStatus(
+          analyzingCommitId,
+          setStatusTo,
+          { description }
+        );
+
+      } catch (setCommitStatusError) {
+
+        await AppError.logErrors(setCommitStatusError, null);
+      }
+    }
+
+    // If we can't clear the pending commit, something is really going wrong and there's no point in continuing
+    // analyzing other commits.
+    return;
+  }
+
+  if (setStatusTo !== null) {
+
+    const description = "VivaDoc failed to process this commit."
+
+    try {
+
+      await setCommitStatus(
+        analyzingCommitId,
+        setStatusTo,
+        { description, target_url: getClientUrlForCommitReview(analyzingCommitId) }
+      );
+
+    } catch (setCommitStatusError) {
+
+      await AppError.logErrors(setCommitStatusError, null);
+
+    }
+  }
+
+  pipeline(
+    installationId,
+    newPullRequestReview,
+    getClientUrlForCommitReview,
+    retrieveDiff,
+    retrieveFile,
+    setCommitStatus
+  );
+
+}
+// @VD end-block
 
 
 const attachCode = async (
