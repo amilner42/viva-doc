@@ -213,7 +213,7 @@ const analyzeOldPullRequest =
         ) : Promise<void> => {
 
 
-  const previousPullRequestReviewObject = await PullRequestReview.updateOnPullRequestSync(
+  const { previousPullRequestReviewObject, newPullRequestReviewObject } = await PullRequestReview.updateOnPullRequestSync(
     installationId,
     repoId,
     pullRequestNumber,
@@ -264,16 +264,9 @@ const analyzeOldPullRequest =
     );
   }
 
-  const pullRequestReviewObject: PullRequestReview.PullRequestReview =
-    PullRequestReview.newLoadingPullRequestReviewFromPrevious(
-      previousPullRequestReviewObject,
-      headCommitId,
-      [ headCommitId ]
-    );
-
   await Analysis.pipeline(
     installationId,
-    pullRequestReviewObject,
+    newPullRequestReviewObject,
     getClientUrlForCommitReview(repoId, pullRequestNumber),
     () => GH.listPullRequestCommits(installationId, context, owner, repoName, pullRequestNumber),
     GH.retrieveDiff(installationId, context, owner, repoName),

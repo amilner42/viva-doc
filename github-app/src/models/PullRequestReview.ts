@@ -170,7 +170,7 @@ export const deletePullRequestReviewsForRepos =
 
 // Handles updating the PullRequestReview for a call from the PR sync webhook.
 //
-// @RETURNS The previous pull request object (prior to update).
+// @RETURNS The previous (prior to update) and new pull request object.
 // @THROWS only `GithubAppLoggableError` upon failure.
 export const updateOnPullRequestSync =
   async ( installationId: number
@@ -179,7 +179,7 @@ export const updateOnPullRequestSync =
         , headCommitId: string
         , baseCommitId: string
         , errorName: string
-        ): Promise<PullRequestReview> => {
+      ): Promise<{ previousPullRequestReviewObject: PullRequestReview, newPullRequestReviewObject: PullRequestReview }> => {
 
   try {
 
@@ -206,7 +206,22 @@ export const updateOnPullRequestSync =
       throw errMessage;
     }
 
-    return pullRequestReview.toObject();
+    const previousPullRequestReviewObject: PullRequestReview = pullRequestReview.toObject();
+
+    const newPullRequestReviewObject: PullRequestReview = {
+      ...previousPullRequestReviewObject,
+      ...{
+        headCommitId,
+        baseCommitId,
+        pendingAnalysisForCommits: previousPullRequestReviewObject.pendingAnalysisForCommits.concat(headCommitId),
+        headCommitApprovedTags: null,
+        headCommitRejectedTags: null,
+        headCommitRemainingOwnersToApproveDocs: null,
+        headCommitTagsAndOwners: null,
+      }
+    }
+
+    return { previousPullRequestReviewObject, newPullRequestReviewObject };
 
   } catch (err) {
 
@@ -472,27 +487,6 @@ export const clearPendingCommitOnAnalysisSkip =
 
 export const isAnalyzingCommits = (pullRequestReview: PullRequestReview): boolean => {
   return pullRequestReview.pendingAnalysisForCommits.length !== 0;
-}
-
-
-export const newLoadingPullRequestReviewFromPrevious =
-  ( previousPullRequestReviewObject: PullRequestReview
-  , headCommitId: string
-  , pendingAnalysisForCommits: string[]
-  ): PullRequestReview => {
-
-  return {
-    ...previousPullRequestReviewObject,
-    ...{
-      headCommitId,
-      pendingAnalysisForCommits,
-      headCommitApprovedTags: null,
-      headCommitRejectedTags: null,
-      headCommitRemainingOwnersToApproveDocs: null,
-      headCommitTagsAndOwners: null,
-    }
-  }
-
 }
 
 
