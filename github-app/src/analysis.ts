@@ -27,6 +27,8 @@ export const pipeline = async (
   setCommitStatus: (commitId: string, statusState: "success" | "failure" | "pending", optional?: { description?: string, target_url?: string }) => Promise<any>
 ) => {
 
+  // [PIPELINE] Set `analyzingCommitId` or return if no commits need analysis.
+
   if (pullRequestReview.pendingAnalysisForCommits.length === 0) { return }
   const analyzingCommitId = pullRequestReview.pendingAnalysisForCommits[0];
 
@@ -78,10 +80,10 @@ export const pipeline = async (
   }
 
 
-  // [PIPELINE] Check if this commit has already been analyzed
+  // [PIPELINE] Check if this commit has already been analyzed or produced an error in the past.
   //     - Can occur if you drop commits and go back to a previous commit on a force push.
-
-  if (R.contains(analyzingCommitId, pullRequestReview.analyzedCommits)) {
+  if ( R.contains(analyzingCommitId, pullRequestReview.analyzedCommits)
+        || PullRequestReview.hasErrorForCommitReview(pullRequestReview, analyzingCommitId) ) {
     skipToNextCommitToAnalyze();
     return;
   }
