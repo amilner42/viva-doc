@@ -11,6 +11,9 @@ import * as F from "./functional"
 import * as PullRequestReview from "./models/PullRequestReview"
 import * as CommitReview from "./models/CommitReview"
 
+// Don't use this for anything but types, I've been passing functions into the pipeline for DI purposes.
+import * as GH from "./github-helpers";
+
 
 // TODO DOC
 // @THROWS never. Will handle all errors internally (including logging).
@@ -18,14 +21,17 @@ export const pipeline = async (
   installationId: number,
   pullRequestReview: PullRequestReview.PullRequestReview,
   getClientUrlForCommitReview: (commitId: string) => string,
+  retrievePullRequestCommits: () => ReturnType<typeof GH.listPullRequestCommits>,
   retrieveDiff: (baseCommitId: string, headCommitId: string) => Promise<string>,
   retrieveFile: (commitId: string, filePath: string) => Promise<string>,
   setCommitStatus: (commitId: string, statusState: "success" | "failure" | "pending", optional?: { description?: string, target_url?: string }) => Promise<any>
 ) => {
 
   if (pullRequestReview.pendingAnalysisForCommits.length === 0) { return }
+  const analyzingCommitId = pullRequestReview.pendingAnalysisForCommits[0];
 
-  // Helper for calling `recoverFromErrorInPipeline` with all params.
+
+  // Helper for recovering from an error while analyzing a commit.
   const recoverFromError =
     async ( maybeErr: F.Maybe<any>
     , maybeStatus: F.Maybe<"failure">
@@ -39,15 +45,85 @@ export const pipeline = async (
       installationId,
       pullRequestReview,
       getClientUrlForCommitReview,
+      retrievePullRequestCommits,
       retrieveDiff,
       retrieveFile,
       setCommitStatus
     );
   }
 
-  const analyzingCommitId = pullRequestReview.pendingAnalysisForCommits[0]
-  const baseCommitId = pullRequestReview.currentAnalysisLastCommitWithSuccessStatus
-  const lastAnalyzedCommitId = pullRequestReview.currentAnalysisLastAnalyzedCommit
+
+  // TODO Wrap in error handler
+  // Helper for skipping the analysis of a commit.
+  const skipToNextCommitToAnalyze = async () => {
+
+    const newPullRequestReview = await PullRequestReview.clearPendingCommitOnAnalysisSkip(
+      installationId,
+      pullRequestReview.repoId,
+      pullRequestReview.pullRequestNumber,
+      analyzingCommitId
+    );
+
+    pipeline(
+      installationId,
+      newPullRequestReview,
+      getClientUrlForCommitReview,
+      retrievePullRequestCommits,
+      retrieveDiff,
+      retrieveFile,
+      setCommitStatus
+    );
+
+    return;
+  }
+
+
+  // [PIPELINE] Check if this commit has already been analyzed
+  //     - Can occur if you drop commits and go back to a previous commit on a force push.
+
+  if (R.contains(analyzingCommitId, pullRequestReview.analyzedCommits)) {
+    skipToNextCommitToAnalyze();
+    return;
+  }
+
+  // [PIPELINE] Get the last analyzed commit and the analysis base commit.
+  let analysisBaseCommitId: string, lastAnalyzedCommitId: string;
+
+  try {
+
+    const maybeBaseAndLastAnalyzedCommit = await getBaseAndLastAnalyzedCommit(
+      retrievePullRequestCommits,
+      pullRequestReview.baseCommitId,
+      pullRequestReview.analyzedCommits,
+      pullRequestReview.analyzedCommitsWithSuccessStatus,
+      analyzingCommitId
+    );
+
+    // Commit rebased, no longer exists in pull request commits.
+    if (maybeBaseAndLastAnalyzedCommit === null) {
+      skipToNextCommitToAnalyze();
+      return
+    }
+
+    ({ analysisBaseCommitId, lastAnalyzedCommitId } = maybeBaseAndLastAnalyzedCommit);
+
+  } catch (getPullRequestCommitsError) {
+
+    await recoverFromError(
+      getPullRequestCommitsError,
+      "failure",
+      {
+        commitReviewError: true,
+        commitId: analyzingCommitId,
+        clientExplanation: PullRequestReview.COMMIT_REVIEW_ERROR_MESSAGES.githubIssue,
+        failedToSaveCommitReview: true
+      }
+    );
+
+    return;
+  }
+
+  // [PIPELINE] Set commit status to pending.
 
   try {
 
@@ -75,15 +151,17 @@ export const pipeline = async (
     return;
   }
 
+  // [PIPELINE] Get file reviews.
+
   let fileReviewsNeedingApproval: Review.FileReviewWithMetadata[];
 
   try {
 
     fileReviewsNeedingApproval = await
       getFileReviewsWithMetadataNeedingApproval(
-        async () => { return retrieveDiff(baseCommitId, analyzingCommitId) },
+        async () => { return retrieveDiff(analysisBaseCommitId, analyzingCommitId) },
         async (previousfilePath: string, currentFilePath: string): Promise<[string, string]> => {
-          const previousFileContent = await retrieveFile(baseCommitId, previousfilePath)
+          const previousFileContent = await retrieveFile(analysisBaseCommitId, previousfilePath)
           const currentFileContent = await retrieveFile(analyzingCommitId, currentFilePath)
 
           return [ previousFileContent, currentFileContent ]
@@ -121,7 +199,7 @@ export const pipeline = async (
     return;
   }
 
-  // 1. Calculate carry overs.
+  // [PIPELINE] Calculate carry overs.
 
   const owners = Review.getAllOwners(fileReviewsNeedingApproval)
   const tagsAndOwners = Review.getListOfTagsAndOwners(fileReviewsNeedingApproval)
@@ -137,7 +215,7 @@ export const pipeline = async (
     const carryOverResult: CarryOverResult = await calculateCarryOversFromLastAnalyzedCommit(
       owners,
       lastAnalyzedCommitId,
-      baseCommitId,
+      analysisBaseCommitId,
       analyzingCommitId,
       retrieveDiff,
       async (commitId) => {
@@ -163,7 +241,7 @@ export const pipeline = async (
     return;
   }
 
-  // 2. Save new CommitReview with frozen set to false.
+  // [PIPELINE] Save new CommitReview with frozen set to false.
 
   try {
 
@@ -197,15 +275,13 @@ export const pipeline = async (
     return;
   }
 
-  // 3. Update PullRequestReview
-
-  // First attempt to atomically update assuming this commit is still the most recent commit in the PR.
+  // [PIPELINE] Attempt to update PullRequestReview assuming this commit is still the most recent commit in the PR.
 
   let atomicUpdateStatus: "success" | "no-longer-head-commit";
 
   try {
 
-    atomicUpdateStatus = await PullRequestReview.updateFieldsForHeadCommit(
+    atomicUpdateStatus = await PullRequestReview.updateOnCompleteAnalysisForHeadCommit(
       installationId,
       pullRequestReview.repoId,
       pullRequestReview.pullRequestNumber,
@@ -213,9 +289,7 @@ export const pipeline = async (
       approvedTags,
       rejectedTags,
       remainingOwnersToApproveDocs,
-      tagsAndOwners,
-      lastCommitWithSuccessStatus,
-      analyzingCommitId
+      tagsAndOwners
     );
 
   } catch (err) {
@@ -277,7 +351,7 @@ export const pipeline = async (
 
   }
 
-  // Otherwise, the atomic update failed because this is no longer the head commit
+  // [PIPELINE] Otherwise, the atomic update failed because this is no longer the head commit.
   // This means we must:
   //   - freeze the relevant CommitReview
   //   - update PR with non headXXX fields
@@ -309,7 +383,7 @@ export const pipeline = async (
 
   try {
 
-    updatedPullRequestReviewObject = await PullRequestReview.updateNonHeadCommitFields(
+    updatedPullRequestReviewObject = await PullRequestReview.updateOnCompleteAnalysisForNonHeadCommit(
       installationId,
       pullRequestReview.repoId,
       pullRequestReview.pullRequestNumber,
@@ -368,14 +442,17 @@ export const pipeline = async (
     );
   }
 
+  // [PIPELINE] Re-trigger pipeline for further analysis.
+
   pipeline(
     installationId,
     updatedPullRequestReviewObject,
     getClientUrlForCommitReview,
+    retrievePullRequestCommits,
     retrieveDiff,
     retrieveFile,
     setCommitStatus
-  )
+  );
 
 }
 
@@ -425,7 +502,7 @@ interface CarryOverResult {
 
 export const calculateCarryOversFromLastAnalyzedCommit = async (
   owners: string[],
-  lastAnaylzedCommitId: string | null,
+  lastAnaylzedCommitId: string,
   lastCommitWithSuccessStatus: string,
   currentCommitId: string,
   retrieveDiff: (baseId: string, headId: string) => Promise<any>,
@@ -444,7 +521,7 @@ export const calculateCarryOversFromLastAnalyzedCommit = async (
   }
 
   // Last analyzed commit is the last commit with success state, no carry-overs
-  if (lastAnaylzedCommitId === null || lastAnaylzedCommitId === lastCommitWithSuccessStatus) {
+  if (lastAnaylzedCommitId === lastCommitWithSuccessStatus) {
     return {
       approvedTags: [],
       rejectedTags: [],
@@ -619,6 +696,64 @@ export const calculateCarryOversFromLastAnalyzedCommit = async (
 }
 
 
+// Returns:
+// If: `analyzingCommitId` is in the pull request commits, then returns an object with:
+//     - the last commit before `analyzingCommitId` with a success status or the base commit that the PR is against if
+//       no intermediate commits with a success status exist.
+//     - the last commit before `analyzingCommitId` that was analyzed or the base commit that the PR is against if
+//       no intermediate commits have been analyzed.
+//
+// Else: `null`. This means the `analyzingCommitId` is no longer in the PR so it must have been rebased before the
+//       analysis got here. This is unlikely but possible.
+//
+// @THROWS only `GithubAppLoggableError` upon failure to get pull request commits.
+const getBaseAndLastAnalyzedCommit =
+  async ( retrievePullRequestCommits: () => ReturnType<typeof GH.listPullRequestCommits>
+        , prBaseCommitId: string
+        , analyzedCommits: string[]
+        , analyzedCommitsWithSuccessStatus: string[]
+        , analyzingCommitId: string
+      ) : Promise<F.Maybe<{ analysisBaseCommitId: string, lastAnalyzedCommitId: string }>> => {
+
+  const pullRequestCommits = await retrievePullRequestCommits();
+
+  let visitedAnalyzingCommitId = false;
+  let analysisBaseCommitId: string | null = null;
+  let lastAnalyzedCommitId: string | null = null;
+
+  // Go through commits from most recent commit to oldest.
+  for (let i = pullRequestCommits.length - 1; i >= 0; i--) {
+
+    const currentCommitId = pullRequestCommits[i].sha;
+
+    if (!visitedAnalyzingCommitId) {
+      visitedAnalyzingCommitId = currentCommitId === analyzingCommitId;
+      continue;
+    }
+
+    if (analysisBaseCommitId === null && R.contains(currentCommitId, analyzedCommitsWithSuccessStatus)) {
+      analysisBaseCommitId = currentCommitId;
+    }
+
+    if (lastAnalyzedCommitId === null && R.contains(currentCommitId, analyzedCommits)) {
+      lastAnalyzedCommitId = currentCommitId;
+    }
+
+    if (analysisBaseCommitId !== null && lastAnalyzedCommitId !== null) { break; }
+  }
+
+  if (!visitedAnalyzingCommitId) {
+    return null;
+  }
+
+  return {
+    analysisBaseCommitId: analysisBaseCommitId === null ? prBaseCommitId : analysisBaseCommitId,
+    lastAnalyzedCommitId: lastAnalyzedCommitId === null ? prBaseCommitId : lastAnalyzedCommitId
+  }
+
+}
+
+
 // Handles logging errors, clearing pending commit, optionally set commit status, and continue analysis of other
 // commits if there are more pendingAnalysisForCommits.
 //
@@ -633,6 +768,7 @@ const recoverFromErrorInPipeline =
         , installationId: number
         , pullRequestReview: PullRequestReview.PullRequestReview
         , getClientUrlForCommitReview: (commitId: string) => string
+        , retrievePullRequestCommits: () => Promise<any>
         , retrieveDiff: (baseCommitId: string, headCommitId: string) => Promise<string>
         , retrieveFile: (commitId: string, filePath: string) => Promise<string>
         , setCommitStatus: ( commitId: string
@@ -711,6 +847,7 @@ const recoverFromErrorInPipeline =
     installationId,
     newPullRequestReview,
     getClientUrlForCommitReview,
+    retrievePullRequestCommits,
     retrieveDiff,
     retrieveFile,
     setCommitStatus

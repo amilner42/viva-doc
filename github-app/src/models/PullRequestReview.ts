@@ -12,6 +12,7 @@ export interface PullRequestReview {
   repoFullName: string,
   branchName: string,
   baseBranchName: string,
+  baseCommitId: string,
   pullRequestId: number,
   pullRequestNumber: number,
   headCommitId: string,
@@ -20,8 +21,8 @@ export interface PullRequestReview {
   headCommitRemainingOwnersToApproveDocs: string[] | null,
   headCommitTagsAndOwners: TagAndOwner[] | null,
   pendingAnalysisForCommits: string[],
-  currentAnalysisLastCommitWithSuccessStatus: string,
-  currentAnalysisLastAnalyzedCommit: string | null,
+  analyzedCommitsWithSuccessStatus: string[],
+  analyzedCommits: string[],
   commitReviewErrors: CommitReviewError[]
 }
 
@@ -44,6 +45,7 @@ const PullRequestReviewSchema = new mongoose.Schema({
   repoFullName: { type: String, required: [true, "can't be blank"] },
   branchName: { type: String, required: [true, "can't be blank"] },
   baseBranchName: { type: String, required: [true, "can't be blank"] },
+  baseCommitId: { type: String, required: [true, "can't be blank"] },
   pullRequestId: { type: Number, required: [true, "can't be blank" ] },
   pullRequestNumber: { type: Number, required: [true, "can't be blank"], index: true },
   headCommitId: { type: String, required: [true, "can't be blank"], index: true },
@@ -52,8 +54,8 @@ const PullRequestReviewSchema = new mongoose.Schema({
   headCommitRemainingOwnersToApproveDocs: { type: [ String ] },
   headCommitTagsAndOwners: { type: [ { owner: String, tagId: String }]},
   pendingAnalysisForCommits: { type: [ String ], required: [ true, "can't be blank"] },
-  currentAnalysisLastCommitWithSuccessStatus: { type: String, required: [ true, "can't be blank" ] },
-  currentAnalysisLastAnalyzedCommit: { type: String },
+  analyzedCommitsWithSuccessStatus: { type: [ String ], required: [ true, "can't be blank" ] },
+  analyzedCommits: { type: [ String ], required: [ true, "can't be blank"] },
   commitReviewErrors: { type:  [ mongoose.Schema.Types.Mixed ], required: [true, "can't be blank"] }
 });
 
@@ -83,6 +85,7 @@ export const newPullRequestReview =
       repoFullName,
       branchName,
       baseBranchName,
+      baseCommitId,
       pullRequestId,
       pullRequestNumber,
       headCommitId,
@@ -91,8 +94,8 @@ export const newPullRequestReview =
       headCommitRemainingOwnersToApproveDocs: null,
       headCommitTagsAndOwners: null,
       pendingAnalysisForCommits: [ headCommitId ],
-      currentAnalysisLastCommitWithSuccessStatus: baseCommitId,
-      currentAnalysisLastAnalyzedCommit: null,
+      analyzedCommitsWithSuccessStatus: [],
+      analyzedCommits: [],
       commitReviewErrors: [],
     };
 
@@ -165,14 +168,16 @@ export const deletePullRequestReviewsForRepos =
 }
 
 
-// Adds a commit ID to the pending analysis, and updates all `headXXX` fields.
+// Handles updating the PullRequestReview for a call from the PR sync webhook.
+//
 // @RETURNS The previous pull request object (prior to update).
 // @THROWS only `GithubAppLoggableError` upon failure.
-export const updateHeadCommit =
+export const updateOnPullRequestSync =
   async ( installationId: number
         , repoId: number
         , pullRequestNumber: number
         , headCommitId: string
+        , baseCommitId: string
         , errorName: string
         ): Promise<PullRequestReview> => {
 
@@ -183,6 +188,7 @@ export const updateHeadCommit =
       {
         $push: { "pendingAnalysisForCommits": headCommitId },
         headCommitId: headCommitId,
+        baseCommitId: baseCommitId,
         headCommitApprovedTags: null,
         headCommitRejectedTags: null,
         headCommitRemainingOwnersToApproveDocs: null,
@@ -220,10 +226,10 @@ export const updateHeadCommit =
 }
 
 
-// Updates the fields that are not for the head commit of the PRReview and returns the new PRReview.
+// Updates the PullRequestReview given that the analysis completed for a commit that is no longer the head commit.
 //
 // @THROWS only `GithubAppLoggableError` upon failure.
-export const updateNonHeadCommitFields =
+export const updateOnCompleteAnalysisForNonHeadCommit =
   async ( installationId: number
         , repoId: number
         , pullRequestNumber: number
@@ -237,8 +243,10 @@ export const updateNonHeadCommitFields =
       { repoId, pullRequestNumber },
       {
         $pull: { pendingAnalysisForCommits: analyzedCommitId },
-        currentAnalysisLastCommitWithSuccessStatus: lastCommitWithSuccessStatus,
-        currentAnalysisLastAnalyzedCommit: analyzedCommitId
+        $push: {
+          "analyzedCommitsWithSuccessStatus": lastCommitWithSuccessStatus,
+          "analyzedCommits": analyzedCommitId,
+        }
       },
       {
         new: true
@@ -274,12 +282,12 @@ export const updateNonHeadCommitFields =
 }
 
 
-// Updates the fields in a PRReview assuming it is still the head commit.
+// Updates the PullRequestReview assuming it is still the head commit.
 //
 // If it worked, returns "success", if it was no longer the head commit, returns "no-longer-head-commit".
 //
 // @THROWS `GithubAppLoggableError` if the mongo query failed to execute properly.
-export const updateFieldsForHeadCommit =
+export const updateOnCompleteAnalysisForHeadCommit =
   async ( installationId: number
         , repoId: number
         , pullRequestNumber: number
@@ -288,11 +296,16 @@ export const updateFieldsForHeadCommit =
         , headCommitRejectedTags: string[]
         , headCommitRemainingOwnersToApproveDocs: string[]
         , headCommitTagsAndOwners: Review.TagAndOwner[]
-        , currentAnalysisLastCommitWithSuccessStatus: string
-        , currentAnalysisLastAnalyzedCommit: string
         ): Promise<"success" | "no-longer-head-commit"> => {
 
   try {
+
+    const currentCommitIsSuccess = headCommitRemainingOwnersToApproveDocs.length === 0;
+
+    const mongoPushObject =
+      currentCommitIsSuccess
+        ? { analyzedCommits: headCommitId, analyzedCommitsWithSuccessStatus: headCommitId }
+        : { analyzedCommits: headCommitId }
 
     const updatePullRequestReviewResult = await PullRequestReviewModel.update(
       {
@@ -305,9 +318,8 @@ export const updateFieldsForHeadCommit =
         headCommitRejectedTags,
         headCommitRemainingOwnersToApproveDocs,
         headCommitTagsAndOwners,
-        $pull: { pendingAnalysisForCommits: currentAnalysisLastAnalyzedCommit },
-        currentAnalysisLastCommitWithSuccessStatus,
-        currentAnalysisLastAnalyzedCommit,
+        $pull: { pendingAnalysisForCommits: headCommitId },
+        $push: mongoPushObject
       }
     ).exec();
 
@@ -375,7 +387,8 @@ export const clearPendingCommitOnAnalysisFailure =
 
     pullRequestReviewDoc = await PullRequestReviewModel.findOneAndUpdate(
       { repoId, pullRequestNumber },
-      updateFields
+      updateFields,
+      { new: true }
     ).exec();
 
     if (pullRequestReviewDoc === null) {
@@ -414,6 +427,49 @@ export const clearPendingCommitOnAnalysisFailure =
 }
 
 
+export const clearPendingCommitOnAnalysisSkip =
+  async (installationId: number
+  , repoId: number
+  , pullRequestNumber: number
+  , commitId: string
+  ): Promise<PullRequestReview>=> {
+
+  try {
+
+    const newPullRequestReviewDoc = await PullRequestReviewModel.findOneAndUpdate(
+      { repoId, pullRequestNumber },
+      { $pull: { pendingAnalysisForCommits: commitId } },
+      { new: true }
+    );
+
+    if (newPullRequestReviewDoc === null) {
+      throw `Unable to find pull request review.`
+    }
+
+    return newPullRequestReviewDoc.toObject();
+
+  } catch (err) {
+
+    const clearPendingCommitOnAnalysisSkipLoggableError: AppError.GithubAppLoggableError = {
+      errorName: "clear-pending-commit-on-analysis-skip-failure",
+      installationId,
+      githubAppError: true,
+      loggable: true,
+      isSevere: true,
+      stack: AppError.getStack(),
+      data: {
+        err,
+        repoId,
+        pullRequestNumber,
+        commitId
+      }
+    };
+
+    throw clearPendingCommitOnAnalysisSkipLoggableError;
+  }
+}
+
+
 export const isAnalyzingCommits = (pullRequestReview: PullRequestReview): boolean => {
   return pullRequestReview.pendingAnalysisForCommits.length !== 0;
 }
@@ -434,15 +490,6 @@ export const newLoadingPullRequestReviewFromPrevious =
       headCommitRejectedTags: null,
       headCommitRemainingOwnersToApproveDocs: null,
       headCommitTagsAndOwners: null,
-    },
-  ...{
-      // An unlikely race condition, but just in case, if the last commit had no remaining owners to approve dos
-      // then it is the last success commit. Because first that is pulled and then only after is success set
-      // there is a chance this runs between the 2 db operations.
-      currentAnalysisLastCommitWithSuccessStatus:
-        (previousPullRequestReviewObject.headCommitRemainingOwnersToApproveDocs === [])
-          ? previousPullRequestReviewObject.headCommitId
-          : previousPullRequestReviewObject.currentAnalysisLastCommitWithSuccessStatus
     }
   }
 

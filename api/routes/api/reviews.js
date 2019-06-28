@@ -359,8 +359,9 @@ router.post('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/approve
     const pullRequestUpdateResult = await PullRequestReviewModel.update(
       { repoId, pullRequestNumber },
       {
-        "currentAnalysisLastCommitWithSuccessStatus": commitId,
-        "currentAnalysisLastAnalyzedCommit": commitId
+        $push: {
+          "analyzedCommitsWithSuccessStatus": commitId
+        }
       }
     ).exec();
 

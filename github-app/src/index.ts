@@ -92,7 +92,7 @@ export = (app: Probot.Application) => {
 
       const repoIdsAndNames: GH.RepoIdAndName[] = R.map((repoAdded) => {
         return { repoName: repoAdded.name, repoId: repoAdded.id };
-      }, payload.repositories_added)
+      }, payload.repositories_added);
 
       const repoIds = R.map(({ repoId }) => repoId, repoIdsAndNames);
 
@@ -177,6 +177,7 @@ export = (app: Probot.Application) => {
       const { owner } = context.repo()
       const pullRequestNumber = (syncPayload.pull_request as any).number;
       const headCommitId = (syncPayload.pull_request as any).head.sha;
+      const baseCommitId = (syncPayload.pull_request as any).base.sha;
 
       await analyzeOldPullRequest(
         installationId,
@@ -185,7 +186,8 @@ export = (app: Probot.Application) => {
         owner,
         repoName,
         pullRequestNumber,
-        headCommitId
+        headCommitId,
+        baseCommitId
       );
 
     });
@@ -207,14 +209,16 @@ const analyzeOldPullRequest =
         , repoName: string
         , pullRequestNumber: number
         , headCommitId: string
+        , baseCommitId: string
         ) : Promise<void> => {
 
 
-  const previousPullRequestReviewObject = await PullRequestReview.updateHeadCommit(
+  const previousPullRequestReviewObject = await PullRequestReview.updateOnPullRequestSync(
     installationId,
     repoId,
     pullRequestNumber,
     headCommitId,
+    baseCommitId,
     "update-pull-request-review-head-commit-failure"
   );
 
@@ -271,6 +275,7 @@ const analyzeOldPullRequest =
     installationId,
     pullRequestReviewObject,
     getClientUrlForCommitReview(repoId, pullRequestNumber),
+    () => GH.listPullRequestCommits(installationId, context, owner, repoName, pullRequestNumber),
     GH.retrieveDiff(installationId, context, owner, repoName),
     GH.retrieveFile(installationId, context, owner, repoName),
     GH.setCommitStatus(installationId, context, owner, repoName)
@@ -312,6 +317,7 @@ const analyzeNewPullRequest =
     installationId,
     pullRequestReviewObject,
     getClientUrlForCommitReview(repoId, pullRequestNumber),
+    () => GH.listPullRequestCommits(installationId, context, owner, repoName, pullRequestNumber),
     GH.retrieveDiff(installationId, context, owner, repoName),
     GH.retrieveFile(installationId, context, owner, repoName),
     GH.setCommitStatus(installationId, context, owner, repoName)
