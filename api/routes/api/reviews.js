@@ -356,6 +356,9 @@ router.post('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/approve
       commitId
     );
 
+    // TODO This should be merged into the previous update so it is all done atomically.
+    //  You can use array size in the mongo find operation and first run it with array size > 1 and if that doesn't find
+    //  it then run it with array size = 1 and also do the $push. Voila, atomic.
     const pullRequestUpdateResult = await PullRequestReviewModel.update(
       { repoId, pullRequestNumber },
       {
