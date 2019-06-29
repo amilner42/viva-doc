@@ -197,9 +197,9 @@ export = (app: Probot.Application) => {
 
 
 // @THROWS either:
-//  - single `GithubAppLoggableError` if unable to freeze commit.
+//  - single `GithubAppLoggableError` if unable to update commit review.
 //  - array of `GithubAppLoggableError` for each of:
-//     1. unable to freeze commit
+//     1. unable to update commit review
 //     2. unable to remove headCommitId from pending commit analysis
 const analyzeOldPullRequest =
   async ( installationId: number
@@ -234,7 +234,7 @@ const analyzeOldPullRequest =
 
     if (headCommitReviewWasPreviouslySuccessfullySaved) {
 
-      await CommitReview.freezeCommitReviewWithFinalData(
+      await CommitReview.updateCommitReview(
         installationId,
         repoId,
         pullRequestNumber,
@@ -242,12 +242,12 @@ const analyzeOldPullRequest =
         previousPullRequestReviewObject.headCommitApprovedTags as string[],
         previousPullRequestReviewObject.headCommitRejectedTags as string[],
         previousPullRequestReviewObject.headCommitRemainingOwnersToApproveDocs as string[],
-        "freeze-commit-review-failure"
+        "update-commit-review-failure"
       );
 
     }
 
-  } catch (freezeCommitError) {
+  } catch (updateCommitReviewError) {
 
     await PullRequestReview.clearPendingCommitOnAnalysisFailure(
       installationId,
@@ -260,7 +260,7 @@ const analyzeOldPullRequest =
         clientExplanation: PullRequestReview.COMMIT_REVIEW_ERROR_MESSAGES.internal,
         failedToSaveCommitReview: false
       },
-      freezeCommitError
+      updateCommitReviewError
     );
   }
 

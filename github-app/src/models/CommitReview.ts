@@ -16,7 +16,6 @@ export interface CommitReview {
   rejectedTags: string[],
   remainingOwnersToApproveDocs: string[],
   tagsAndOwners: TagAndOwner[],
-  frozen: boolean
 }
 
 const CommitReviewSchema = new mongoose.Schema({
@@ -31,7 +30,6 @@ const CommitReviewSchema = new mongoose.Schema({
   rejectedTags: { type: [ String ], required: [true, "can't be blank"] },
   remainingOwnersToApproveDocs: { type: [ String ], required: [true, "can't be blank"] },
   tagsAndOwners: { type: [ { owner: String, tagId: String } ], required: [true, "can't be blank"]},
-  frozen: { type: Boolean, required: [true, "can't be blank"] }
 });
 
 
@@ -127,10 +125,10 @@ export const deleteCommitReviewsForRepos =
 }
 
 
-// Freezes a commit with some final data.
+// Save some data to a commit review.
 //
 // @THROWS only `GithubAppLoggableError` upon failed update.
-export const freezeCommitReviewWithFinalData =
+export const updateCommitReview =
   async ( installationId: number
         , repoId: number
         , pullRequestNumber: number
@@ -149,7 +147,6 @@ export const freezeCommitReviewWithFinalData =
         approvedTags: finalApprovedTags,
         rejectedTags: finalRejectedTags,
         remainingOwnersToApproveDocs: finalRemainingOwnersToApproveDocs,
-        frozen: true
       }
     ).exec();
 
@@ -166,7 +163,7 @@ export const freezeCommitReviewWithFinalData =
 
   } catch (err) {
 
-    const freezeCommitReviewLoggableError: AppError.GithubAppLoggableError = {
+    const updateCommitReviewLoggableError: AppError.GithubAppLoggableError = {
       errorName,
       installationId,
       githubAppError: true,
@@ -181,60 +178,7 @@ export const freezeCommitReviewWithFinalData =
       }
     };
 
-    throw freezeCommitReviewLoggableError;
+    throw updateCommitReviewLoggableError;
   }
 
-}
-
-
-// Freeze a commit without adding any final data.
-//
-// @THROWS only `GithubAppLoggableError` upon failed update.
-export const freezeCommit =
-  async ( installationId: number
-        , repoId: number
-        , pullRequestNumber: number
-        , commitId: string
-        ): Promise<void> => {
-
-  try {
-
-    const commitReviewUpdateResult = await CommitReviewModel.update(
-      { repoId, pullRequestNumber, commitId },
-      { frozen: true }
-    ).exec();
-
-    if ( commitReviewUpdateResult.ok !== 1
-          || commitReviewUpdateResult.n !== 1
-          || commitReviewUpdateResult.nModified !== 1 ) {
-
-      throw { updateQueryFailure: true
-            , ok: commitReviewUpdateResult.ok
-            , n: commitReviewUpdateResult.n
-            , nModified: commitReviewUpdateResult.nModified
-            }
-
-    }
-
-    return;
-
-  } catch (err) {
-
-    const freezeCommitLoggableError: AppError.GithubAppLoggableError = {
-      errorName: "plain-freeze-commit-failed",
-      githubAppError: true,
-      loggable: true,
-      installationId,
-      isSevere: false,
-      stack: AppError.getStack(),
-      data: {
-        err,
-        repoId,
-        pullRequestNumber,
-        commitId
-      }
-    };
-
-    throw freezeCommitLoggableError;
-  }
 }

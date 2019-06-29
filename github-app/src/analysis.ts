@@ -255,7 +255,7 @@ export const pipeline = async (
     return;
   }
 
-  // [PIPELINE] Save new CommitReview with frozen set to false.
+  // [PIPELINE] Save new CommitReview.
 
   try {
 
@@ -271,7 +271,6 @@ export const pipeline = async (
       rejectedTags,
       remainingOwnersToApproveDocs,
       tagsAndOwners,
-      frozen: false
     });
 
   } catch (err) {
@@ -367,31 +366,9 @@ export const pipeline = async (
 
   // [PIPELINE] Otherwise, the atomic update failed because this is no longer the head commit.
   // This means we must:
-  //   - freeze the relevant CommitReview
   //   - update PR with non headXXX fields
   //   - set commit status
   //   - retrigger pipeline
-
-  try {
-    await CommitReview.freezeCommit(
-      installationId,
-      pullRequestReview.repoId,
-      pullRequestReview.pullRequestNumber,
-      analyzingCommitId
-    );
-  } catch (err) {
-    await recoverFromError(
-      err,
-      "failure",
-      {
-        commitReviewError: true,
-        commitId: analyzingCommitId,
-        clientExplanation: PullRequestReview.COMMIT_REVIEW_ERROR_MESSAGES.internal,
-        failedToSaveCommitReview: false
-      }
-    );
-    return;
-  }
 
   let updatedPullRequestReviewObject: PullRequestReview.PullRequestReview;
 
