@@ -84,10 +84,24 @@ export const getExistantCommitReview = async (installationId: number, repoId: nu
 
     return commitReview.toObject();
 
-  } catch (err) {
-    throw ""
-  }
+  } catch (getCommitReviewErr) {
 
+    const getCommitReviewLoggableError: AppError.GithubAppLoggableError = {
+      errorName: "get-existant-commit-review-failure",
+      installationId,
+      githubAppError: true,
+      loggable: true,
+      stack: AppError.getStack(),
+      isSevere: false,
+      data: {
+        getCommitReviewErr,
+        repoId,
+        commitId
+      }
+    };
+
+    throw getCommitReviewLoggableError;
+  }
 }
 
 
