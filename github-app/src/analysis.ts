@@ -221,7 +221,7 @@ export const pipeline = async (
   let approvedTags: string[];
   let rejectedTags: string[];
   let remainingOwnersToApproveDocs: string[];
-  let lastCommitWithSuccessStatus: string;
+  let currentCommitIsSuccess: boolean;
 
   try {
 
@@ -237,7 +237,8 @@ export const pipeline = async (
       fileReviewsNeedingApproval
     );
 
-    ({ approvedTags, rejectedTags, remainingOwnersToApproveDocs, lastCommitWithSuccessStatus } = carryOverResult);
+    ({ approvedTags, rejectedTags, remainingOwnersToApproveDocs } = carryOverResult);
+    currentCommitIsSuccess = remainingOwnersToApproveDocs.length === 0;
 
   } catch (err) {
 
@@ -324,7 +325,7 @@ export const pipeline = async (
 
     try {
 
-      if (lastCommitWithSuccessStatus === analyzingCommitId) {
+      if (currentCommitIsSuccess) {
         await setCommitStatus(
           analyzingCommitId,
           "success",
@@ -338,7 +339,7 @@ export const pipeline = async (
           analyzingCommitId,
           "failure",
           {
-            description: "Tags require approval",
+            description: "Documentation requires approval",
             target_url: getClientUrlForCommitReview(analyzingCommitId)
           }
         )
@@ -401,7 +402,7 @@ export const pipeline = async (
       pullRequestReview.repoId,
       pullRequestReview.pullRequestNumber,
       analyzingCommitId,
-      lastCommitWithSuccessStatus
+      currentCommitIsSuccess
     );
 
   } catch (err) {
@@ -421,7 +422,7 @@ export const pipeline = async (
 
   try {
 
-    if (lastCommitWithSuccessStatus === analyzingCommitId) {
+    if (currentCommitIsSuccess) {
       await setCommitStatus(
         analyzingCommitId,
         "success",
@@ -435,7 +436,7 @@ export const pipeline = async (
         analyzingCommitId,
         "failure",
         {
-          description: "Tags require approval",
+          description: "Documentation requires approval",
           target_url: getClientUrlForCommitReview(analyzingCommitId)
         }
       );
@@ -509,7 +510,6 @@ interface CarryOverResult {
   approvedTags: string[];
   rejectedTags: string[]
   remainingOwnersToApproveDocs: string[];
-  lastCommitWithSuccessStatus: string;
 }
 
 
@@ -529,7 +529,6 @@ export const calculateCarryOversFromLastAnalyzedCommit = async (
       approvedTags: [],
       rejectedTags: [],
       remainingOwnersToApproveDocs: [],
-      lastCommitWithSuccessStatus: currentCommitId
     }
   }
 
@@ -538,8 +537,7 @@ export const calculateCarryOversFromLastAnalyzedCommit = async (
     return {
       approvedTags: [],
       rejectedTags: [],
-      remainingOwnersToApproveDocs: owners,
-      lastCommitWithSuccessStatus
+      remainingOwnersToApproveDocs: owners
     }
   }
 
@@ -695,15 +693,10 @@ export const calculateCarryOversFromLastAnalyzedCommit = async (
     return ownerNeededToApproveDocsPreviously(owner) || !allTagsApproved(newTagsAndOwners, owner, carryOverApprovedTags)
   }, allNewOwners);
 
-  const nextLastCommitWithSuccessStatus =
-    remainingOwnersToApproveDocs.length === 0 ? currentCommitId : lastCommitWithSuccessStatus;
-
-
   return {
     approvedTags: carryOverApprovedTags,
     rejectedTags: carryOverRejectedTags,
     remainingOwnersToApproveDocs,
-    lastCommitWithSuccessStatus: nextLastCommitWithSuccessStatus
   };
 
 }

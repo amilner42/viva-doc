@@ -249,8 +249,13 @@ export const updateOnCompleteAnalysisForNonHeadCommit =
         , repoId: number
         , pullRequestNumber: number
         , analyzedCommitId: string
-        , lastCommitWithSuccessStatus: string
+        , currentCommitIsSuccess: boolean
         ): Promise<PullRequestReview> => {
+
+  const mongoPushObject =
+    currentCommitIsSuccess
+      ? { "analyzedCommits": analyzedCommitId, "analyzedCommitsWithSuccessStatus": analyzedCommitId }
+      : { "analyzedCommits": analyzedCommitId  }
 
   try {
 
@@ -258,10 +263,7 @@ export const updateOnCompleteAnalysisForNonHeadCommit =
       { repoId, pullRequestNumber },
       {
         $pull: { pendingAnalysisForCommits: analyzedCommitId },
-        $push: {
-          "analyzedCommitsWithSuccessStatus": lastCommitWithSuccessStatus,
-          "analyzedCommits": analyzedCommitId,
-        }
+        $push: mongoPushObject
       },
       {
         new: true
