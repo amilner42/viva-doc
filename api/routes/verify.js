@@ -168,6 +168,14 @@ const updateMatchedBecauseHeadCommitHasNotChanged = async (updateResult, repoId,
 }
 
 
+const updateOk = (updateResult) => {
+
+  if (updateResult.ok !== 1) {
+    throw { httpCode: 500, ...errors.internalServerError };
+  }
+}
+
+
 const updateModifiedOneResult = (updateResult) => {
 
   if (updateResult.ok !== 1 || updateResult.nModified !== 1) {
@@ -225,6 +233,7 @@ module.exports = {
   userHasNotApprovedDocs,
   updateMatchedOneResult,
   updateMatchedBecauseHeadCommitHasNotChanged,
+  updateOk,
   updateModifiedOneResult,
   isArrayOfString,
   isInt
