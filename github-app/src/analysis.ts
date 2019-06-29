@@ -55,16 +55,27 @@ export const pipeline = async (
   }
 
 
-  // TODO Wrap in error handler
   // Helper for skipping the analysis of a commit.
   const skipToNextCommitToAnalyze = async () => {
 
-    const newPullRequestReview = await PullRequestReview.clearPendingCommitOnAnalysisSkip(
-      installationId,
-      pullRequestReview.repoId,
-      pullRequestReview.pullRequestNumber,
-      analyzingCommitId
-    );
+    let newPullRequestReview: PullRequestReview.PullRequestReview;
+
+    try {
+
+      newPullRequestReview = await PullRequestReview.clearPendingCommitOnAnalysisSkip(
+        installationId,
+        pullRequestReview.repoId,
+        pullRequestReview.pullRequestNumber,
+        analyzingCommitId
+      );
+
+    } catch (clearPendingCommitOnAnalysisSkipErr) {
+      // If we errored skipping a commit, we'll be unable to proceed because pending commits will have this commit.
+      // This is fine for now, it'll be logged as a severe error and reviewed. In the meantime the PR will not perform
+      // analysis because pending commits will be backed-up.
+      AppError.logErrors(clearPendingCommitOnAnalysisSkipErr, null);
+      return;
+    }
 
     pipeline(
       installationId,
