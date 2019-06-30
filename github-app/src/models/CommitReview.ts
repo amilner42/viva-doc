@@ -164,9 +164,7 @@ export const updateCommitReview =
       }
     ).exec();
 
-    if ( commitReviewUpdateResult.ok !== 1
-          || commitReviewUpdateResult.n !== 1
-          || commitReviewUpdateResult.nModified !== 1 ) {
+    if ( commitReviewUpdateResult.ok !== 1 || commitReviewUpdateResult.n !== 1 ) {
 
       throw { updateQueryFailure: true
             , ok: commitReviewUpdateResult.ok
