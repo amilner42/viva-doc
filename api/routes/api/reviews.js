@@ -26,12 +26,14 @@ router.get('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId'
 
     const pullRequestReviewObject = await verify.getPullRequestReviewObject(repoId, pullRequestNumber);
 
-    if (R.contains(commitId, pullRequestReviewObject.pendingAnalysisForCommits)) {
+    const pendingHeadCommitIds = R.map(R.prop("head"), pullRequestReviewObject.pendingAnalysisForCommits);
+
+    if (R.contains(commitId, pendingHeadCommitIds)) {
       return res.json(
         {
           responseTag: "pending",
           headCommitId: pullRequestReviewObject.headCommitId,
-          forCommits: pullRequestReviewObject.pendingAnalysisForCommits
+          forCommits: pendingHeadCommitIds
         }
       );
     }

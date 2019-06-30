@@ -14,7 +14,7 @@ const PullRequestReviewSchema = new mongoose.Schema({
   headCommitRejectedTags: { type: [String ] },
   headCommitRemainingOwnersToApproveDocs: { type: [ String ] },
   headCommitTagsAndOwners: { type: [ { owner: String, tagId: String }]},
-  pendingAnalysisForCommits: { type: [ String ], required: [ true, "can't be blank"] },
+  pendingAnalysisForCommits: { type: [ { head: String, base: String } ], required: [ true, "can't be blank"] },
   analyzedCommitsWithSuccessStatus: { type: [ String ], required: [ true, "can't be blank" ] },
   analyzedCommits: { type: [ String ], required: [ true, "can't be blank"] },
 })

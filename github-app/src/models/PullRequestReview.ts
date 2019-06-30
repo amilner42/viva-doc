@@ -20,7 +20,7 @@ export interface PullRequestReview {
   headCommitRejectedTags: string[] | null,
   headCommitRemainingOwnersToApproveDocs: string[] | null,
   headCommitTagsAndOwners: TagAndOwner[] | null,
-  pendingAnalysisForCommits: string[],
+  pendingAnalysisForCommits: { head: string, base: string }[],
   analyzedCommitsWithSuccessStatus: string[],
   analyzedCommits: string[],
   commitReviewErrors: CommitReviewError[]
@@ -53,7 +53,7 @@ const PullRequestReviewSchema = new mongoose.Schema({
   headCommitRejectedTags: { type: [String ] },
   headCommitRemainingOwnersToApproveDocs: { type: [ String ] },
   headCommitTagsAndOwners: { type: [ { owner: String, tagId: String }]},
-  pendingAnalysisForCommits: { type: [ String ], required: [ true, "can't be blank"] },
+  pendingAnalysisForCommits: { type: [ { head: String, base: String } ], required: [ true, "can't be blank"] },
   analyzedCommitsWithSuccessStatus: { type: [ String ], required: [ true, "can't be blank" ] },
   analyzedCommits: { type: [ String ], required: [ true, "can't be blank"] },
   commitReviewErrors: { type:  [ mongoose.Schema.Types.Mixed ], required: [true, "can't be blank"] }
@@ -93,7 +93,7 @@ export const newPullRequestReview =
       headCommitRejectedTags: null,
       headCommitRemainingOwnersToApproveDocs: null,
       headCommitTagsAndOwners: null,
-      pendingAnalysisForCommits: [ headCommitId ],
+      pendingAnalysisForCommits: [ { head: headCommitId, base: baseCommitId } ],
       analyzedCommitsWithSuccessStatus: [],
       analyzedCommits: [],
       commitReviewErrors: [],
@@ -186,7 +186,7 @@ export const updateOnPullRequestSync =
     const pullRequestReview = await PullRequestReviewModel.findOneAndUpdate(
       { repoId, pullRequestNumber },
       {
-        $push: { "pendingAnalysisForCommits": headCommitId },
+        $push: { "pendingAnalysisForCommits": { head: headCommitId, base: baseCommitId } },
         headCommitId: headCommitId,
         baseCommitId: baseCommitId,
         headCommitApprovedTags: null,
@@ -213,7 +213,9 @@ export const updateOnPullRequestSync =
       ...{
         headCommitId,
         baseCommitId,
-        pendingAnalysisForCommits: previousPullRequestReviewObject.pendingAnalysisForCommits.concat(headCommitId),
+        pendingAnalysisForCommits: previousPullRequestReviewObject.pendingAnalysisForCommits.concat(
+          { head: headCommitId, base: baseCommitId }
+        ),
         headCommitApprovedTags: null,
         headCommitRejectedTags: null,
         headCommitRemainingOwnersToApproveDocs: null,
@@ -262,7 +264,7 @@ export const updateOnCompleteAnalysisForNonHeadCommit =
     const updatedPullRequestReview = await PullRequestReviewModel.findOneAndUpdate(
       { repoId, pullRequestNumber },
       {
-        $pull: { pendingAnalysisForCommits: analyzedCommitId },
+        $pull: { pendingAnalysisForCommits: { head: analyzedCommitId } },
         $push: mongoPushObject
       },
       {
@@ -335,7 +337,7 @@ export const updateOnCompleteAnalysisForHeadCommit =
         headCommitRejectedTags,
         headCommitRemainingOwnersToApproveDocs,
         headCommitTagsAndOwners,
-        $pull: { pendingAnalysisForCommits: headCommitId },
+        $pull: { pendingAnalysisForCommits: { head: headCommitId } },
         $push: mongoPushObject
       }
     ).exec();
@@ -395,11 +397,11 @@ export const clearPendingCommitOnAnalysisFailure =
     const updateFields =
       commitReviewError !== null
         ? {
-            $pull: { pendingAnalysisForCommits: commitId },
+            $pull: { pendingAnalysisForCommits: { head: commitId } },
             $addToSet: { "commitReviewErrors": commitReviewError }
           }
         : {
-            $pull: { pendingAnalysisForCommits: commitId }
+            $pull: { pendingAnalysisForCommits: { head: commitId } }
           }
 
     pullRequestReviewDoc = await PullRequestReviewModel.findOneAndUpdate(
@@ -455,7 +457,7 @@ export const clearPendingCommitOnAnalysisSkip =
 
     const newPullRequestReviewDoc = await PullRequestReviewModel.findOneAndUpdate(
       { repoId, pullRequestNumber },
-      { $pull: { pendingAnalysisForCommits: commitId } },
+      { $pull: { pendingAnalysisForCommits: { head: commitId } } },
       { new: true }
     );
 

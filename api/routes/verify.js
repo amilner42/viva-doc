@@ -83,7 +83,8 @@ const isLoadedHeadCommit = (pullRequestReviewObject, commitId) => {
     throw { httpCode: 423, ...errors.noUpdatingNonHeadCommit(pullRequestReviewObject.headCommitId) };
   }
 
-  if (pullRequestReviewObject.pendingAnalysisForCommits[0] === commitId) {
+  if ( pullRequestReviewObject.pendingAnalysisForCommits[0] &&
+       pullRequestReviewObject.pendingAnalysisForCommits[0].head === commitId ) {
     throw { httpCode: 423, ...errors.commitStillLoading }
   }
 }

@@ -30,8 +30,8 @@ export const pipeline = async (
   // [PIPELINE] Set `analyzingCommitId` or return if no commits need analysis.
 
   if (pullRequestReview.pendingAnalysisForCommits.length === 0) { return }
-  const analyzingCommitId = pullRequestReview.pendingAnalysisForCommits[0];
-
+  const analyzingCommitId = pullRequestReview.pendingAnalysisForCommits[0].head;
+  const prBaseCommitIdForAnalyzingCommit = pullRequestReview.pendingAnalysisForCommits[0].base;
 
   // Helper for recovering from an error while analyzing a commit.
   const recoverFromError =
@@ -106,7 +106,7 @@ export const pipeline = async (
 
     const maybeBaseAndLastAnalyzedCommit = await getBaseAndLastAnalyzedCommit(
       retrievePullRequestCommits,
-      pullRequestReview.baseCommitId,
+      prBaseCommitIdForAnalyzingCommit,
       pullRequestReview.analyzedCommits,
       pullRequestReview.analyzedCommitsWithSuccessStatus,
       analyzingCommitId
@@ -760,7 +760,7 @@ const recoverFromErrorInPipeline =
                            ) => Promise<any>
         ): Promise<void> => {
 
-  const analyzingCommitId = pullRequestReview.pendingAnalysisForCommits[0];
+  const analyzingCommitId = pullRequestReview.pendingAnalysisForCommits[0].head;
 
   if (F.isJust(err)) {
     await AppError.logErrors(err, null);
