@@ -1185,6 +1185,7 @@ update msg model =
                             model.commitReview
                                 |> RemoteData.map
                                     (\x -> { x | headCommitId = newHeadCommitId })
+                        , approveDocsState = NotRequesting
                       }
                     , Cmd.none
                     )
