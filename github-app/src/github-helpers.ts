@@ -199,6 +199,69 @@ export const setCommitStatus = R.curry(
 });
 
 
+// TODO Check if pagination works when >250 commits, DOCS OUT OF DATE.
+// @REFER https://developer.github.com/v3/pulls/#list-commits-on-a-pull-request
+// @THROWS only `GithubAppLoggableError` upon failure to get pull request commits.
+export const listPullRequestCommits =
+  async ( installationId: number
+  , context: Probot.Context
+  , owner: string
+  , repoName: string
+  , pullRequestNumber: number
+  ) => {
+
+  try {
+
+    const allCommits = [];
+    const per_page = 100; // max allowed
+    let page = 1;
+
+    // Get all commits one page at a time.
+    while (true) {
+
+      const pullRequestCommitsResponse = await context.github.pulls.listCommits({
+        owner,
+        repo: repoName,
+        number: pullRequestNumber,
+        per_page,
+        page
+      });
+
+      const commits = pullRequestCommitsResponse.data;
+      allCommits.push(...commits);
+
+      // Could be more results on future pages.
+      if (commits.length === 100) {
+        page++;
+      } else {
+        break;
+      }
+    }
+
+    return allCommits;
+
+  } catch (err) {
+
+    const getPullRequestCommitsLoggableError: AppError.GithubAppLoggableError = {
+      errorName: "github-get-pull-request-commits-failure",
+      githubAppError: true,
+      loggable: true,
+      installationId,
+      isSevere: false,
+      stack: AppError.getStack(),
+      data: {
+        err,
+        owner,
+        repoName,
+        pullRequestNumber
+      }
+    };
+
+    throw getPullRequestCommitsLoggableError;
+  }
+}
+
+
 export interface RepoIdAndName {
   repoId: number;
   repoName: string;

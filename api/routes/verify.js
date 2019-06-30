@@ -83,7 +83,8 @@ const isLoadedHeadCommit = (pullRequestReviewObject, commitId) => {
     throw { httpCode: 423, ...errors.noUpdatingNonHeadCommit(pullRequestReviewObject.headCommitId) };
   }
 
-  if (pullRequestReviewObject.pendingAnalysisForCommits[0] === commitId) {
+  if ( pullRequestReviewObject.pendingAnalysisForCommits[0] &&
+       pullRequestReviewObject.pendingAnalysisForCommits[0].head === commitId ) {
     throw { httpCode: 423, ...errors.commitStillLoading }
   }
 }
@@ -168,6 +169,14 @@ const updateMatchedBecauseHeadCommitHasNotChanged = async (updateResult, repoId,
 }
 
 
+const updateOk = (updateResult) => {
+
+  if (updateResult.ok !== 1) {
+    throw { httpCode: 500, ...errors.internalServerError };
+  }
+}
+
+
 const updateModifiedOneResult = (updateResult) => {
 
   if (updateResult.ok !== 1 || updateResult.nModified !== 1) {
@@ -225,6 +234,7 @@ module.exports = {
   userHasNotApprovedDocs,
   updateMatchedOneResult,
   updateMatchedBecauseHeadCommitHasNotChanged,
+  updateOk,
   updateModifiedOneResult,
   isArrayOfString,
   isInt

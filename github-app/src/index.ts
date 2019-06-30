@@ -92,7 +92,7 @@ export = (app: Probot.Application) => {
 
       const repoIdsAndNames: GH.RepoIdAndName[] = R.map((repoAdded) => {
         return { repoName: repoAdded.name, repoId: repoAdded.id };
-      }, payload.repositories_added)
+      }, payload.repositories_added);
 
       const repoIds = R.map(({ repoId }) => repoId, repoIdsAndNames);
 
@@ -177,6 +177,7 @@ export = (app: Probot.Application) => {
       const { owner } = context.repo()
       const pullRequestNumber = (syncPayload.pull_request as any).number;
       const headCommitId = (syncPayload.pull_request as any).head.sha;
+      const baseCommitId = (syncPayload.pull_request as any).base.sha;
 
       await analyzeOldPullRequest(
         installationId,
@@ -185,7 +186,8 @@ export = (app: Probot.Application) => {
         owner,
         repoName,
         pullRequestNumber,
-        headCommitId
+        headCommitId,
+        baseCommitId
       );
 
     });
@@ -195,9 +197,9 @@ export = (app: Probot.Application) => {
 
 
 // @THROWS either:
-//  - single `GithubAppLoggableError` if unable to freeze commit.
+//  - single `GithubAppLoggableError` if unable to update commit review.
 //  - array of `GithubAppLoggableError` for each of:
-//     1. unable to freeze commit
+//     1. unable to update commit review
 //     2. unable to remove headCommitId from pending commit analysis
 const analyzeOldPullRequest =
   async ( installationId: number
@@ -207,14 +209,16 @@ const analyzeOldPullRequest =
         , repoName: string
         , pullRequestNumber: number
         , headCommitId: string
+        , baseCommitId: string
         ) : Promise<void> => {
 
 
-  const previousPullRequestReviewObject = await PullRequestReview.updateHeadCommit(
+  const { previousPullRequestReviewObject, newPullRequestReviewObject } = await PullRequestReview.updateOnPullRequestSync(
     installationId,
     repoId,
     pullRequestNumber,
     headCommitId,
+    baseCommitId,
     "update-pull-request-review-head-commit-failure"
   );
 
@@ -230,7 +234,7 @@ const analyzeOldPullRequest =
 
     if (headCommitReviewWasPreviouslySuccessfullySaved) {
 
-      await CommitReview.freezeCommitReviewWithFinalData(
+      await CommitReview.updateCommitReview(
         installationId,
         repoId,
         pullRequestNumber,
@@ -238,12 +242,12 @@ const analyzeOldPullRequest =
         previousPullRequestReviewObject.headCommitApprovedTags as string[],
         previousPullRequestReviewObject.headCommitRejectedTags as string[],
         previousPullRequestReviewObject.headCommitRemainingOwnersToApproveDocs as string[],
-        "freeze-commit-review-failure"
+        "update-commit-review-failure"
       );
 
     }
 
-  } catch (freezeCommitError) {
+  } catch (updateCommitReviewError) {
 
     await PullRequestReview.clearPendingCommitOnAnalysisFailure(
       installationId,
@@ -256,21 +260,15 @@ const analyzeOldPullRequest =
         clientExplanation: PullRequestReview.COMMIT_REVIEW_ERROR_MESSAGES.internal,
         failedToSaveCommitReview: false
       },
-      freezeCommitError
+      updateCommitReviewError
     );
   }
 
-  const pullRequestReviewObject: PullRequestReview.PullRequestReview =
-    PullRequestReview.newLoadingPullRequestReviewFromPrevious(
-      previousPullRequestReviewObject,
-      headCommitId,
-      [ headCommitId ]
-    );
-
   await Analysis.pipeline(
     installationId,
-    pullRequestReviewObject,
+    newPullRequestReviewObject,
     getClientUrlForCommitReview(repoId, pullRequestNumber),
+    () => GH.listPullRequestCommits(installationId, context, owner, repoName, pullRequestNumber),
     GH.retrieveDiff(installationId, context, owner, repoName),
     GH.retrieveFile(installationId, context, owner, repoName),
     GH.setCommitStatus(installationId, context, owner, repoName)
@@ -312,6 +310,7 @@ const analyzeNewPullRequest =
     installationId,
     pullRequestReviewObject,
     getClientUrlForCommitReview(repoId, pullRequestNumber),
+    () => GH.listPullRequestCommits(installationId, context, owner, repoName, pullRequestNumber),
     GH.retrieveDiff(installationId, context, owner, repoName),
     GH.retrieveFile(installationId, context, owner, repoName),
     GH.setCommitStatus(installationId, context, owner, repoName)

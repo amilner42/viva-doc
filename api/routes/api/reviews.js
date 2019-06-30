@@ -26,12 +26,14 @@ router.get('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId'
 
     const pullRequestReviewObject = await verify.getPullRequestReviewObject(repoId, pullRequestNumber);
 
-    if (R.contains(commitId, pullRequestReviewObject.pendingAnalysisForCommits)) {
+    const pendingHeadCommitIds = R.map(R.prop("head"), pullRequestReviewObject.pendingAnalysisForCommits);
+
+    if (R.contains(commitId, pendingHeadCommitIds)) {
       return res.json(
         {
           responseTag: "pending",
           headCommitId: pullRequestReviewObject.headCommitId,
-          forCommits: pullRequestReviewObject.pendingAnalysisForCommits
+          forCommits: pendingHeadCommitIds
         }
       );
     }
@@ -323,51 +325,63 @@ router.post('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/approve
       errors.noApprovingDocsIfNotOnRemainingDocApprovalList
     );
 
-    const updatedPullRequestReview = await PullRequestReviewModel.findOneAndUpdate(
-      { repoId, pullRequestNumber, headCommitId: commitId },
-      { $pull: { "headCommitRemainingOwnersToApproveDocs": username } },
-      { new: true }
+    // First do an atomic update assuming this is NOT the last user to approve the docs.
+
+    const notLastOwnerUpdateResult = await PullRequestReviewModel.update(
+      {
+        repoId,
+        pullRequestNumber,
+        headCommitId: commitId,
+        headCommitRemainingOwnersToApproveDocs: { $not: { $size: 1 } }
+      },
+      { $pull: { "headCommitRemainingOwnersToApproveDocs": username } }
     ).exec();
 
-    if (updatedPullRequestReview === null) {
-      const pullRequestReviewObject = await verify.getPullRequestReviewObject(repoId, pullRequestNumber);
+    verify.updateOk(notLastOwnerUpdateResult);
 
-      // Either not head commit or some internal error.
-      verify.isHeadCommit(pullRequestReviewObject, commitId);
-      throw { httpCode: 500, ...errors.internalServerError };
-    }
-
-    // No need for any more work, still people that need to approve their docs.
-    if (updatedPullRequestReview.headCommitRemainingOwnersToApproveDocs.length > 0) {
+    if (notLastOwnerUpdateResult.n === 1 && notLastOwnerUpdateResult.nModified === 1) {
       return res.json(SUCCESS_EMPTY);
     }
 
-    // Otherwise everyone has approved the docs, we must set the commit status.
+    // Otherwise try an atomic update assuming it is the last user to approve the docs.
 
-    const repoObject = await verify.getRepoObject(repoId);
-
-    // TODO Should we wrap this in a try catch and handle errors better? Not sure how...
-    await githubApp.putSuccessStatusOnCommit(
-      repoObject.installationId,
-      repoObject.owner,
-      repoName,
-      repoId,
-      pullRequestNumber,
-      commitId
-    );
-
-    const pullRequestUpdateResult = await PullRequestReviewModel.update(
-      { repoId, pullRequestNumber },
+    const lastOwnerUpdateResult = await PullRequestReviewModel.update(
       {
-        "currentAnalysisLastCommitWithSuccessStatus": commitId,
-        "currentAnalysisLastAnalyzedCommit": commitId
+        repoId,
+        pullRequestNumber,
+        headCommitId: commitId,
+        headCommitRemainingOwnersToApproveDocs: { $size: 1 }
+      },
+      {
+        $pull: { "headCommitRemainingOwnersToApproveDocs": username },
+        $push: { "analyzedCommitsWithSuccessStatus": commitId }
       }
     ).exec();
 
-    verify.updateMatchedOneResult(pullRequestUpdateResult, 500, errors.internalServerError);
-    verify.updateModifiedOneResult(pullRequestUpdateResult);
+    verify.updateOk(lastOwnerUpdateResult);
 
-    return res.json(SUCCESS_EMPTY);
+    if (lastOwnerUpdateResult.n === 1 && lastOwnerUpdateResult.nModified === 1) {
+      // Was a success, must set the commit status to success as all users have approved the docs.
+
+      const repoObject = await verify.getRepoObject(repoId);
+
+      // TODO Should we wrap this in a try catch and handle errors better? Not sure how...
+      await githubApp.putSuccessStatusOnCommit(
+        repoObject.installationId,
+        repoObject.owner,
+        repoName,
+        repoId,
+        pullRequestNumber,
+        commitId
+      );
+
+      return res.json(SUCCESS_EMPTY);
+    }
+
+    // If neither atomic update worked, the head commit has likely shifted (or some internal error...).
+    const refetchedPullRequestReviewObject = await verify.getPullRequestReviewObject(repoId, pullRequestNumber);
+    verify.isHeadCommit(refetchedPullRequestReviewObject, commitId);
+    throw { httpCode: 500, ...errors.internalServerError };
 
   } catch (err) {
     next(err);
