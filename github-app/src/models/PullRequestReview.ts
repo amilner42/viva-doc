@@ -6,6 +6,9 @@ import * as AppError from "../error";
 import * as F from "../functional";
 import * as Review from "../review";
 
+import * as CommitReviewModel from "./CommitReview";
+
+
 export interface PullRequestReview {
   repoId: number,
   repoName: string,
@@ -178,10 +181,20 @@ export const updateOnPullRequestSync =
         , pullRequestNumber: number
         , headCommitId: string
         , baseCommitId: string
-        , errorName: string
       ): Promise<{ previousPullRequestReviewObject: PullRequestReview, newPullRequestReviewObject: PullRequestReview }> => {
 
   try {
+
+    // In case of rebase we may need to fetch old commit review fields if theyve already been calculated.
+    const { headCommitApprovedTags
+          , headCommitRejectedTags
+          , headCommitRemainingOwnersToApproveDocs
+          , headCommitTagsAndOwners } =
+      await CommitReviewModel.getPullRequestReviewHeadXXXDataFromPossiblyExistantCommitReview(
+        installationId,
+        repoId,
+        headCommitId
+      );
 
     const pullRequestReview = await PullRequestReviewModel.findOneAndUpdate(
       { repoId, pullRequestNumber },
@@ -189,10 +202,10 @@ export const updateOnPullRequestSync =
         $push: { "pendingAnalysisForCommits": { head: headCommitId, base: baseCommitId } },
         headCommitId: headCommitId,
         baseCommitId: baseCommitId,
-        headCommitApprovedTags: null,
-        headCommitRejectedTags: null,
-        headCommitRemainingOwnersToApproveDocs: null,
-        headCommitTagsAndOwners: null,
+        headCommitApprovedTags,
+        headCommitRejectedTags,
+        headCommitRemainingOwnersToApproveDocs,
+        headCommitTagsAndOwners,
       },
       {
         new: false
@@ -216,10 +229,10 @@ export const updateOnPullRequestSync =
         pendingAnalysisForCommits: previousPullRequestReviewObject.pendingAnalysisForCommits.concat(
           { head: headCommitId, base: baseCommitId }
         ),
-        headCommitApprovedTags: null,
-        headCommitRejectedTags: null,
-        headCommitRemainingOwnersToApproveDocs: null,
-        headCommitTagsAndOwners: null,
+        headCommitApprovedTags,
+        headCommitRejectedTags,
+        headCommitRemainingOwnersToApproveDocs,
+        headCommitTagsAndOwners
       }
     }
 
@@ -228,7 +241,7 @@ export const updateOnPullRequestSync =
   } catch (err) {
 
     const updateHeadCommitOnPullRequestReviewLoggableError: AppError.GithubAppLoggableError = {
-      errorName,
+      errorName: "update-pull-request-review-sync-failure",
       githubAppError: true,
       loggable: true,
       isSevere: false,

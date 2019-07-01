@@ -2,6 +2,7 @@ import mongoose = require("mongoose")
 
 import { FileReviewWithMetadata, TagAndOwner } from "../review";
 import * as AppError from "../error";
+import * as F from "../functional";
 
 
 export interface CommitReview {
@@ -102,6 +103,82 @@ export const getExistantCommitReview = async (installationId: number, repoId: nu
 
     throw getCommitReviewLoggableError;
   }
+}
+
+
+// Returns a commit review if it exists, `null` otherwise.
+// @THROWS `GithubAppLoggableError` upon failure to execute mongo query.
+export const getPossiblyExistantCommitReview =
+  async ( installationId: number
+        , repoId: number
+        , commitId: string
+        ): Promise<F.Maybe<CommitReview>> => {
+
+  try {
+    const commitReview = await CommitReviewModel.findOne({ repoId, commitId }).exec();
+
+    if (commitReview === null) { return null; }
+
+    return commitReview.toObject();
+
+  } catch (err) {
+
+    const getCommitReviewLoggableError: AppError.GithubAppLoggableError = {
+      errorName: "get-possibly-existant-commit-review-failure",
+      installationId,
+      githubAppError: true,
+      loggable: true,
+      isSevere: false,
+      stack: AppError.getStack(),
+      data: {
+        err,
+        repoId,
+        commitId
+      }
+    };
+
+    throw getCommitReviewLoggableError;
+  }
+}
+
+
+// The fields on the `PullRequestReview` that are updated directly and only ported to the `CommitReview` once the head
+// head commit pushes forward.
+interface PullRequestReviewHeadXXXFields {
+  headCommitApprovedTags: string[] | null;
+  headCommitRejectedTags: string[] | null;
+  headCommitRemainingOwnersToApproveDocs: string[] | null;
+  headCommitTagsAndOwners: TagAndOwner[] | null;
+}
+
+
+// Returns all the `PullRequestReviewHeadXXXFields` fields for a possibly existant commit review. If the commit review
+// does not exist they will all be `null`, otherwise they will be the respective values from the commit review.
+//
+// @THROWS `GithubAppLoggableError` upon failure to execute mongo query.
+export const getPullRequestReviewHeadXXXDataFromPossiblyExistantCommitReview =
+  async ( installationId: number
+        , repoId: number
+        , commitId: string
+        ): Promise<PullRequestReviewHeadXXXFields> => {
+
+  const maybeCommitReview = await getPossiblyExistantCommitReview(installationId, repoId, commitId);
+
+  if (maybeCommitReview === null) {
+    return {
+      headCommitApprovedTags: null,
+      headCommitRejectedTags: null,
+      headCommitRemainingOwnersToApproveDocs: null,
+      headCommitTagsAndOwners: null
+    };
+  }
+
+  return {
+    headCommitApprovedTags: maybeCommitReview.approvedTags,
+    headCommitRejectedTags: maybeCommitReview.rejectedTags,
+    headCommitRemainingOwnersToApproveDocs: maybeCommitReview.remainingOwnersToApproveDocs,
+    headCommitTagsAndOwners: maybeCommitReview.tagsAndOwners
+  };
 }
 
 
