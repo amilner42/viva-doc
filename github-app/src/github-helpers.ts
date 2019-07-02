@@ -3,6 +3,7 @@
 import * as R from "ramda";
 
 import * as Probot from 'probot';
+import * as T from "./types";
 import * as AppError from "./error";
 
 
@@ -197,6 +198,9 @@ export const setCommitStatus = R.curry(
   }
 
 });
+
+
+export type PullRequestCommits = T.Unpacked<ReturnType<typeof listPullRequestCommits>>
 
 
 // TODO Check if pagination works when >250 commits, DOCS OUT OF DATE.

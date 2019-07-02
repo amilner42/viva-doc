@@ -21,7 +21,7 @@ export const pipeline = async (
   installationId: number,
   pullRequestReview: PullRequestReview.PullRequestReview,
   getClientUrlForCommitReview: (commitId: string) => string,
-  retrievePullRequestCommits: () => ReturnType<typeof GH.listPullRequestCommits>,
+  retrievePullRequestCommits: () => Promise<GH.PullRequestCommits>,
   retrieveDiff: (baseCommitId: string, headCommitId: string) => Promise<string>,
   retrieveFile: (commitId: string, filePath: string) => Promise<string>,
   setCommitStatus: (commitId: string, statusState: "success" | "failure" | "pending", optional?: { description?: string, target_url?: string }) => Promise<any>
@@ -99,26 +99,11 @@ export const pipeline = async (
     return;
   }
 
-  // [PIPELINE] Get the last analyzed commit and the analysis base commit.
-  let analysisBaseCommitId: string, lastAnalyzedCommitId: string;
+  let pullRequestCommits: GH.PullRequestCommits;
 
   try {
 
-    const maybeBaseAndLastAnalyzedCommit = await getBaseAndLastAnalyzedCommit(
-      retrievePullRequestCommits,
-      prBaseCommitIdForAnalyzingCommit,
-      pullRequestReview.analyzedCommits,
-      pullRequestReview.analyzedCommitsWithSuccessStatus,
-      analyzingCommitId
-    );
-
-    // Commit rebased, no longer exists in pull request commits.
-    if (maybeBaseAndLastAnalyzedCommit === null) {
-      skipToNextCommitToAnalyze();
-      return
-    }
-
-    ({ analysisBaseCommitId, lastAnalyzedCommitId } = maybeBaseAndLastAnalyzedCommit);
+    pullRequestCommits = await retrievePullRequestCommits();
 
   } catch (getPullRequestCommitsError) {
 
@@ -135,6 +120,24 @@ export const pipeline = async (
 
     return;
   }
+
+  // [PIPELINE] Get the last analyzed commit and the analysis base commit.
+
+  const maybeBaseAndLastAnalyzedCommit = getBaseAndLastAnalyzedCommit(
+    pullRequestCommits,
+    prBaseCommitIdForAnalyzingCommit,
+    pullRequestReview.analyzedCommits,
+    pullRequestReview.analyzedCommitsWithSuccessStatus,
+    analyzingCommitId
+  );
+
+  // Commit rebased, no longer exists in pull request commits.
+  if (maybeBaseAndLastAnalyzedCommit === null) {
+    skipToNextCommitToAnalyze();
+    return;
+  }
+
+  const { analysisBaseCommitId, lastAnalyzedCommitId } = maybeBaseAndLastAnalyzedCommit;
 
   // [PIPELINE] Set commit status to pending.
 
@@ -688,17 +691,13 @@ export const calculateCarryOversFromLastAnalyzedCommit = async (
 //
 // Else: `null`. This means the `analyzingCommitId` is no longer in the PR so it must have been rebased before the
 //       analysis got here. This is unlikely but possible.
-//
-// @THROWS only `GithubAppLoggableError` upon failure to get pull request commits.
 const getBaseAndLastAnalyzedCommit =
-  async ( retrievePullRequestCommits: () => ReturnType<typeof GH.listPullRequestCommits>
-        , prBaseCommitId: string
-        , analyzedCommits: string[]
-        , analyzedCommitsWithSuccessStatus: string[]
-        , analyzingCommitId: string
-      ) : Promise<F.Maybe<{ analysisBaseCommitId: string, lastAnalyzedCommitId: string }>> => {
-
-  const pullRequestCommits = await retrievePullRequestCommits();
+  ( pullRequestCommits: GH.PullRequestCommits
+  , prBaseCommitId: string
+  , analyzedCommits: string[]
+  , analyzedCommitsWithSuccessStatus: string[]
+  , analyzingCommitId: string
+  ) : F.Maybe<{ analysisBaseCommitId: string, lastAnalyzedCommitId: string }> => {
 
   let visitedAnalyzingCommitId = false;
   let analysisBaseCommitId: string | null = null;

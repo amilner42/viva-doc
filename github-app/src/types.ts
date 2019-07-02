@@ -44,3 +44,16 @@ export type ReplaceType<T, K extends keyof T, NewType> =
  */
 export type ReplaceTypeIfExsits<T, K extends keyof any, NewType> =
     { [ P1 in keyof T]: P1 extends K ? NewType : T[P1] }
+
+
+/**
+ * For unpacking the generic type.
+ *
+ * @REFER https://stackoverflow.com/questions/56844747/extract-type-t-from-sometypet/56844816#56844816
+ * @REFER https://www.typescriptlang.org/docs/handbook/release-notes/typescript-2-8.html#type-inference-in-conditional-types
+ */
+export type Unpacked<T> =
+    T extends (infer U)[] ? U :
+    T extends (...args: any[]) => infer U ? U :
+    T extends Promise<infer U> ? U :
+    T;
