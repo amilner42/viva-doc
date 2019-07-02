@@ -231,7 +231,6 @@ export const pipeline = async (
     const carryOverResult: CarryOverResult = await calculateCarryOversFromLastAnalyzedCommit(
       owners,
       intermediateAnalyzedCommitId,
-      analysisBaseCommitId,
       analyzingCommitId,
       retrieveDiff,
       async (commitId) => {
@@ -496,7 +495,6 @@ interface CarryOverResult {
 export const calculateCarryOversFromLastAnalyzedCommit = async (
   owners: string[],
   intermediateAnalyzedCommitId: string | null,
-  lastCommitWithSuccessStatus: string,
   currentCommitId: string,
   retrieveDiff: (baseId: string, headId: string) => Promise<any>,
   getCommitReview: (commitId: string) => Promise<CommitReview.CommitReview>,
