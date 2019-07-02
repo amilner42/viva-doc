@@ -137,7 +137,7 @@ export const pipeline = async (
     return;
   }
 
-  const { analysisBaseCommitId, lastAnalyzedCommitId } = maybeBaseAndLastAnalyzedCommit;
+  const { analysisBaseCommitId, intermediateAnalyzedCommitId } = maybeBaseAndLastAnalyzedCommit;
 
   // [PIPELINE] Set commit status to pending.
 
@@ -230,7 +230,7 @@ export const pipeline = async (
 
     const carryOverResult: CarryOverResult = await calculateCarryOversFromLastAnalyzedCommit(
       owners,
-      lastAnalyzedCommitId,
+      intermediateAnalyzedCommitId,
       analysisBaseCommitId,
       analyzingCommitId,
       retrieveDiff,
@@ -495,7 +495,7 @@ interface CarryOverResult {
 
 export const calculateCarryOversFromLastAnalyzedCommit = async (
   owners: string[],
-  lastAnaylzedCommitId: string,
+  intermediateAnalyzedCommitId: string | null,
   lastCommitWithSuccessStatus: string,
   currentCommitId: string,
   retrieveDiff: (baseId: string, headId: string) => Promise<any>,
@@ -513,7 +513,7 @@ export const calculateCarryOversFromLastAnalyzedCommit = async (
   }
 
   // Last analyzed commit is the last commit with success state, no carry-overs
-  if (lastAnaylzedCommitId === lastCommitWithSuccessStatus) {
+  if (intermediateAnalyzedCommitId === null) {
     return {
       approvedTags: [],
       rejectedTags: [],
@@ -523,14 +523,14 @@ export const calculateCarryOversFromLastAnalyzedCommit = async (
 
   // Otherwise we may have actual carry-overs to compute.
 
-  const lastAnalyzedCommitReview: CommitReview.CommitReview = await getCommitReview(lastAnaylzedCommitId);
+  const lastAnalyzedCommitReview: CommitReview.CommitReview = await getCommitReview(intermediateAnalyzedCommitId);
   const lastAnalyzedTagsPerFile = Review.getTagsPerFile(
     lastAnalyzedCommitReview.approvedTags,
     lastAnalyzedCommitReview.rejectedTags,
     lastAnalyzedCommitReview.fileReviews
   );
 
-  const fileDiffs: Diff.FileDiff[] = Diff.parseDiff(await retrieveDiff(lastAnaylzedCommitId, currentCommitId));
+  const fileDiffs: Diff.FileDiff[] = Diff.parseDiff(await retrieveDiff(intermediateAnalyzedCommitId, currentCommitId));
   const fileDiffsToAnalyze: Diff.FileDiffWithLanguage[] = Diff.toFileDiffsWithLanguage(fileDiffs);
 
   const carryOverApprovedTags: string[] = [];
@@ -686,8 +686,8 @@ export const calculateCarryOversFromLastAnalyzedCommit = async (
 // If: `analyzingCommitId` is in the pull request commits, then returns an object with:
 //     - the last commit before `analyzingCommitId` with a success status or the base commit that the PR is against if
 //       no intermediate commits with a success status exist.
-//     - the last commit before `analyzingCommitId` that was analyzed or the base commit that the PR is against if
-//       no intermediate commits have been analyzed.
+//     - an intermediate commit that was analyzed between the returned `analysisBaseCommitId` and the
+//       `analyzingCommitId` if one exists, otherwise `null`.
 //
 // Else: `null`. This means the `analyzingCommitId` is no longer in the PR so it must have been rebased before the
 //       analysis got here. This is unlikely but possible.
@@ -697,11 +697,11 @@ const getBaseAndLastAnalyzedCommit =
   , analyzedCommits: string[]
   , analyzedCommitsWithSuccessStatus: string[]
   , analyzingCommitId: string
-  ) : F.Maybe<{ analysisBaseCommitId: string, lastAnalyzedCommitId: string }> => {
+  ) : F.Maybe<{ analysisBaseCommitId: string, intermediateAnalyzedCommitId: F.Maybe<string> }> => {
 
   let visitedAnalyzingCommitId = false;
   let analysisBaseCommitId: string | null = null;
-  let lastAnalyzedCommitId: string | null = null;
+  let intermediateAnalyzedCommitId: string | null = null;
 
   // Go through commits from most recent commit to oldest.
   for (let i = pullRequestCommits.length - 1; i >= 0; i--) {
@@ -717,11 +717,13 @@ const getBaseAndLastAnalyzedCommit =
       analysisBaseCommitId = currentCommitId;
     }
 
-    if (lastAnalyzedCommitId === null && R.contains(currentCommitId, analyzedCommits)) {
-      lastAnalyzedCommitId = currentCommitId;
+    if (intermediateAnalyzedCommitId === null
+        && analysisBaseCommitId === null
+        && R.contains(currentCommitId, analyzedCommits)) {
+      intermediateAnalyzedCommitId = currentCommitId;
     }
 
-    if (analysisBaseCommitId !== null && lastAnalyzedCommitId !== null) { break; }
+    if (analysisBaseCommitId !== null) { break; }
   }
 
   if (!visitedAnalyzingCommitId) {
@@ -730,7 +732,7 @@ const getBaseAndLastAnalyzedCommit =
 
   return {
     analysisBaseCommitId: analysisBaseCommitId === null ? prBaseCommitId : analysisBaseCommitId,
-    lastAnalyzedCommitId: lastAnalyzedCommitId === null ? prBaseCommitId : lastAnalyzedCommitId
+    intermediateAnalyzedCommitId
   }
 
 }
