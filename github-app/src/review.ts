@@ -443,6 +443,24 @@ export interface CommitReviewTagsPerFile {
 }
 
 
+// Assumes tag is in `CommitReviewTagsPerFile.all`.
+export const getTagApprovalState =
+  ( tagId: string
+  , commitReviewTagsPerFile: CommitReviewTagsPerFile
+  ): "approved" | "rejected" | "unresolved" => {
+
+  if (R.contains(tagId, commitReviewTagsPerFile.approved)) {
+    return "approved";
+  }
+
+  if (R.contains(tagId, commitReviewTagsPerFile.rejected)) {
+    return "rejected";
+  }
+
+  return "unresolved";
+}
+
+
 export const getTagsPerFileHashMap =
   ( approvedTags: string[]
   , rejectedTags: string[]

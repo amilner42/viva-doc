@@ -556,51 +556,46 @@ const getCarryOverTagsFromIntermediateCommitReviewTagsPerFile =
   , diffAgainstIntermediate: Diff.ModifiedFileDiffWithLanguage | Diff.RenamedFileDiffWithLanguage | undefined
   ) : { approvedTagsForFile: string[], rejectedTagsForFile: string[] } => {
 
-  const getTagsWithId = (tagIds: string[], allTags: Review.TagWithMetadata[]): Review.TagWithMetadata[] => {
-    return R.filter((tag) => { return R.contains(tag.tagId.toString(), tagIds); }, allTags);
-  }
-
-  const intermediateApprovedTags = getTagsWithId(
-    intermediateCommitReviewTags.approved,
-    intermediateCommitReviewTags.all
-  );
-
-  const intermediateRejectedTags = getTagsWithId(
-    intermediateCommitReviewTags.rejected,
-    intermediateCommitReviewTags.all
-  );
-
   const alteredLines = diffAgainstIntermediate === undefined ? [] : diffAgainstIntermediate.alteredLines;
 
-  const approvedTagsForFile: string[] = [];
-  const rejectedTagsForFile: string[] = [];
-
-  const approvedTagLinks = Review.getTagLinksBetweenSomeTags(
-    intermediateApprovedTags,
+  const tagLinks = Review.getTagLinksBetweenSomeTags(
+    intermediateCommitReviewTags.all,
     unalteredTagsSinceIntermediateCommit,
     alteredLines
   );
 
-  for (let index = 0; index < approvedTagLinks.length; index++) {
-    const tagLink = approvedTagLinks[index];
-    if (tagLink === null) { continue; }
-    const linkTo = unalteredTagsSinceIntermediateCommit[tagLink];
+  const newTagsToPreviousApprovalStateMap: { [newTagId: string]: "approved" | "rejected" | "unresolved" | undefined } = { };
 
-    approvedTagsForFile.push(linkTo.tagId.toString());
+  for (let index = 0; index < tagLinks.length; index++) {
+    const tagLink = tagLinks[index];
+    if (tagLink === null) { continue; }
+
+    const linkFromTag = intermediateCommitReviewTags.all[index];
+    const linkToTag = unalteredTagsSinceIntermediateCommit[tagLink];
+
+    newTagsToPreviousApprovalStateMap[linkToTag.tagId.toString()] = Review.getTagApprovalState(
+      linkFromTag.tagId.toString(),
+      intermediateCommitReviewTags
+    );
   }
 
-  const rejectedTagLinks = Review.getTagLinksBetweenSomeTags(
-    intermediateRejectedTags,
-    unalteredTagsSinceIntermediateCommit,
-    alteredLines
-  )
+  const approvedTagsForFile = [];
+  const rejectedTagsForFile = [];
 
-  for (let index = 0; index < rejectedTagLinks.length; index++) {
-    const tagLink = rejectedTagLinks[index];
-    if (tagLink === null) { continue; }
-    const linkTo = unalteredTagsSinceIntermediateCommit[tagLink];
+  for (let unalteredTag of unalteredTagsSinceIntermediateCommit) {
 
-    rejectedTagsForFile.push(linkTo.tagId.toString());
+    const tagId = unalteredTag.tagId.toString();
+    const previousApprovalState = newTagsToPreviousApprovalStateMap[tagId];
+
+    if (previousApprovalState === undefined || previousApprovalState === "approved") {
+      approvedTagsForFile.push(tagId);
+      continue;
+    }
+
+    if (previousApprovalState === "rejected") {
+      rejectedTagsForFile.push(tagId);
+      continue;
+    }
   }
 
   return { approvedTagsForFile, rejectedTagsForFile };
