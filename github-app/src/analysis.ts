@@ -585,7 +585,7 @@ const getCarryOverTagsFromIntermediateCommitReviewTagsPerFile =
   )
 
   for (let index = 0; index < rejectedTagLinks.length; index++) {
-    const tagLink = approvedTagLinks[index];
+    const tagLink = rejectedTagLinks[index];
     if (tagLink === null) { continue; }
     const linkTo = unalteredTagsSinceIntermediateCommit[tagLink];
 
