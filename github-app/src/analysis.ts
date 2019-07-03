@@ -556,8 +556,19 @@ const getCarryOverTagsFromIntermediateCommitReviewTagsPerFile =
   , diffAgainstIntermediate: Diff.ModifiedFileDiffWithLanguage | Diff.RenamedFileDiffWithLanguage | undefined
   ) : { approvedTagsForFile: string[], rejectedTagsForFile: string[] } => {
 
-  const intermediateApprovedTags = intermediateCommitReviewTags.all;
-  const intermediateRejectedTags = intermediateCommitReviewTags.all;
+  const getTagsWithId = (tagIds: string[], allTags: Review.TagWithMetadata[]): Review.TagWithMetadata[] => {
+    return R.filter((tag) => { return R.contains(tag.tagId.toString(), tagIds); }, allTags);
+  }
+
+  const intermediateApprovedTags = getTagsWithId(
+    intermediateCommitReviewTags.approved,
+    intermediateCommitReviewTags.all
+  );
+
+  const intermediateRejectedTags = getTagsWithId(
+    intermediateCommitReviewTags.rejected,
+    intermediateCommitReviewTags.all
+  );
 
   const alteredLines = diffAgainstIntermediate === undefined ? [] : diffAgainstIntermediate.alteredLines;
 
