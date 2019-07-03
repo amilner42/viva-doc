@@ -123,13 +123,34 @@ export const pipeline = async (
 
   // [PIPELINE] Get the last analyzed commit and the analysis base commit.
 
-  const maybeBaseAndLastAnalyzedCommit = getBaseAndLastAnalyzedCommit(
-    pullRequestCommits,
-    prBaseCommitIdForAnalyzingCommit,
-    pullRequestReview.analyzedCommits,
-    pullRequestReview.analyzedCommitsWithSuccessStatus,
-    analyzingCommitId
-  );
+  let maybeBaseAndLastAnalyzedCommit: ReturnType<typeof getBaseAndLastAnalyzedCommit>;
+
+  try {
+
+    maybeBaseAndLastAnalyzedCommit = getBaseAndLastAnalyzedCommit(
+      installationId,
+      pullRequestCommits,
+      prBaseCommitIdForAnalyzingCommit,
+      pullRequestReview.analyzedCommits,
+      pullRequestReview.analyzedCommitsWithSuccessStatus,
+      analyzingCommitId
+    );
+
+  } catch (getBaseAndLastAnalyzedCommitErr) {
+
+    await recoverFromError(
+      getBaseAndLastAnalyzedCommitErr,
+      "failure",
+      {
+        commitReviewError: true,
+        commitId: analyzingCommitId,
+        clientExplanation: PullRequestReview.COMMIT_REVIEW_ERROR_MESSAGES.internal,
+        failedToSaveCommitReview: true
+      }
+    );
+
+    return;
+  }
 
   // Commit rebased, no longer exists in pull request commits.
   if (maybeBaseAndLastAnalyzedCommit === null) {
@@ -986,8 +1007,11 @@ const getShortestPathToCommit =
 //
 // Else: `null`. This means the `analyzingCommitId` is no longer in the PR so it must have been rebased before the
 //       analysis got here. This is unlikely but possible.
+//
+// @THROWS only `GithubAppLoggableError` if it can't find the shortest path from the head commit to the pr BASE commit.
 const getBaseAndLastAnalyzedCommit =
-  ( pullRequestCommits: GH.PullRequestCommits
+  ( installationId: number
+  , pullRequestCommits: GH.PullRequestCommits
   , prBaseCommitId: string
   , analyzedCommits: string[]
   , analyzedCommitsWithSuccessStatus: string[]
@@ -1001,7 +1025,21 @@ const getBaseAndLastAnalyzedCommit =
   const shortestPathToPrBaseCommit = getShortestPathToCommit(commitHashMap, prBaseCommitId, analyzingCommitId);
 
   if (shortestPathToPrBaseCommit === "no-path") {
-    throw "TODO";
+    const calculateShortestPathLoggableError: AppError.GithubAppLoggableError = {
+      errorName: "calculate-shortest-path-failure",
+      githubAppError: true,
+      loggable: true,
+      isSevere: false,
+      installationId,
+      stack: AppError.getStack(),
+      data: {
+        pullRequestCommits,
+        prBaseCommitId,
+        analyzingCommitId
+      }
+    };
+
+    throw calculateShortestPathLoggableError;
   }
 
   console.log(`Shortest path: ${JSON.stringify(shortestPathToPrBaseCommit)}`);
