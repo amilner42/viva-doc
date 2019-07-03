@@ -233,6 +233,7 @@ export const pipeline = async (
       intermediateAnalyzedCommitId,
       analyzingCommitId,
       retrieveDiff,
+      retrieveFile,
       async (commitId) => {
         return CommitReview.getExistantCommitReview(installationId, pullRequestReview.repoId, commitId )
       },
@@ -485,6 +486,95 @@ export const getFileReviewsWithMetadataNeedingApproval = async (
 }
 
 
+const getUnalteredTagsAcrossDiff =
+  async ( tagsAgainstBase: Review.TagWithMetadata[]
+        , diffAgainstIntermediate: Diff.ModifiedFileDiffWithLanguage | Diff.RenamedFileDiffWithLanguage | undefined
+        , retrieveIntermediateFileContent: () => Promise<string>
+        , intermediateFilePath: string
+        ) : Promise<Review.TagWithMetadata[]> => {
+
+  const unalteredTagsAcrossDiff: Review.TagWithMetadata[] = [];
+
+  if (diffAgainstIntermediate === undefined) { return tagsAgainstBase; }
+
+  const intermediateFileContent = await retrieveIntermediateFileContent();
+  const intermediateFileTags = Tag.getFileTags(
+    diffAgainstIntermediate.currentLanguage,
+    intermediateFileContent,
+    intermediateFilePath
+  );
+
+  const tagLinks = Review.getTagLinksBetweenSomeTags(
+    intermediateFileTags,
+    tagsAgainstBase,
+    diffAgainstIntermediate.alteredLines
+  );
+
+  for (let index = 0; index < tagLinks.length; index++) {
+
+    const tagLink = tagLinks[index];
+    if (tagLink === null) { continue; }
+
+    const linkFromTag = intermediateFileTags[index];
+    const linkToTag = tagsAgainstBase[tagLink];
+
+    const tagPair: R.KeyValuePair<Tag.VdTag, Review.TagWithMetadata> = [ linkFromTag, linkToTag ];
+
+    const tagPairUpdated = R.any(Review.alteredLineInTagPairOwnership(tagPair), diffAgainstIntermediate.alteredLines);
+
+    if (!tagPairUpdated) { unalteredTagsAcrossDiff.push(linkToTag); }
+  }
+
+  return unalteredTagsAcrossDiff;
+}
+
+
+const getCarryOverTagsFromIntermediateCommitReviewTagsPerFile =
+  ( intermediateCommitReviewTags: Review.CommitReviewTagsPerFile
+  , unalteredTagsSinceIntermediateCommit: Review.TagWithMetadata[]
+  , diffAgainstIntermediate: Diff.ModifiedFileDiffWithLanguage | Diff.RenamedFileDiffWithLanguage | undefined
+  ) : { approvedTagsForFile: string[], rejectedTagsForFile: string[] } => {
+
+  const intermediateApprovedTags = intermediateCommitReviewTags.all;
+  const intermediateRejectedTags = intermediateCommitReviewTags.all;
+
+  const alteredLines = diffAgainstIntermediate === undefined ? [] : diffAgainstIntermediate.alteredLines;
+
+  const approvedTagsForFile: string[] = [];
+  const rejectedTagsForFile: string[] = [];
+
+  const approvedTagLinks = Review.getTagLinksBetweenSomeTags(
+    intermediateApprovedTags,
+    unalteredTagsSinceIntermediateCommit,
+    alteredLines
+  );
+
+  for (let index = 0; index < approvedTagLinks.length; index++) {
+    const tagLink = approvedTagLinks[index];
+    if (tagLink === null) { continue; }
+    const linkTo = unalteredTagsSinceIntermediateCommit[tagLink];
+
+    approvedTagsForFile.push(linkTo.tagId.toString());
+  }
+
+  const rejectedTagLinks = Review.getTagLinksBetweenSomeTags(
+    intermediateRejectedTags,
+    unalteredTagsSinceIntermediateCommit,
+    alteredLines
+  )
+
+  for (let index = 0; index < rejectedTagLinks.length; index++) {
+    const tagLink = approvedTagLinks[index];
+    if (tagLink === null) { continue; }
+    const linkTo = unalteredTagsSinceIntermediateCommit[tagLink];
+
+    rejectedTagsForFile.push(linkTo.tagId.toString());
+  }
+
+  return { approvedTagsForFile, rejectedTagsForFile };
+}
+
+
 interface CarryOverResult {
   approvedTags: string[];
   rejectedTags: string[]
@@ -492,14 +582,15 @@ interface CarryOverResult {
 }
 
 
-export const calculateCarryOversFromLastAnalyzedCommit = async (
-  owners: string[],
-  intermediateAnalyzedCommitId: string | null,
-  currentCommitId: string,
-  retrieveDiff: (baseId: string, headId: string) => Promise<any>,
-  getCommitReview: (commitId: string) => Promise<CommitReview.CommitReview>,
-  fileReviewsAgainstLastSuccess: Review.FileReviewWithMetadata[]
-  ): Promise<CarryOverResult> => {
+export const calculateCarryOversFromLastAnalyzedCommit =
+  async ( owners: string[]
+        , intermediateAnalyzedCommitId: string | null
+        , currentCommitId: string
+        , retrieveDiff: (baseId: string, headId: string) => Promise<any>
+        , retrieveFile: (commitId: string, filePath: string) => Promise<string>
+        , getCommitReview: (commitId: string) => Promise<CommitReview.CommitReview>
+        , fileReviewsAgainstBase: Review.FileReviewWithMetadata[]
+        ): Promise<CarryOverResult> => {
 
   // No tags, no carry-overs.
   if (owners.length === 0) {
@@ -510,7 +601,6 @@ export const calculateCarryOversFromLastAnalyzedCommit = async (
     }
   }
 
-  // Last analyzed commit is the last commit with success state, no carry-overs
   if (intermediateAnalyzedCommitId === null) {
     return {
       approvedTags: [],
@@ -520,163 +610,370 @@ export const calculateCarryOversFromLastAnalyzedCommit = async (
   }
 
   // Otherwise we may have actual carry-overs to compute.
-
-  const lastAnalyzedCommitReview: CommitReview.CommitReview = await getCommitReview(intermediateAnalyzedCommitId);
-  const lastAnalyzedTagsPerFile = Review.getTagsPerFile(
-    lastAnalyzedCommitReview.approvedTags,
-    lastAnalyzedCommitReview.rejectedTags,
-    lastAnalyzedCommitReview.fileReviews
+  const intermediateCommitReview: CommitReview.CommitReview = await getCommitReview(intermediateAnalyzedCommitId);
+  const intermediateCommitReviewTagsPerFileHashMap = Review.getTagsPerFileHashMap(
+    intermediateCommitReview.approvedTags,
+    intermediateCommitReview.rejectedTags,
+    intermediateCommitReview.fileReviews
   );
 
-  const fileDiffs: Diff.FileDiff[] = Diff.parseDiff(await retrieveDiff(intermediateAnalyzedCommitId, currentCommitId));
-  const fileDiffsToAnalyze: Diff.FileDiffWithLanguage[] = Diff.toFileDiffsWithLanguage(fileDiffs);
+  const intermediateDiff = await retrieveDiff(intermediateAnalyzedCommitId, currentCommitId);
+
+  const fileDiffsAgainstIntermediateCommit = Diff.parseDiff(intermediateDiff);
+  const fileDiffsToAnalyzeAgainstIntermediateCommit = Diff.toFileDiffsWithLanguage(fileDiffsAgainstIntermediateCommit);
 
   const carryOverApprovedTags: string[] = [];
   const carryOverRejectedTags: string[] = [];
 
-  // Go through all current tags to see which should be approved/rejected as carry-overs.
-  for (let fileReview of fileReviewsAgainstLastSuccess) {
+  for (let fileReviewAgainstBase of fileReviewsAgainstBase) {
 
-    const filePath = fileReview.currentFilePath;
-    const newTags = Review.getTagsWithMetadata(fileReview);
-
-    const diffAgainstLastAnalyzedCommit = R.find(
-      (fileDiff) => { return fileDiff.currentFilePath === filePath },
-      fileDiffsToAnalyze
+    const currentFilePath = fileReviewAgainstBase.currentFilePath;
+    const diffAgainstIntermediateCommit: Diff.FileDiffWithLanguage | undefined = R.find(
+      (fileDiff) => { return fileDiff.currentFilePath === currentFilePath },
+      fileDiffsToAnalyzeAgainstIntermediateCommit
     );
 
-    // No changes to file since last analyzed commit.
-    if (diffAgainstLastAnalyzedCommit === undefined) {
+    // If the file is new/deleted since the intermediate commit, there will be no carry-overs.
 
-      // We know `lastAnalyzedTagsPerFile[filePath]` is not undefined because it is in this FileReview and there are
-      // no diff between this FileReview and the last analyzed one so it must be there as well.
-      const { approved, rejected, all } = lastAnalyzedTagsPerFile[filePath];
+    if (diffAgainstIntermediateCommit !== undefined) {
+      switch (diffAgainstIntermediateCommit.diffType) {
 
-      // No tags to carry over.
-      if ( approved.length === 0 && rejected.length === 0) {
-        continue;
-      }
-
-      // Otherwise we do have approved/rejected tags within this FileReview we must carry over.
-      for (let i = 0; i < all.length; i++) {
-
-        // These form a tag pair as there were no changes so they are the same tag with different IDs.
-        const previousTag = all[i];
-        const newTag =  newTags[i];
-
-        if (R.contains(previousTag.tagId.toString(), approved)) {
-          carryOverApprovedTags.push(newTag.tagId.toString());
-          continue;
-        }
-
-        if (R.contains(previousTag.tagId.toString(), rejected)) {
-          carryOverRejectedTags.push(newTag.tagId.toString());
-          continue;
-        }
-      }
-
-    // Since the last analyzed commit we do have changes to the file.
-    } else {
-
-      let filePathInLastAnalyzedCommit: string;
-
-      switch (diffAgainstLastAnalyzedCommit.diffType) {
-
-        // If a file was deleted or added, we can't carry over any tags so continue to next loop.
-        case "deleted":
         case "new":
+        case "deleted":
           continue;
 
+        case "renamed":
         case "modified":
-          filePathInLastAnalyzedCommit = diffAgainstLastAnalyzedCommit.currentFilePath;
-          break;
-
-        // TS bug forcing me to do default instead of "renamed" even though it detects this is the only other case...
-        default:
-          filePathInLastAnalyzedCommit = diffAgainstLastAnalyzedCommit.previousFilePath;
           break;
       }
-
-      // There were no tags in the file in the last analyzed commit...
-      if (lastAnalyzedTagsPerFile[filePathInLastAnalyzedCommit] === undefined) {
-        continue;
-      }
-
-      const { rejected, approved, all } = lastAnalyzedTagsPerFile[filePathInLastAnalyzedCommit];
-
-      // No tags to carry over.
-      if (rejected.length === 0 && approved.length === 0 ) {
-        continue;
-      }
-
-      // Otherwise there may be tags to carry over if they were not altered across the diff.
-      const tagLinks = Review.getTagLinksBetweenSomeTags(all, newTags, diffAgainstLastAnalyzedCommit.alteredLines);
-
-      for (let index = 0; index < tagLinks.length; index++ ) {
-
-        const tagLink = tagLinks[index];
-
-        if (tagLink === null) {
-          continue;
-        }
-
-        const tagPair: R.KeyValuePair<Review.TagWithMetadata, Review.TagWithMetadata> =
-          [ all[index], newTags[tagLink] ];
-
-        const tagPairUpdated =
-          R.any(Review.alteredLineInTagPairOwnership(tagPair), diffAgainstLastAnalyzedCommit.alteredLines)
-
-        // It has been altered so it must be reapproved/rerejected
-        if (tagPairUpdated) { continue; }
-
-        // It has not been altered, carry over previous approve/reject status
-        const [ previousTag, newTag ] = tagPair as [ Review.TagWithMetadata, Review.TagWithMetadata ]
-
-        if (R.contains(previousTag.tagId.toString(), approved)) {
-          carryOverApprovedTags.push(newTag.tagId.toString());
-          continue;
-        }
-
-        if (R.contains(previousTag.tagId.toString(), rejected)) {
-          carryOverRejectedTags.push(newTag.tagId.toString());
-          continue;
-        }
-
-      }
-
     }
-  }
 
-  const ownerNeededToApproveDocsPreviously = (owner: string) => {
-    return R.contains(owner, lastAnalyzedCommitReview.remainingOwnersToApproveDocs);
-  }
+    // Otherwise there may be carry-overs.
 
-  const allTagsApproved = (tagsAndOwners: Review.TagAndOwner[], owner: string, approvedTags: string[]): boolean => {
-
-    return R.all((tagAndOwner) => {
-
-      if (tagAndOwner.owner === owner) {
-        return R.contains(tagAndOwner.tagId, approvedTags);
+    const intermediateFilePath: string = (() => {
+      if (diffAgainstIntermediateCommit === undefined) {
+        return currentFilePath;
       }
 
-      return true;
-    }, tagsAndOwners);
+      switch (diffAgainstIntermediateCommit.diffType) {
+        case "modified":
+          return currentFilePath;
+
+        case "renamed":
+          return diffAgainstIntermediateCommit.previousFilePath;
+      }
+    })();
+    const tagsAgainstBase = Review.getTagsWithMetadata(fileReviewAgainstBase);
+    const unalteredTagsSinceIntermediateCommit = await getUnalteredTagsAcrossDiff(
+      tagsAgainstBase,
+      diffAgainstIntermediateCommit,
+      () => { return retrieveFile(intermediateAnalyzedCommitId, intermediateFilePath); },
+      intermediateFilePath
+    );
+    const unalteredTagIdsSinceIntermediateCommit =
+      unalteredTagsSinceIntermediateCommit.map((tag) => { return tag.tagId.toString(); });
+
+    const intermediateCommitReviewTagsPerFile = intermediateCommitReviewTagsPerFileHashMap[intermediateFilePath];
+
+    if (intermediateCommitReviewTagsPerFile === undefined) {
+      carryOverApprovedTags.push(...unalteredTagIdsSinceIntermediateCommit);
+      continue;
+    }
+
+    const { approvedTagsForFile, rejectedTagsForFile } = getCarryOverTagsFromIntermediateCommitReviewTagsPerFile(
+      intermediateCommitReviewTagsPerFile,
+      unalteredTagsSinceIntermediateCommit,
+      diffAgainstIntermediateCommit
+    );
+
+    carryOverApprovedTags.push(...approvedTagsForFile);
+    carryOverRejectedTags.push(...rejectedTagsForFile);
   }
-
-  const newTagsAndOwners = Review.getListOfTagsAndOwners(fileReviewsAgainstLastSuccess);
-  const allNewOwners = Review.getAllOwners(fileReviewsAgainstLastSuccess);
-
-
-  const remainingOwnersToApproveDocs = R.filter((owner) => {
-    return ownerNeededToApproveDocsPreviously(owner) || !allTagsApproved(newTagsAndOwners, owner, carryOverApprovedTags)
-  }, allNewOwners);
 
   return {
     approvedTags: carryOverApprovedTags,
     rejectedTags: carryOverRejectedTags,
-    remainingOwnersToApproveDocs,
+    remainingOwnersToApproveDocs: owners /* TODO */
   };
 
+}
+
+
+  //
+  // const lastAnalyzedCommitReview: CommitReview.CommitReview = await getCommitReview(intermediateAnalyzedCommitId);
+  // const lastAnalyzedTagsPerFile = Review.getTagsPerFile(
+  //   lastAnalyzedCommitReview.approvedTags,
+  //   lastAnalyzedCommitReview.rejectedTags,
+  //   lastAnalyzedCommitReview.fileReviews
+  // );
+  //
+  // const fileDiffs: Diff.FileDiff[] = Diff.parseDiff(await retrieveDiff(intermediateAnalyzedCommitId, currentCommitId));
+  // const fileDiffsToAnalyze: Diff.FileDiffWithLanguage[] = Diff.toFileDiffsWithLanguage(fileDiffs);
+
+  // const carryOverApprovedTags: string[] = [];
+  // const carryOverRejectedTags: string[] = [];
+
+  // Go through all current tags to see which should be approved/rejected as carry-overs.
+
+
+  // for (let fileReview of fileReviewsAgainstLastSuccess) {
+  //
+  //   const filePath = fileReview.currentFilePath;
+  //   const newTags = Review.getTagsWithMetadata(fileReview);
+  //
+  //   const diffAgainstLastAnalyzedCommit = R.find(
+  //     (fileDiff) => { return fileDiff.currentFilePath === filePath },
+  //     fileDiffsToAnalyze
+  //   );
+  //
+  //   // No changes to file since last analyzed commit.
+  //   if (diffAgainstLastAnalyzedCommit === undefined) {
+  //
+  //     // We know `lastAnalyzedTagsPerFile[filePath]` is not undefined because it is in this FileReview and there are
+  //     // no diff between this FileReview and the last analyzed one so it must be there as well.
+  //     console.log(`was this it? ${filePath}, ${JSON.stringify(lastAnalyzedTagsPerFile[filePath])}`);
+  //     const { approved, rejected, all } = lastAnalyzedTagsPerFile[filePath];
+  //
+  //     // No tags to carry over.
+  //     if ( approved.length === 0 && rejected.length === 0) {
+  //       continue;
+  //     }
+  //
+  //     // Otherwise we do have approved/rejected tags within this FileReview we must carry over.
+  //     for (let i = 0; i < all.length; i++) {
+  //
+  //       // These form a tag pair as there were no changes so they are the same tag with different IDs.
+  //       const previousTag = all[i];
+  //       const newTag =  newTags[i];
+  //
+  //       if (R.contains(previousTag.tagId.toString(), approved)) {
+  //         carryOverApprovedTags.push(newTag.tagId.toString());
+  //         continue;
+  //       }
+  //
+  //       if (R.contains(previousTag.tagId.toString(), rejected)) {
+  //         carryOverRejectedTags.push(newTag.tagId.toString());
+  //         continue;
+  //       }
+  //     }
+  //
+  //   // Since the last analyzed commit we do have changes to the file.
+  //   } else {
+  //
+  //     let filePathInLastAnalyzedCommit: string;
+  //
+  //     switch (diffAgainstLastAnalyzedCommit.diffType) {
+  //
+  //       // If a file was deleted or added, we can't carry over any tags so continue to next loop.
+  //       case "deleted":
+  //       case "new":
+  //         continue;
+  //
+  //       case "modified":
+  //         filePathInLastAnalyzedCommit = diffAgainstLastAnalyzedCommit.currentFilePath;
+  //         break;
+  //
+  //       // TS bug forcing me to do default instead of "renamed" even though it detects this is the only other case...
+  //       default:
+  //         filePathInLastAnalyzedCommit = diffAgainstLastAnalyzedCommit.previousFilePath;
+  //         break;
+  //     }
+  //
+  //     // There were no tags in the file in the last analyzed commit...
+  //     if (lastAnalyzedTagsPerFile[filePathInLastAnalyzedCommit] === undefined) {
+  //       continue;
+  //     }
+  //
+  //     const { rejected, approved, all } = lastAnalyzedTagsPerFile[filePathInLastAnalyzedCommit];
+  //
+  //     // No tags to carry over.
+  //     if (rejected.length === 0 && approved.length === 0 ) {
+  //       continue;
+  //     }
+  //
+  //     // Otherwise there may be tags to carry over if they were not altered across the diff.
+  //     const tagLinks = Review.getTagLinksBetweenSomeTags(all, newTags, diffAgainstLastAnalyzedCommit.alteredLines);
+  //
+  //     for (let index = 0; index < tagLinks.length; index++ ) {
+  //
+  //       const tagLink = tagLinks[index];
+  //
+  //       if (tagLink === null) {
+  //         continue;
+  //       }
+  //
+  //       const tagPair: R.KeyValuePair<Review.TagWithMetadata, Review.TagWithMetadata> =
+  //         [ all[index], newTags[tagLink] ];
+  //
+  //       const tagPairUpdated =
+  //         R.any(Review.alteredLineInTagPairOwnership(tagPair), diffAgainstLastAnalyzedCommit.alteredLines)
+  //
+  //       // It has been altered so it must be reapproved/rerejected
+  //       if (tagPairUpdated) { continue; }
+  //
+  //       // It has not been altered, carry over previous approve/reject status
+  //       const [ previousTag, newTag ] = tagPair as [ Review.TagWithMetadata, Review.TagWithMetadata ]
+  //
+  //       if (R.contains(previousTag.tagId.toString(), approved)) {
+  //         carryOverApprovedTags.push(newTag.tagId.toString());
+  //         continue;
+  //       }
+  //
+  //       if (R.contains(previousTag.tagId.toString(), rejected)) {
+  //         carryOverRejectedTags.push(newTag.tagId.toString());
+  //         continue;
+  //       }
+  //
+  //     }
+  //
+  //   }
+  // }
+  //
+  // const ownerNeededToApproveDocsPreviously = (owner: string) => {
+  //   return R.contains(owner, lastAnalyzedCommitReview.remainingOwnersToApproveDocs);
+  // }
+  //
+  // const allTagsApproved = (tagsAndOwners: Review.TagAndOwner[], owner: string, approvedTags: string[]): boolean => {
+  //
+  //   return R.all((tagAndOwner) => {
+  //
+  //     if (tagAndOwner.owner === owner) {
+  //       return R.contains(tagAndOwner.tagId, approvedTags);
+  //     }
+  //
+  //     return true;
+  //   }, tagsAndOwners);
+  // }
+  //
+  // const newTagsAndOwners = Review.getListOfTagsAndOwners(fileReviewsAgainstLastSuccess);
+  // const allNewOwners = Review.getAllOwners(fileReviewsAgainstLastSuccess);
+  //
+  //
+  // const remainingOwnersToApproveDocs = R.filter((owner) => {
+  //   return ownerNeededToApproveDocsPreviously(owner) || !allTagsApproved(newTagsAndOwners, owner, carryOverApprovedTags)
+  // }, allNewOwners);
+  //
+  // return {
+  //   approvedTags: carryOverApprovedTags,
+  //   rejectedTags: carryOverRejectedTags,
+  //   remainingOwnersToApproveDocs,
+  // };
+
+
+
+type CommitHashMap<T> = {
+  [commitId: string]: CommitHashMapValue<T>
+}
+
+
+type CommitHashMapValue<T> = {
+  parentCommitIds: string[],
+  metadata: T
+}
+
+
+const getCommitHashMap = <T>(pullRequestCommits: GH.PullRequestCommits, initMetadata: T): CommitHashMap<T> => {
+
+  let commitHashMap: CommitHashMap<T> = { };
+
+  for (let commit of pullRequestCommits) {
+    commitHashMap[commit.sha] = {
+      parentCommitIds: R.map((parent) => { return parent.sha }, commit.parents),
+      metadata: initMetadata
+    }
+  }
+
+  return commitHashMap;
+}
+
+
+const hasParent = ( commitHashMapValue: CommitHashMapValue<any>, searchForParentWithId: string ): boolean => {
+  return R.contains(searchForParentWithId, commitHashMapValue.parentCommitIds);
+}
+
+
+const copyCommitHashMapAndInitMetadata =
+  <T>( commitHashMap: CommitHashMap<any>
+      , initMetadata: T
+      ): CommitHashMap<T> => {
+
+  const newCommitHashMap: CommitHashMap<T> = { };
+
+  for (let commitId in commitHashMap) {
+
+    newCommitHashMap[commitId] = {
+      parentCommitIds: R.clone(commitHashMap[commitId].parentCommitIds),
+      metadata: initMetadata
+    }
+  }
+
+  return newCommitHashMap;
+}
+
+
+type PossiblePath = string[] | "no-path";
+
+const minPossiblePath = (path1: PossiblePath, path2: PossiblePath): PossiblePath => {
+  if (path1 === "no-path") { return path2; }
+  if (path2 === "no-path") { return path1; }
+
+  return (path1.length < path2.length ? path1 : path2);
+}
+
+
+const getShortestPathToCommit =
+  <T>( commitHashMap: CommitHashMap<T>
+     , searchForCommitId: string
+     , headCommitId: string
+     ): string[] | "no-path" => {
+
+  type SearchMetadata = { state: "not-calculated" } | { state: "no-path" } | { state: "found", path: string[] };
+
+  const initSearchMetadata: SearchMetadata = { state: "not-calculated" };
+  const searchCommitHashMap: CommitHashMap<SearchMetadata> = copyCommitHashMapAndInitMetadata(commitHashMap, initSearchMetadata);
+
+  const go = (currentCommitId: string): PossiblePath => {
+
+    const currentCommitSearchNode = searchCommitHashMap[currentCommitId];
+
+    // Base case 1, non-existant
+    if (currentCommitSearchNode === undefined) { return "no-path"; }
+
+    // Base case 2, parent is the node we are searching for
+    if (hasParent(currentCommitSearchNode, searchForCommitId)) {
+      return [ currentCommitId ];
+    }
+
+    switch (currentCommitSearchNode.metadata.state) {
+
+      case "no-path":
+        return "no-path";
+
+      case "found":
+        return currentCommitSearchNode.metadata.path;
+
+      case "not-calculated":
+
+        const currentCommitParentIds = searchCommitHashMap[currentCommitId].parentCommitIds;
+        let shortestPathFromParent: PossiblePath = "no-path";
+
+        for (let parentId of currentCommitParentIds) {
+          shortestPathFromParent = minPossiblePath(shortestPathFromParent, go(parentId));
+        }
+
+        if (shortestPathFromParent === "no-path") {
+          currentCommitSearchNode.metadata = { state: "no-path" };
+          return "no-path";
+        }
+
+        const path = [ currentCommitId, ...shortestPathFromParent ];
+        currentCommitSearchNode.metadata = { state: "found", path };
+        return path;
+    }
+
+  }
+
+  return go(headCommitId);
 }
 
 
@@ -697,39 +994,51 @@ const getBaseAndLastAnalyzedCommit =
   , analyzingCommitId: string
   ) : F.Maybe<{ analysisBaseCommitId: string, intermediateAnalyzedCommitId: F.Maybe<string> }> => {
 
-  let visitedAnalyzingCommitId = false;
-  let analysisBaseCommitId: string | null = null;
-  let intermediateAnalyzedCommitId: string | null = null;
+  const commitHashMap = getCommitHashMap(pullRequestCommits, null);
 
-  // Go through commits from most recent commit to oldest.
-  for (let i = pullRequestCommits.length - 1; i >= 0; i--) {
+  if (commitHashMap[analyzingCommitId] === undefined) { return null; }
 
-    const currentCommitId = pullRequestCommits[i].sha;
+  const shortestPathToPrBaseCommit = getShortestPathToCommit(commitHashMap, prBaseCommitId, analyzingCommitId);
 
-    if (!visitedAnalyzingCommitId) {
-      visitedAnalyzingCommitId = currentCommitId === analyzingCommitId;
-      continue;
-    }
-
-    if (analysisBaseCommitId === null && R.contains(currentCommitId, analyzedCommitsWithSuccessStatus)) {
-      analysisBaseCommitId = currentCommitId;
-    }
-
-    if (intermediateAnalyzedCommitId === null
-        && analysisBaseCommitId === null
-        && R.contains(currentCommitId, analyzedCommits)) {
-      intermediateAnalyzedCommitId = currentCommitId;
-    }
-
-    if (analysisBaseCommitId !== null) { break; }
+  if (shortestPathToPrBaseCommit === "no-path") {
+    throw "TODO";
   }
 
-  if (!visitedAnalyzingCommitId) {
-    return null;
+  console.log(`Shortest path: ${JSON.stringify(shortestPathToPrBaseCommit)}`);
+
+  let successCommitAfterPrBaseCommit: F.Maybe<string> = null;
+  let intermediateAnalyzedCommitId: F.Maybe<string> = null;
+
+  for (let commit of shortestPathToPrBaseCommit) {
+    if (R.contains(commit, analyzedCommitsWithSuccessStatus)) {
+      successCommitAfterPrBaseCommit = commit;
+      break;
+    }
   }
+
+  const analysisBaseCommitId =
+    successCommitAfterPrBaseCommit === null ? prBaseCommitId : successCommitAfterPrBaseCommit;
+
+
+  for (let i = analyzedCommits.length - 1; i >= 0; i--) {
+    const analyzedCommitId = analyzedCommits[i];
+
+    if (commitHashMap[analyzedCommitId] !== undefined && analyzedCommitId !== analysisBaseCommitId) {
+
+      if (getShortestPathToCommit(commitHashMap, analyzedCommitId, analysisBaseCommitId) === "no-path") {
+        intermediateAnalyzedCommitId = analyzedCommitId;
+        break;
+      }
+
+      break;
+    }
+  }
+
+  console.log(`Analysis base commit: ${analysisBaseCommitId}`);
+  console.log(`Analysis interm commit: ${intermediateAnalyzedCommitId}`);
 
   return {
-    analysisBaseCommitId: analysisBaseCommitId === null ? prBaseCommitId : analysisBaseCommitId,
+    analysisBaseCommitId,
     intermediateAnalyzedCommitId
   }
 

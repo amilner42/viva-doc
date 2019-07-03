@@ -436,13 +436,20 @@ export const matchesTagId = R.curry(
 )
 
 
-export const getTagsPerFile =
+export interface CommitReviewTagsPerFile {
+  approved: string[];
+  rejected: string[];
+  all: TagWithMetadata[];
+}
+
+
+export const getTagsPerFileHashMap =
   ( approvedTags: string[]
   , rejectedTags: string[]
   , fileReviews: FileReviewWithMetadata[]
-  ) : { [fileName: string]: { approved: string[], rejected: string[], all: TagWithMetadata[] } } => {
+) : { [fileName: string]: CommitReviewTagsPerFile | undefined } => {
 
-  const result: { [fileName: string]: { approved: string[], rejected: string[], all: TagWithMetadata[] } } = { };
+  const result: { [fileName: string]: CommitReviewTagsPerFile } = { };
 
   for (let fileReview of fileReviews) {
 
