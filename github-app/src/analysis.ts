@@ -928,8 +928,6 @@ const getBaseAndLastAnalyzedCommit =
     throw calculateShortestPathLoggableError;
   }
 
-  console.log(`Shortest path: ${JSON.stringify(shortestPathToPrBaseCommit)}`);
-
   let successCommitAfterPrBaseCommit: F.Maybe<string> = null;
   let intermediateAnalyzedCommitId: F.Maybe<string> = null;
 
@@ -957,9 +955,6 @@ const getBaseAndLastAnalyzedCommit =
       break;
     }
   }
-
-  console.log(`Analysis base commit: ${analysisBaseCommitId}`);
-  console.log(`Analysis interm commit: ${intermediateAnalyzedCommitId}`);
 
   return {
     analysisBaseCommitId,
