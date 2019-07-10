@@ -818,76 +818,137 @@ const copyCommitHashMapAndInitMetadata =
 }
 
 
-type PossiblePath = string[] | "no-path";
-
-const minPossiblePath = (path1: PossiblePath, path2: PossiblePath): PossiblePath => {
-  if (path1 === "no-path") { return path2; }
-  if (path2 === "no-path") { return path1; }
-
-  return (path1.length < path2.length ? path1 : path2);
-}
+type ShortestPathResult = { resultType: "no-path" }
+                        | { resultType: "found", path: string[], crossedCommit: F.Maybe<string> };
 
 
+const bestShortestPathResult =
+  ( path1: ShortestPathResult
+  , path2: ShortestPathResult
+  , crossCommits: string[]
+  ): ShortestPathResult => {
+
+  if (path1.resultType === "no-path") { return path2; }
+  if (path2.resultType === "no-path") { return path1; }
+
+  if (path1.crossedCommit === null) {
+    if (path2.crossedCommit === null) {
+      return (path1.path.length < path2.path.length) ? path1 : path2;
+    }
+
+    return path2;
+  }
+
+  if (path2.crossedCommit === null) {
+    return path1;
+  }
+
+  if (path1.crossedCommit === path2.crossedCommit) {
+    return (path1.path.length < path2.path.length) ? path1 : path2;
+  }
+
+  const indexOfPath1Cross = crossCommits.indexOf(path1.crossedCommit);
+  const indexOfPath2Cross = crossCommits.indexOf(path2.crossedCommit);
+
+  return (indexOfPath1Cross > indexOfPath2Cross) ? path1 : path2;
+};
+
+
+// If the optional `optionalCrossCommits` is passed, it will prioritize any path that crosses any commit inside that
+// list. Paths that cross commits later in the list will be put above paths that cross commits earlier in the list or
+// don't cross those commits at all.
+//
+// Given two paths that both cross the same cross commit/don't cross, shorter paths will be prioritized.
 const getShortestPathToCommit =
   <T>( commitHashMap: CommitHashMap<T>
-     , searchForCommitId: string
-     , headCommitId: string
-     ): string[] | "no-path" => {
+     , fromCommitId: string
+     , toCommitId: string
+     , prioritizePathsCrossingCommits?: string[]
+     ): ShortestPathResult  => {
 
-  type SearchMetadata = { state: "not-calculated" } | { state: "no-path" } | { state: "found", path: string[] };
+  type SearchMetadata =   { state: "not-calculated" }
+                        | { state: "no-path" }
+                        | { state: "found", crossedCommit: F.Maybe<string>, path: string[] };
 
   const initSearchMetadata: SearchMetadata = { state: "not-calculated" };
   const searchCommitHashMap: CommitHashMap<SearchMetadata> = copyCommitHashMapAndInitMetadata(commitHashMap, initSearchMetadata);
+  const crossCommits: string[] = prioritizePathsCrossingCommits === undefined ? [] : prioritizePathsCrossingCommits;
 
-  const go = (currentCommitId: string): PossiblePath => {
+  const go = (currentCommitId: string): ShortestPathResult => {
 
     const currentCommitSearchNode = searchCommitHashMap[currentCommitId];
 
     // Base case 1, non-existant
-    if (currentCommitSearchNode === undefined) { return "no-path"; }
+    if (currentCommitSearchNode === undefined) {
+      return { resultType: "no-path" };
+    }
 
     // Base case 2, parent is the node we are searching for
-    if (hasParent(currentCommitSearchNode, searchForCommitId)) {
-      return [ currentCommitId ];
+    if (hasParent(currentCommitSearchNode, toCommitId)) {
+
+      const crossedCommit = R.contains(currentCommitId, crossCommits) ? currentCommitId : null;
+
+      return { resultType: "found", crossedCommit, path: [ currentCommitId ] };
     }
 
     switch (currentCommitSearchNode.metadata.state) {
 
       case "no-path":
-        return "no-path";
+        return { resultType: "no-path" };
 
       case "found":
-        return currentCommitSearchNode.metadata.path;
+        return {
+          resultType: "found",
+          crossedCommit: currentCommitSearchNode.metadata.crossedCommit,
+          path: currentCommitSearchNode.metadata.path
+        };
 
       case "not-calculated":
 
         const currentCommitParentIds = searchCommitHashMap[currentCommitId].parentCommitIds;
-        let shortestPathFromParent: PossiblePath = "no-path";
+        let shortestPathFromParent: ShortestPathResult = { resultType: "no-path" };
 
         for (let parentId of currentCommitParentIds) {
-          shortestPathFromParent = minPossiblePath(shortestPathFromParent, go(parentId));
+          shortestPathFromParent = bestShortestPathResult(shortestPathFromParent, go(parentId), crossCommits);
         }
 
-        if (shortestPathFromParent === "no-path") {
+        if (shortestPathFromParent.resultType === "no-path") {
           currentCommitSearchNode.metadata = { state: "no-path" };
-          return "no-path";
+          return shortestPathFromParent;
         }
 
-        const path = [ currentCommitId, ...shortestPathFromParent ];
-        currentCommitSearchNode.metadata = { state: "found", path };
-        return path;
+        const pathIncludingCurrentCommit = [ currentCommitId, ...shortestPathFromParent.path ];
+        const crossedCommitIncludingCurrentCommit = (() => {
+
+          if (R.contains(currentCommitId, crossCommits)) { return currentCommitId; }
+
+          return shortestPathFromParent.crossedCommit;
+        })();
+
+        currentCommitSearchNode.metadata = {
+          state: "found",
+          crossedCommit: crossedCommitIncludingCurrentCommit,
+          path: pathIncludingCurrentCommit
+        };
+
+        return {
+          resultType: "found",
+          crossedCommit: crossedCommitIncludingCurrentCommit,
+          path: pathIncludingCurrentCommit
+        };
+
     }
 
   }
 
-  return go(headCommitId);
+  return go(fromCommitId);
 }
 
 
 // Returns:
 // If: `analyzingCommitId` is in the pull request commits, then returns an object with:
 //     - the last commit before `analyzingCommitId` with a success status or the base commit that the PR is against if
-//       no intermediate commits with a success status exist.
+//       no intermediate commits with a success status exist between the `analyzingCommitId` and the `prBaseCommitId`.
 //     - an intermediate commit that was analyzed between the returned `analysisBaseCommitId` and the
 //       `analyzingCommitId` if one exists, otherwise `null`.
 //
@@ -908,9 +969,14 @@ const getBaseAndLastAnalyzedCommit =
 
   if (commitHashMap[analyzingCommitId] === undefined) { return null; }
 
-  const shortestPathToPrBaseCommit = getShortestPathToCommit(commitHashMap, prBaseCommitId, analyzingCommitId);
+  const shortestPathToPrBaseCommit = getShortestPathToCommit(
+    commitHashMap,
+    analyzingCommitId,
+    prBaseCommitId,
+    analyzedCommitsWithSuccessStatus
+  );
 
-  if (shortestPathToPrBaseCommit === "no-path") {
+  if (shortestPathToPrBaseCommit.resultType === "no-path") {
     const calculateShortestPathLoggableError: AppError.GithubAppLoggableError = {
       errorName: "calculate-shortest-path-failure",
       githubAppError: true,
@@ -928,26 +994,19 @@ const getBaseAndLastAnalyzedCommit =
     throw calculateShortestPathLoggableError;
   }
 
-  let successCommitAfterPrBaseCommit: F.Maybe<string> = null;
+  const maybeSuccessCommitAfterPrBaseCommit = shortestPathToPrBaseCommit.crossedCommit;
+  const analysisBaseCommitId =
+    maybeSuccessCommitAfterPrBaseCommit === null ? prBaseCommitId : maybeSuccessCommitAfterPrBaseCommit;
+
   let intermediateAnalyzedCommitId: F.Maybe<string> = null;
 
-  for (let commit of shortestPathToPrBaseCommit) {
-    if (R.contains(commit, analyzedCommitsWithSuccessStatus)) {
-      successCommitAfterPrBaseCommit = commit;
-      break;
-    }
-  }
-
-  const analysisBaseCommitId =
-    successCommitAfterPrBaseCommit === null ? prBaseCommitId : successCommitAfterPrBaseCommit;
-
-
+  // TODO review this code.
   for (let i = analyzedCommits.length - 1; i >= 0; i--) {
     const analyzedCommitId = analyzedCommits[i];
 
     if (commitHashMap[analyzedCommitId] !== undefined && analyzedCommitId !== analysisBaseCommitId) {
 
-      if (getShortestPathToCommit(commitHashMap, analyzedCommitId, analysisBaseCommitId) === "no-path") {
+      if (getShortestPathToCommit(commitHashMap, analysisBaseCommitId, analyzedCommitId).resultType === "no-path") {
         intermediateAnalyzedCommitId = analyzedCommitId;
         break;
       }
