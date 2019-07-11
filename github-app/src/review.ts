@@ -243,6 +243,51 @@ export const getListOfTagsAndOwners =
 }
 
 
+// Filters file reviews, drops the review entirely if it is left with 0 tags/reviews.
+// Does not modify the original fileReview, instead creates a copy and returns that.
+export const filterFileReviewTags =
+  ( tagFilter: (tagWithMetadata: TagWithMetadata) => boolean
+  , fileReviews: FileReviewWithMetadata[]
+  ): FileReviewWithMetadata[] => {
+
+  let filteredFileReviews: FileReviewWithMetadata[] = [];
+
+  for (let fileReview of fileReviews) {
+
+    switch (fileReview.fileReviewType) {
+
+      case "deleted-file":
+      case "new-file":
+        const filteredTags = R.filter(tagFilter, fileReview.tags);
+
+        if (filteredTags.length > 0) {
+          const fileReviewCopy = R.clone(fileReview);
+          fileReviewCopy.tags = filteredTags;
+          filteredFileReviews.push(fileReviewCopy);
+        }
+
+        continue;
+
+      case "modified-file":
+      case "renamed-file":
+        const filteredReviews = R.filter(
+          (review) => { return tagFilter(review.tag); },
+          fileReview.reviews
+        );
+
+        if (filteredReviews.length > 0) {
+          const fileReviewCopy = R.clone(fileReview);
+          fileReviewCopy.reviews = filteredReviews;
+          filteredFileReviews.push(fileReviewCopy);
+        }
+
+        continue;
+    }
+  }
+
+  return filteredFileReviews;
+}
+
 /** Calculates the reviews for some file modification given all helpful information.
 
   NOTE: You must provide ALL the previous file tags and ALL the current file tags.
@@ -436,13 +481,38 @@ export const matchesTagId = R.curry(
 )
 
 
-export const getTagsPerFile =
+export interface CommitReviewTagsPerFile {
+  approved: string[];
+  rejected: string[];
+  all: TagWithMetadata[];
+}
+
+
+// Assumes tag is in `CommitReviewTagsPerFile.all`.
+export const getTagApprovalState =
+  ( tagId: string
+  , commitReviewTagsPerFile: CommitReviewTagsPerFile
+  ): "approved" | "rejected" | "unresolved" => {
+
+  if (R.contains(tagId, commitReviewTagsPerFile.approved)) {
+    return "approved";
+  }
+
+  if (R.contains(tagId, commitReviewTagsPerFile.rejected)) {
+    return "rejected";
+  }
+
+  return "unresolved";
+}
+
+
+export const getTagsPerFileHashMap =
   ( approvedTags: string[]
   , rejectedTags: string[]
   , fileReviews: FileReviewWithMetadata[]
-  ) : { [fileName: string]: { approved: string[], rejected: string[], all: TagWithMetadata[] } } => {
+) : { [fileName: string]: CommitReviewTagsPerFile | undefined } => {
 
-  const result: { [fileName: string]: { approved: string[], rejected: string[], all: TagWithMetadata[] } } = { };
+  const result: { [fileName: string]: CommitReviewTagsPerFile } = { };
 
   for (let fileReview of fileReviews) {
 
