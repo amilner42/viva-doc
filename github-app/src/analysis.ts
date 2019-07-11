@@ -945,12 +945,36 @@ const getShortestPathToCommit =
 }
 
 
+// @REFER `getBaseAndLastAnalyzedCommit`
+const getIntermediateCommit =
+  ( commitHashMap: CommitHashMap<any>
+  , analyzedCommits: string[]
+  , baseCommitId: string
+  ): F.Maybe<string> => {
+
+  for (let i = analyzedCommits.length - 1; i >= 0; i--) {
+    const analyzedCommitId = analyzedCommits[i];
+
+    if (commitHashMap[analyzedCommitId] !== undefined && analyzedCommitId !== baseCommitId) {
+
+      if (getShortestPathToCommit(commitHashMap, baseCommitId, analyzedCommitId).resultType === "no-path") {
+        return analyzedCommitId;
+      }
+
+      return null;
+    }
+  }
+
+  return null;
+}
+
+
 // Returns:
 // If: `analyzingCommitId` is in the pull request commits, then returns an object with:
 //     - the last commit before `analyzingCommitId` with a success status or the base commit that the PR is against if
-//       no intermediate commits with a success status exist between the `analyzingCommitId` and the `prBaseCommitId`.
-//     - an intermediate commit that was analyzed between the returned `analysisBaseCommitId` and the
-//       `analyzingCommitId` if one exists, otherwise `null`.
+//       no analyzed commits with a success status exist between the `analyzingCommitId` and the `prBaseCommitId`.
+//     - an intermediate commit to carry-over tags from that is not behind the returned base commit. The intermediate
+//       commit may not be between the base commit and the current commit.
 //
 // Else: `null`. This means the `analyzingCommitId` is no longer in the PR so it must have been rebased before the
 //       analysis got here. This is unlikely but possible.
@@ -998,27 +1022,9 @@ const getBaseAndLastAnalyzedCommit =
   const analysisBaseCommitId =
     maybeSuccessCommitAfterPrBaseCommit === null ? prBaseCommitId : maybeSuccessCommitAfterPrBaseCommit;
 
-  let intermediateAnalyzedCommitId: F.Maybe<string> = null;
+  const intermediateAnalyzedCommitId = getIntermediateCommit(commitHashMap, analyzedCommits, analysisBaseCommitId);
 
-  // TODO review this code.
-  for (let i = analyzedCommits.length - 1; i >= 0; i--) {
-    const analyzedCommitId = analyzedCommits[i];
-
-    if (commitHashMap[analyzedCommitId] !== undefined && analyzedCommitId !== analysisBaseCommitId) {
-
-      if (getShortestPathToCommit(commitHashMap, analysisBaseCommitId, analyzedCommitId).resultType === "no-path") {
-        intermediateAnalyzedCommitId = analyzedCommitId;
-        break;
-      }
-
-      break;
-    }
-  }
-
-  return {
-    analysisBaseCommitId,
-    intermediateAnalyzedCommitId
-  }
+  return { analysisBaseCommitId, intermediateAnalyzedCommitId };
 
 }
 
