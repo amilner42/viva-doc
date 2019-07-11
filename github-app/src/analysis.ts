@@ -244,6 +244,7 @@ export const pipeline = async (
   // May all have carry-overs from lastAnalyzedCommitId
   let approvedTags: string[];
   let rejectedTags: string[];
+  let confirmedTags: string[]; // Tags confirmed with "approve all docs"
   let remainingOwnersToApproveDocs: string[];
   let currentCommitIsSuccess: boolean;
 
@@ -262,7 +263,7 @@ export const pipeline = async (
       fileReviewsNeedingApproval
     );
 
-    ({ approvedTags, rejectedTags, remainingOwnersToApproveDocs } = carryOverResult);
+    ({ approvedTags, rejectedTags, remainingOwnersToApproveDocs, confirmedTags } = carryOverResult);
     currentCommitIsSuccess = remainingOwnersToApproveDocs.length === 0;
 
   } catch (err) {
@@ -282,6 +283,11 @@ export const pipeline = async (
 
   // [PIPELINE] Save new CommitReview.
 
+  const finalFileReviewsNeedingApproval = filterOutConfirmedTags(
+    fileReviewsNeedingApproval,
+    confirmedTags
+  );
+
   try {
 
     await CommitReview.newCommitReview(installationId, {
@@ -291,7 +297,7 @@ export const pipeline = async (
       branchName: pullRequestReview.branchName,
       commitId: analyzingCommitId,
       pullRequestNumber: pullRequestReview.pullRequestNumber,
-      fileReviews: fileReviewsNeedingApproval,
+      fileReviews: finalFileReviewsNeedingApproval,
       approvedTags,
       rejectedTags,
       remainingOwnersToApproveDocs,
@@ -508,6 +514,20 @@ export const getFileReviewsWithMetadataNeedingApproval = async (
 }
 
 
+const filterOutConfirmedTags =
+  ( fileReviews: Review.FileReviewWithMetadata[]
+  , confirmedTags: string[]
+  ): Review.FileReviewWithMetadata[] => {
+
+  return Review.filterFileReviewTags(
+    (tag) => {
+      return !R.contains(tag.tagId.toString(), confirmedTags);
+    },
+    fileReviews
+  );
+}
+
+
 const getUnalteredTagsAcrossDiff =
   async ( tagsAgainstBase: Review.TagWithMetadata[]
         , diffAgainstIntermediate: Diff.ModifiedFileDiffWithLanguage | Diff.RenamedFileDiffWithLanguage | undefined
@@ -555,7 +575,7 @@ const getCarryOverTagsFromIntermediateCommitReviewTagsPerFile =
   ( intermediateCommitReviewTags: Review.CommitReviewTagsPerFile
   , unalteredTagsSinceIntermediateCommit: Review.TagWithMetadata[]
   , diffAgainstIntermediate: Diff.ModifiedFileDiffWithLanguage | Diff.RenamedFileDiffWithLanguage | undefined
-  ) : { approvedTagsForFile: string[], rejectedTagsForFile: string[] } => {
+  ) : { approvedTagsForFile: string[], rejectedTagsForFile: string[], confirmedTags: string[] } => {
 
   const alteredLines = diffAgainstIntermediate === undefined ? [] : diffAgainstIntermediate.alteredLines;
 
@@ -582,13 +602,19 @@ const getCarryOverTagsFromIntermediateCommitReviewTagsPerFile =
 
   const approvedTagsForFile = [];
   const rejectedTagsForFile = [];
+  const confirmedTags = [];
 
   for (let unalteredTag of unalteredTagsSinceIntermediateCommit) {
 
     const tagId = unalteredTag.tagId.toString();
     const previousApprovalState = newTagsToPreviousApprovalStateMap[tagId];
 
-    if (previousApprovalState === undefined || previousApprovalState === "approved") {
+    if (previousApprovalState === undefined) {
+      confirmedTags.push(tagId);
+      continue;
+    }
+
+    if (previousApprovalState === "approved") {
       approvedTagsForFile.push(tagId);
       continue;
     }
@@ -599,13 +625,14 @@ const getCarryOverTagsFromIntermediateCommitReviewTagsPerFile =
     }
   }
 
-  return { approvedTagsForFile, rejectedTagsForFile };
+  return { approvedTagsForFile, rejectedTagsForFile, confirmedTags };
 }
 
 const getCarryOverRemainingOwnersToApproveDocs =
   ( ownersAgainstBase: string[]
   , tagsAndOwnersAgainstBase: Review.TagAndOwner[]
   , carryOverApprovedTags: string[]
+  , carryOverConfirmedTags: string[]
   , remaingOwnersToApproveDocsOnIntermediate: string[]
   ): string[] => {
 
@@ -613,12 +640,14 @@ const getCarryOverRemainingOwnersToApproveDocs =
     return R.contains(owner, remaingOwnersToApproveDocsOnIntermediate);
   }
 
+  const tagsNotNeedingApproval = carryOverApprovedTags.concat(carryOverConfirmedTags);
+
   const allTagsApprovedAgainstBase = (owner: string): boolean => {
 
     return R.all((tagAndOwner) => {
 
       if (tagAndOwner.owner === owner) {
-        return R.contains(tagAndOwner.tagId, carryOverApprovedTags);
+        return R.contains(tagAndOwner.tagId, tagsNotNeedingApproval);
       }
 
       return true;
@@ -638,7 +667,8 @@ const getCarryOverRemainingOwnersToApproveDocs =
 
 interface CarryOverResult {
   approvedTags: string[];
-  rejectedTags: string[]
+  rejectedTags: string[];
+  confirmedTags: string[];
   remainingOwnersToApproveDocs: string[];
 }
 
@@ -660,6 +690,7 @@ export const calculateCarryOversFromLastAnalyzedCommit =
       approvedTags: [],
       rejectedTags: [],
       remainingOwnersToApproveDocs: [],
+      confirmedTags: []
     }
   }
 
@@ -667,7 +698,8 @@ export const calculateCarryOversFromLastAnalyzedCommit =
     return {
       approvedTags: [],
       rejectedTags: [],
-      remainingOwnersToApproveDocs: ownersAgainstBase
+      remainingOwnersToApproveDocs: ownersAgainstBase,
+      confirmedTags: []
     }
   }
 
@@ -686,6 +718,7 @@ export const calculateCarryOversFromLastAnalyzedCommit =
 
   const carryOverApprovedTags: string[] = [];
   const carryOverRejectedTags: string[] = [];
+  const carryOverConfirmedTags: string[] = [];
 
   for (let fileReviewAgainstBase of fileReviewsAgainstBase) {
 
@@ -738,30 +771,34 @@ export const calculateCarryOversFromLastAnalyzedCommit =
     const intermediateCommitReviewTagsPerFile = intermediateCommitReviewTagsPerFileHashMap[intermediateFilePath];
 
     if (intermediateCommitReviewTagsPerFile === undefined) {
-      carryOverApprovedTags.push(...unalteredTagIdsSinceIntermediateCommit);
+      carryOverConfirmedTags.push(...unalteredTagIdsSinceIntermediateCommit);
       continue;
     }
 
-    const { approvedTagsForFile, rejectedTagsForFile } = getCarryOverTagsFromIntermediateCommitReviewTagsPerFile(
-      intermediateCommitReviewTagsPerFile,
-      unalteredTagsSinceIntermediateCommit,
-      diffAgainstIntermediateCommit
-    );
+    const { approvedTagsForFile, rejectedTagsForFile, confirmedTags } =
+      getCarryOverTagsFromIntermediateCommitReviewTagsPerFile(
+        intermediateCommitReviewTagsPerFile,
+        unalteredTagsSinceIntermediateCommit,
+        diffAgainstIntermediateCommit
+      );
 
     carryOverApprovedTags.push(...approvedTagsForFile);
     carryOverRejectedTags.push(...rejectedTagsForFile);
+    carryOverConfirmedTags.push(...confirmedTags);
   }
 
   const remainingOwnersToApproveDocs: string[] = getCarryOverRemainingOwnersToApproveDocs(
     ownersAgainstBase,
     tagsAndOwnersAgainstBase,
     carryOverApprovedTags,
+    carryOverConfirmedTags,
     intermediateCommitReview.remainingOwnersToApproveDocs
   );
 
   return {
     approvedTags: carryOverApprovedTags,
     rejectedTags: carryOverRejectedTags,
+    confirmedTags: carryOverConfirmedTags,
     remainingOwnersToApproveDocs
   };
 
