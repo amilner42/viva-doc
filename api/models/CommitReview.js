@@ -11,8 +11,8 @@ const CommitReviewSchema = new mongoose.Schema({
   fileReviews: { type: mongoose.Schema.Types.Mixed, required: [true, "can't be blank"] },
   approvedTags: { type: [ String ], required: [true, "can't be blank"] },
   rejectedTags: { type: [ String ], required: [true, "can't be blank"] },
-  remainingOwnersToApproveDocs: { type: [ String ], required: [true, "can't be blank"] },
-  tagsAndOwners: { type: [ { owner: String, tagId: String } ], required: [true, "can't be blank"]},
+  userAssessments: { type: [ { username: String, tagId: String, assessmentType: String }  ], required: [true, "can't be blank"] },
+  tagsOwnerGroups: { type: [ { tagId: String, groups: [ [ String ] ] } ], required: [true, "can't be blank"]},
 })
 
 

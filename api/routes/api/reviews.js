@@ -5,12 +5,11 @@ const router = require('express').Router();
 const verify = require("../verify");
 const errors = require("../errors");
 const githubApp = require("../../github-app");
+const mongoHelpers = require("../../mongo-helpers");
 
 const mongoose = require('mongoose');
 const PullRequestReviewModel = mongoose.model('PullRequestReview');
-
-
-const SUCCESS_EMPTY = { success: 1 };
+const RepoModel = mongoose.model('Repo');
 
 
 router.get('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId'
@@ -54,7 +53,7 @@ router.get('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId'
     if (pullRequestReviewObject.headCommitId === commitId) {
       commitReviewObject.approvedTags = pullRequestReviewObject.headCommitApprovedTags;
       commitReviewObject.rejectTags = pullRequestReviewObject.headCommitRejectedTags;
-      commitReviewObject.remainingOwnersToApproveDocs = pullRequestReviewObject.headCommitRemainingOwnersToApproveDocs;
+      commitReviewObject.userAssessments = pullRequestReviewObject.userAssessments;
     }
 
     return res.json({
@@ -69,14 +68,24 @@ router.get('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId'
 });
 
 
-router.post('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/approvedtags'
+router.post('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/userassessments'
 , async function (req, res, next) {
 
   try {
 
     const { pullRequestNumber, commitId } = req.params;
     const repoId = verify.isInt(req.params.repoId, errors.invalidUrlParams("Repo ID must be a number."));
-    const tagsToApprove = verify.isArrayOfString(req.body.approveTags, errors.invalidRequestBodyType(`Field 'approveTags' must contain an array of string.`));
+    const tagIdsToApprove = verify.isArrayOfString(
+      req.body.approveTags, errors.invalidRequestBodyType(`Field 'approveTags' must contain an array of string.`)
+    );
+    const tagIdsToReject = verify.isArrayOfString(
+      req.body.rejectTags, errors.invalidRequestBodyType(`Field 'rejectTags' must contain an array of string.`)
+    );
+    const allTagIds = [ ...tagIdsToReject, ...tagIdsToApprove ];
+
+    const newUserApprovalAssessments = createAssessments("approved", username, tagIdsToApprove);
+    const newUserRejectionAssessments = createAssessments("rejected", username, tagIdsToReject);
+    const newUserAssessments = [ ...newUserApprovalAssessments, ...newUserRejectionAssessments ];
 
     const user = verify.getLoggedInUser(req);
     await verify.hasAccessToRepo(user, repoId);
@@ -86,286 +95,26 @@ router.post('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/approve
     const username = user.username;
 
     verify.isLoadedHeadCommit(pullRequestReviewObject, commitId);
+    verify.ownsTags(pullRequestReviewObject.headCommitTagsOwnerGroups, allTagIds, username);
+    verify.assessmentsAreForDifferentTags(allTagIds);
 
-    verify.ownsTags(pullRequestReviewObject.headCommitTagsAndOwners, tagsToApprove, username);
-
-    verify.tagsNotAlreadyApproved(
-      pullRequestReviewObject.headCommitApprovedTags,
-      tagsToApprove,
-      errors.noApprovingAlreadyApprovedTag
+    const addUserAssessmentsResults = await addUserAssessments(
+      repoId,
+      pullRequestNumber,
+      commitId,
+      newUserAssessments,
+      pullRequestReviewObject.headCommitTagsOwnerGroups
     );
 
-    verify.tagsNotAlreadyRejected(
-      pullRequestReviewObject.headCommitRejectedTags,
-      tagsToApprove,
-      errors.noApprovingRejectedTag
-    );
-
-    verify.userHasNotApprovedDocs(
-      pullRequestReviewObject.headCommitRemainingOwnersToApproveDocs,
-      username,
-      errors.noModifyingTagsAfterConfirmation
-    );
-
-    const pullRequestUpdateResult = await PullRequestReviewModel.update(
-      {
-        repoId,
-        pullRequestNumber,
-        headCommitId: commitId
-      },
-      {
-        $addToSet: { "headCommitApprovedTags": { $each: tagsToApprove } }
-      }
-    ).exec();
-
-    await verify.updateMatchedBecauseHeadCommitHasNotChanged(pullRequestUpdateResult, repoId, pullRequestNumber, commitId);
-    verify.updateModifiedOneResult(pullRequestUpdateResult);
-
-    return res.json(SUCCESS_EMPTY);
-
-  } catch (err) {
-    next(err);
-  }
-
-});
-
-
-router.delete('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/approvedtags/:tagId'
-, async function (req, res, next) {
-
-  try {
-    const { pullRequestNumber, commitId, tagId } = req.params;
-    const repoId = verify.isInt(req.params.repoId, errors.invalidUrlParams("Repo ID must be a number."));
-
-    const user = verify.getLoggedInUser(req);
-    await verify.hasAccessToRepo(user, repoId);
-
-    const username = user.username;
-
-    const pullRequestReviewObject = await verify.getPullRequestReviewObject(repoId, pullRequestNumber);
-
-    verify.isLoadedHeadCommit(pullRequestReviewObject, commitId);
-
-    verify.ownsTags(pullRequestReviewObject.headCommitTagsAndOwners, [ tagId ], username);
-
-    verify.tagApproved(
-      pullRequestReviewObject.headCommitApprovedTags,
-      tagId,
-      403,
-      errors.noRemovingApprovalOnUnapprovedTag
-    );
-
-    verify.userHasNotApprovedDocs(
-      pullRequestReviewObject.headCommitRemainingOwnersToApproveDocs,
-      username,
-      errors.noModifyingTagsAfterConfirmation
-    );
-
-    const pullRequestUpdateResult = await PullRequestReviewModel.update(
-      {
-        repoId,
-        pullRequestNumber,
-        headCommitId: commitId
-      },
-      {
-        $pull: { "headCommitApprovedTags": tagId }
-      }
-    ).exec();
-
-    await verify.updateMatchedBecauseHeadCommitHasNotChanged(pullRequestUpdateResult, repoId, pullRequestNumber, commitId);
-    verify.updateModifiedOneResult(pullRequestUpdateResult);
-
-    return res.json(SUCCESS_EMPTY);
-
-  } catch (err) {
-    next(err);
-  }
-
-});
-
-
-router.post('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/rejectedtags'
-, async function (req, res, next) {
-
-  try {
-
-    const { pullRequestNumber, commitId } = req.params;
-    const repoId = verify.isInt(req.params.repoId, errors.invalidUrlParams("Repo ID must be a number."));
-    const tagsToReject = verify.isArrayOfString(req.body.rejectTags, errors.invalidRequestBodyType(`Field 'rejectTags' must contain an array of string.`));
-
-    const user = verify.getLoggedInUser(req);
-    await verify.hasAccessToRepo(user, repoId);
-
-    const username = user.username;
-
-    const pullRequestReviewObject = await verify.getPullRequestReviewObject(repoId, pullRequestNumber);
-
-    verify.isLoadedHeadCommit(pullRequestReviewObject, commitId);
-
-    verify.ownsTags(pullRequestReviewObject.headCommitTagsAndOwners, tagsToReject, username);
-
-    verify.tagsNotAlreadyApproved(
-      pullRequestReviewObject.headCommitApprovedTags,
-      tagsToReject,
-      errors.noRejectingApprovedTag
-    );
-
-    verify.tagsNotAlreadyRejected(
-      pullRequestReviewObject.headCommitRejectedTags,
-      tagsToReject,
-      errors.noRejectingAlreadyRejectedTag
-    );
-
-    verify.userHasNotApprovedDocs(
-      pullRequestReviewObject.headCommitRemainingOwnersToApproveDocs,
-      username,
-      errors.noModifyingTagsAfterConfirmation
-    );
-
-    const pullRequestUpdateResult = await PullRequestReviewModel.update(
-      {
-        repoId,
-        pullRequestNumber,
-        headCommitId: commitId
-      },
-      {
-        $addToSet: { "headCommitRejectedTags": { $each: tagsToReject } }
-      }
-    ).exec();
-
-    await verify.updateMatchedBecauseHeadCommitHasNotChanged(pullRequestUpdateResult, repoId, pullRequestNumber, commitId);
-    verify.updateModifiedOneResult(pullRequestUpdateResult);
-
-    return res.json(SUCCESS_EMPTY);
-
-  } catch (err) {
-    next(err);
-  }
-
-});
-
-
-router.delete('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/rejectedtags/:tagId'
-, async function (req, res, next) {
-
-  try {
-
-    const { pullRequestNumber, commitId, tagId } = req.params;
-    const repoId = verify.isInt(req.params.repoId, errors.invalidUrlParams("Repo ID must be a number."));
-
-    const user = verify.getLoggedInUser(req);
-    await verify.hasAccessToRepo(user, repoId);
-
-    const username = user.username;
-
-    const pullRequestReviewObject = await verify.getPullRequestReviewObject(repoId, pullRequestNumber);
-
-    verify.isLoadedHeadCommit(pullRequestReviewObject, commitId);
-
-    verify.ownsTags(pullRequestReviewObject.headCommitTagsAndOwners, [ tagId ], username);
-
-    verify.tagRejected(
-      pullRequestReviewObject.headCommitRejectedTags,
-      tagId,
-      403,
-      errors.noRemovingRejectionOnUnrejectedTag
-    );
-
-    verify.userHasNotApprovedDocs(
-      pullRequestReviewObject.headCommitRemainingOwnersToApproveDocs,
-      username,
-      errors.noModifyingTagsAfterConfirmation
-    );
-
-    const pullRequestUpdateResult = await PullRequestReviewModel.update(
-      {
-        repoId,
-        pullRequestNumber,
-        headCommitId: commitId
-      },
-      {
-        $pull: { "headCommitRejectedTags": tagId }
-      }
-    ).exec();
-
-    await verify.updateMatchedBecauseHeadCommitHasNotChanged(pullRequestUpdateResult, repoId, pullRequestNumber, commitId);
-    verify.updateModifiedOneResult(pullRequestUpdateResult);
-
-    return res.json(SUCCESS_EMPTY);
-
-  } catch (err) {
-    next(err);
-  }
-
-});
-
-
-router.post('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/approveddocs'
-, async function (req, res, next) {
-
-  try {
-
-    const { pullRequestNumber, commitId } = req.params;
-    const repoId = verify.isInt(req.params.repoId, errors.invalidUrlParams("Repo ID must be a number."));
-
-    const user = verify.getLoggedInUser(req);
-    await verify.hasAccessToRepo(user, repoId);
-
-    const username = user.username;
-
-    const pullRequestReviewObject = await verify.getPullRequestReviewObject(repoId, pullRequestNumber);
-
-    const repoName = pullRequestReviewObject.repoName;
-
-    verify.isLoadedHeadCommit(pullRequestReviewObject, commitId);
-
-    verify.userHasNotApprovedDocs(
-      pullRequestReviewObject.headCommitRemainingOwnersToApproveDocs,
-      username,
-      errors.noApprovingDocsIfNotOnRemainingDocApprovalList
-    );
-
-    // First do an atomic update assuming this is NOT the last user to approve the docs.
-
-    const notLastOwnerUpdateResult = await PullRequestReviewModel.update(
-      {
-        repoId,
-        pullRequestNumber,
-        headCommitId: commitId,
-        headCommitRemainingOwnersToApproveDocs: { $not: { $size: 1 } }
-      },
-      { $pull: { "headCommitRemainingOwnersToApproveDocs": username } }
-    ).exec();
-
-    verify.updateOk(notLastOwnerUpdateResult);
-
-    if (notLastOwnerUpdateResult.n === 1 && notLastOwnerUpdateResult.nModified === 1) {
-      return res.json(SUCCESS_EMPTY);
-    }
-
-    // Otherwise try an atomic update assuming it is the last user to approve the docs.
-
-    const lastOwnerUpdateResult = await PullRequestReviewModel.update(
-      {
-        repoId,
-        pullRequestNumber,
-        headCommitId: commitId,
-        headCommitRemainingOwnersToApproveDocs: { $size: 1 }
-      },
-      {
-        $pull: { "headCommitRemainingOwnersToApproveDocs": username },
-        $push: { "analyzedCommitsWithSuccessStatus": commitId }
-      }
-    ).exec();
-
-    verify.updateOk(lastOwnerUpdateResult);
-
-    if (lastOwnerUpdateResult.n === 1 && lastOwnerUpdateResult.nModified === 1) {
-      // Was a success, must set the commit status to success as all users have approved the docs.
-
+    if ( allTagsApproved(
+          pullRequestReviewObject.tagsOwnerGroups.length,
+          pullRequestReviewObject.approvedTags.length,
+          addUserAssessmentsResults
+         )
+    ) {
+
+      // TODO wrap in try-catch and handle error
       const repoObject = await verify.getRepoObject(repoId);
-
-      // TODO Should we wrap this in a try catch and handle errors better? Not sure how...
       await githubApp.putSuccessStatusOnCommit(
         repoObject.installationId,
         repoObject.owner,
@@ -375,13 +124,9 @@ router.post('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/approve
         commitId
       );
 
-      return res.json(SUCCESS_EMPTY);
     }
 
-    // If neither atomic update worked, the head commit has likely shifted (or some internal error...).
-    const refetchedPullRequestReviewObject = await verify.getPullRequestReviewObject(repoId, pullRequestNumber);
-    verify.isHeadCommit(refetchedPullRequestReviewObject, commitId);
-    throw { httpCode: 500, ...errors.internalServerError };
+    return res.json(addUserAssessmentsResults);
 
   } catch (err) {
     next(err);
@@ -391,3 +136,249 @@ router.post('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/approve
 
 
 module.exports = router;
+
+
+// INTERNAL
+
+
+// TODO Move
+const createAssessments = (assessmentType, username, tagIds) => {
+  return tagIds.map(createAssessment(assessmentType, username));
+}
+
+
+// TODO Move
+const createAssessment = R.curry((assessmentType, username, tagId) => {
+  return { tagId, assessmentType, username };
+});
+
+
+// TODO Move
+// TODO DOC
+const allTagsApproved = (totalTags, initialApprovedTags, addUserAssessmentsResults) => {
+
+  const numberOfNewApprovedTags = R.filter((addUserAssessmentResult) => {
+    return addUserAssessmentResult.status === "approval-success" && addUserAssessmentResult.tagApproved;
+  }, addUserAssessmentsResults).length;
+
+  return (initialApprovedTags + numberOfNewApprovedTags) === totalTags;
+}
+
+
+// TODO Move
+// TODO DOC
+const addRejectionUserAssessment = async (repoId, pullRequestNumber, commitId, userAssessment) => {
+  try {
+
+    const tagId = userAssessment.tagId;
+
+    const addRejectionUpdateResult = await PullRequestReviewModel.update(
+      {
+        repoId,
+        pullRequestNumber,
+        headCommitId: commitId,
+        headCommitApprovedTags: { $nin: [ tagId ] },
+        headCommitRejectedTags: { $nin: [ tagId ] },
+        headCommitUserAssessments: { $nin: [ userAssessment ] }
+      },
+      {
+        $push: {
+          "headCommitUserAssessments": userAssessment,
+          "headCommitRejectedTags": tagId
+        },
+      }
+    ).exec();
+
+    // TODO log error if needed.
+    // TODO make these errors better (priority: for the head commit updating / tag already being approved/rejected)
+    if ( !mongoHelpers.updateOk(addRejectionUpdateResult)
+          || !mongoHelpers.updateMatchedOneResult(addRejectionUpdateResult)
+          || !mongoHelpers.updateModifiedOneResult(addRejectionUpdateResult)
+    ) {
+      return { tagId, status: "approval-failure", error: { httpCode: 500, ...errors.internalServerError } }
+    }
+
+    return { tagId, status: "rejection-success" };
+
+  } catch (updateErr) {
+
+    // TODO log error
+    return { tagId, status: "approval-failure", error: { httpCode: 500, ...errors.internalServerError } }
+  }
+}
+
+
+// TODO Move
+// TODO DOC
+const addApprovalUserAssessment = async (repoId, pullRequestNumber, commitId, userAssessment, tagsOwnerGroups) => {
+
+  const { username, tagId } = userAssessment;
+  const tagOwnerGroups = R.find(R.propEq("tagId", tagId), tagsOwnerGroups);
+
+  const userApprovalGuaranteesTagApproval = R.all((owners) => {
+    return R.contains(username, owners);
+  }, tagOwnerGroups.groups);
+
+  if (userApprovalGuaranteesTagApproval) {
+    try {
+
+      const addApprovalUpdateResult = await PullRequestReviewModel.update(
+        {
+          repoId,
+          pullRequestNumber,
+          headCommitId: commitId,
+          headCommitApprovedTags: { $nin: [ tagId ] },
+          headCommitRejectedTags: { $nin: [ tagId ] },
+          headCommitUserAssessments: { $nin: [ userAssessment ] }
+        },
+        {
+          $push: {
+            "headCommitUserAssessments": userAssessment,
+            "headCommitApprovedTags": tagId
+          }
+        }
+      ).exec();
+
+
+      // TODO log error if needed.
+      // TODO make these errors better (priority: for the head commit updating / tag already being approved/rejected)
+      if ( !mongoHelpers.updateOk(addApprovalUpdateResult)
+            || !mongoHelpers.updateMatchedOneResult(addApprovalUpdateResult)
+            || !mongoHelpers.updateModifiedOneResult(addApprovalUpdateResult)
+      ) {
+        return { tagId, status: "approval-failure", error: { httpCode: 500, ...errors.internalServerError } }
+      }
+
+      return { tagId, status: "approval-success", tagApproved: true };
+
+    } catch (err) {
+
+      // TODO log error
+      return { tagId, status: "approval-failure", error: { httpCode: 500, ...errors.internalServerError } }
+    }
+  }
+
+  // In the following case, the user approval may or may not cause the tag to be approved. To do this atomically, we do
+  // two atomic updates below, first doing an update with query settings assuming that the approval will not cause the
+  // tag to be approved, and then if that fails, we try again this time with query settings assuming this update will
+  // cause the tag to be approved. If both fail we pass along the error.
+
+  const groupsWithoutUser = R.filter((owners) => {
+    return !R.contains(username, owners);
+  }, tagOwnerGroups.groups);
+
+
+  // First try an atomic update assuming that this assessment will NOT cause the tag to be approved.
+  try {
+
+    const mongoQueryAtLeastOneGroupOutsideUserLacksApproval = {
+      $or: groupsWithoutUser.map((owners) => {
+        return {
+          $nin: owners.map((owner) => {
+            return createAssessment("approved", owner, tagId);
+          })
+        }
+      })
+    };
+
+    const addAssessmentUpdateResult = await PullRequestReviewModel.update(
+      {
+        repoId,
+        pullRequestNumber,
+        headCommitId: commitId,
+        headCommitApprovedTags: { $nin: [ userAssessment.tagId ] },
+        headCommitRejectedTags: { $nin: [ userAssessment.tagId ] },
+        $and: [
+          { headCommitUserAssessments: { $nin: [ userAssessment ] } },
+          mongoQueryAtLeastOneGroupOutsideUserLacksApproval
+        ]
+      },
+      {
+        $push: { "headCommitUserAssessments": userAssessment },
+      }
+    ).exec();
+
+    if ( !mongoHelpers.updateOk(addAssessmentUpdateResult)
+          || !mongoHelpers.updateMatchedOneResult(addAssessmentUpdateResult)
+          || !mongoHelpers.updateModifiedOneResult(addAssessmentUpdateResult)
+    ) {
+      throw "value-meaningless error to skip to catch block";
+    }
+
+    return { tagId, status: "approval-success", tagApproved: false };
+
+  } catch {
+
+    // Second, try an atomic update assuming that this assessment will cause the tag to be approved.
+    try {
+
+      const mongoQueryAllGroupsOutsideUserHaveApproval = {
+        $and: groupsWithoutUser.map((groupOwners) => {
+          return {
+            $in: groupOwners.map((owner) => {
+              return createAssessment("approved", owner, tagId);
+            })
+          }
+        })
+      };
+
+      const addApprovalUpdateResult = await PullRequestReviewModel.update(
+        {
+          repoId,
+          pullRequestNumber,
+          headCommitId: commitId,
+          headCommitApprovedTags: { $nin: [ userAssessment.tagId ] },
+          headCommitRejectedTags: { $nin: [ userAssessment.tagId ] },
+          $and: [
+            { headCommitUserAssessments: { $nin: [ userAssessment ] } },
+            mongoQueryAllGroupsOutsideUserHaveApproval
+          ]
+        },
+        {
+          $push: {
+            "headCommitUserAssessments": userAssessment,
+            "headCommitApprovedTags": tagId
+          },
+        }
+      ).exec();
+
+      // TODO log error if needed.
+      // TODO make these errors better (priority: for the head commit updating / tag already being approved/rejected)
+      if ( !mongoHelpers.updateOk(addApprovalUpdateResult)
+            || !mongoHelpers.updateMatchedOneResult(addApprovalUpdateResult)
+            || !mongoHelpers.updateModifiedOneResult(addApprovalUpdateResult)
+      ) {
+        return { tagId, status: "approval-failure", error: { httpCode: 500, ...errors.internalServerError } };
+      }
+
+      return { tagId, status: "approval-success", tagApproved: true };
+
+    } catch (updateErr) {
+
+      // TODO log error.
+      return { tagId, status: "approval-failure", error: { httpCode: 500, ...errors.internalServerError } };
+    }
+  }
+}
+
+
+// TODO Move
+// TODO DOC
+const addUserAssessment = async (repoId, pullRequestNumber, commitId, userAssessment, tagsOwnerGroups) => {
+
+  if (userAssessment.assessmentType === "rejected") {
+    return await addRejectionUserAssessment(repoId, pullRequestNumber, commitId, userAssessment);
+  }
+
+  return await addApprovalUserAssessment(repoId, pullRequestNumber, commitId, userAssessment, tagsOwnerGroups);
+}
+
+
+// TODO Move
+// TODO DOC
+// @REQUIRED tagsOwnerGroups has been checked to contain that tag for that user.
+const addUserAssessments = async (repoId, pullRequestNumber, commitId, userAssessments, tagsOwnerGroups) => {
+  return Promise.all(userAssessments.map((userAssessment) => {
+    return addUserAssessment(repoId, pullRequestNumber, commitId, userAssessment, tagsOwnerGroups);
+  }));
+}

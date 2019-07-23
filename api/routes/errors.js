@@ -1,6 +1,7 @@
 // Module for defining error messages.
 
 
+// TODO add http code to error objects...
 const createErrorObject = (errorCode, message, optional) => {
 
   const baseError = { message, errorCode };
@@ -22,15 +23,6 @@ const noAccessToRepoError =
 const noModifyingTagsYouDontOwn =
   createErrorObject(3, "You can not perform this operation on tags that you don't own...");
 
-const noModifyingTagsAfterConfirmation =
-  createErrorObject(4, "You cannot approve/reject tags once you've given confirmation...");
-
-const noApprovingDocsBeforeAllTagsApproved =
-  createErrorObject(5, "You must approve all your tags before approving all your documentation...");
-
-const noApprovingDocsIfNotOnRemainingDocApprovalList =
-  createErrorObject(6, "You are not on the list of remaining owners needed to approve docs...");
-
 const noPullRequestReview =
   createErrorObject(7, "Unable to find a review for that pull request...");
 
@@ -47,24 +39,6 @@ const noUpdatingNonHeadCommit = (newHeadCommitId) => {
 const internalServerError =
   createErrorObject(11, "There was an unknown internal server error...");
 
-const noApprovingAlreadyApprovedTag =
-  createErrorObject(12, "You can't approve an already-approved tag...");
-
-const noRejectingAlreadyRejectedTag =
-  createErrorObject(13, "You can't reject an alreay-rejected tag...");
-
-const noApprovingRejectedTag =
-  createErrorObject(14, "You cannot approve a rejected tag...");
-
-const noRejectingApprovedTag =
-  createErrorObject(15, "You can't reject an approved tag...");
-
-const noRemovingApprovalOnUnapprovedTag =
-  createErrorObject(16, "You cannot remove approval on a tag that wasn't approved...");
-
-const noRemovingRejectionOnUnrejectedTag =
-  createErrorObject(17, "You cannot remove rejection on a tag that wasn't rejected...");
-
 const commitStillLoading =
   createErrorObject(18, "The analysis for the commit is still being calculated");
 
@@ -76,25 +50,25 @@ const invalidUrlParams = (errMssg) => {
   return createErrorObject(20, errMssg);
 }
 
+const noModifyingTagsThatDontExist =
+  createErrorObject(21, "You cannot modify tags that don't exist");
+
+const userAssmentsMustBeToUniqueTags =
+  createErrorObject(22, "User assessments must all point to different tags");
+
+
 module.exports = {
   notLoggedInError,
   noAccessToRepoError,
   internalServerError,
   noModifyingTagsYouDontOwn,
-  noModifyingTagsAfterConfirmation,
-  noApprovingDocsBeforeAllTagsApproved,
-  noApprovingDocsIfNotOnRemainingDocApprovalList,
   noPullRequestReview,
   noCommitReview,
   noRepo,
   noUpdatingNonHeadCommit,
-  noApprovingAlreadyApprovedTag,
-  noRejectingAlreadyRejectedTag,
-  noApprovingRejectedTag,
-  noRejectingApprovedTag,
-  noRemovingApprovalOnUnapprovedTag,
-  noRemovingRejectionOnUnrejectedTag,
   commitStillLoading,
   invalidRequestBodyType,
-  invalidUrlParams
+  invalidUrlParams,
+  noModifyingTagsThatDontExist,
+  userAssmentsMustBeToUniqueTags
 }

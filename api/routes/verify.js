@@ -13,6 +13,7 @@ const errors = require("./errors");
 // EXTERNAL
 
 
+// TODO move
 const getLoggedInUser = (req) => {
   if (!req.user) {
     throw { httpCode: 401, ...errors.notLoggedInError };
@@ -33,6 +34,7 @@ const hasAccessToRepo = async (user, repoId) => {
 }
 
 
+// TODO move
 const getPullRequestReviewObject = async (repoId, pullRequestNumber) => {
 
   const pullRequestReview = await PullRequestReviewModel.findOne({ repoId, pullRequestNumber }).exec();
@@ -45,6 +47,7 @@ const getPullRequestReviewObject = async (repoId, pullRequestNumber) => {
 }
 
 
+// TODO move
 const getCommitReviewObject = async (repoId, pullRequestNumber, commitId) => {
 
   const commitReview = await CommitReviewModel.findOne({ repoId, pullRequestNumber, commitId }).exec();
@@ -57,6 +60,7 @@ const getCommitReviewObject = async (repoId, pullRequestNumber, commitId) => {
 }
 
 
+// TODO move
 const getRepoObject = async (repoId) => {
 
   const repo = await RepoModel.findOne({ repoIds: repoId }).exec();
@@ -90,97 +94,30 @@ const isLoadedHeadCommit = (pullRequestReviewObject, commitId) => {
 }
 
 
-const ownsTags = (tagsAndOwners, tagIds, username) => {
+const ownsTags = (tagsOwnerGroups, tagIds, username) => {
 
-  const userOwnsTags = R.all((tagId) => {
-    return R.any((tagAndOwner) => {
-      return (tagAndOwner.owner === username) && (tagAndOwner.tagId === tagId);
-    }, tagsAndOwners)
-  }, tagIds);
+  for (let tagId of tagIds) {
 
-  if (!userOwnsTags) {
-    throw { httpCode: 403, ...errors.noModifyingTagsYouDontOwn };
+    const tagOwnerGroups = R.find(R.propEq("tagId", tagId), tagsOwnerGroups);
+
+    if (tagOwnerGroups === undefined) {
+      throw { httpCode: 403, ...errors.noModifyingTagsThatDontExist };
+    }
+
+    const userInTagOwnerGroups = R.any(R.contains(username), tagOwnerGroups.groups);
+
+    if (!userInTagOwnerGroups) {
+      throw { httpCode: 403, ...errors.noModifyingTagsYouDontOwn };
+    }
   }
-}
-
-
-const tagApproved = (currentlyApprovedTags, tagId, httpCode, err) => {
-
-  if (!R.contains(tagId, currentlyApprovedTags)) {
-    throw { httpCode, ...err };
-  }
-}
-
-
-const tagRejected = (currentlyRejectedTags, tagId, httpCode, err) => {
-
-  if (!R.contains(tagId, currentlyRejectedTags)) {
-    throw { httpCode, ...err };
-  }
-}
-
-
-const tagsNotAlreadyApproved = (currentlyApprovedTags, tags, err) => {
-
-  if (containsAnyTag(currentlyApprovedTags, tags)) {
-    throw { httpCode: 403, ...err };
-  }
-}
-
-
-const tagsNotAlreadyRejected = (currentlyRejectedTags, tags, err) => {
-
-  if (containsAnyTag(currentlyRejectedTags, tags)) {
-    throw { httpCode: 403, ...err };
-  }
-}
-
-
-const userHasNotApprovedDocs = (remainingOwnersToApproveDocs, username, err) => {
-
-  if (!R.contains(username, remainingOwnersToApproveDocs)) {
-    throw { httpCode: 403, ...err };
-  }
-}
-
-
-const updateMatchedOneResult = (updateResult, httpCode, err) => {
-
-  if (updateResult.n !== 1) {
-    throw { httpCode, ...err };
-  }
-}
-
-
-const updateMatchedBecauseHeadCommitHasNotChanged = async (updateResult, repoId, prNumber, commitId) => {
-
-  if (updateResult.n === 1) {
-    return;
-  }
-
-  const pullRequestReviewObject = await getPullRequestReviewObject(repoId, prNumber);
-
-  // Most likely no longer the head commit.
-  isHeadCommit(pullRequestReviewObject, commitId);
-
-  // Otherwise some internal error?
-  throw { httpCode: 500, ...errors.internalServerError };
 
 }
 
 
-const updateOk = (updateResult) => {
+const assessmentsAreForDifferentTags = (tagIds) => {
 
-  if (updateResult.ok !== 1) {
-    throw { httpCode: 500, ...errors.internalServerError };
-  }
-}
-
-
-const updateModifiedOneResult = (updateResult) => {
-
-  if (updateResult.ok !== 1 || updateResult.nModified !== 1) {
-    throw { httpCode: 500, ...errors.internalServerError };
+  if (R.uniq(tagIds).length !== tagIds.length) {
+    throw { httpCode: 400, ...errors.userAssmentsMustBeToUniqueTags };
   }
 }
 
@@ -208,16 +145,6 @@ const isInt = (val, err) => {
 }
 
 
-// INTERNAL
-
-
-const containsAnyTag = (tagList, tagMembers) => {
-  return R.any((tagMember) => {
-    return R.contains(tagMember, tagList);
-  }, tagMembers);
-}
-
-
 module.exports = {
   getLoggedInUser,
   hasAccessToRepo,
@@ -227,15 +154,7 @@ module.exports = {
   isHeadCommit,
   isLoadedHeadCommit,
   ownsTags,
-  tagApproved,
-  tagRejected,
-  tagsNotAlreadyApproved,
-  tagsNotAlreadyRejected,
-  userHasNotApprovedDocs,
-  updateMatchedOneResult,
-  updateMatchedBecauseHeadCommitHasNotChanged,
-  updateOk,
-  updateModifiedOneResult,
+  assessmentsAreForDifferentTags,
   isArrayOfString,
   isInt
 }
