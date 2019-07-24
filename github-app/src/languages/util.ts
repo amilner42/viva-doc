@@ -2,6 +2,7 @@
 
 import { DefaultErrorStrategy } from 'antlr4ts/DefaultErrorStrategy';
 
+import * as TOG from "../tag-owner-group";
 import * as AppError from "../error"
 import * as File from "../file"
 import * as SH from "../string-helpers"
@@ -22,13 +23,15 @@ const MATCH_VD_COMMENT_PREFIX_REGEX = /(?<=^|\s)@VD(?=\s|$)/g
   Captures 4 groups:
     - All optional characters before the annotation, allowing to figure out the annotation offset
     - One forced: start of string or newline or space before the tag annotation
-    - The username
+    - The owner groups, which are of the form:
+      - <github-username>[|<github-username>|...][,<github-username>[|<github-username>|...]][,...]
+      - currently the regex just parses all legal chars and does not enforce the form
     - The type of tag annotation
 
   NOTE: You can pass the full comment to detect matches or even a single line (possibly an AlteredLine) to see if there
         is an annotation on that specific line of the comment.
 */
-const MATCH_VD_COMMENT_TAG_ANNOTATION_REGEX = /([^]*?)(^|\r\n|\r|\n|\s)@VD ([a-zA-Z0-9-]*) (block|file|line)(?=\s|$)/
+const MATCH_VD_COMMENT_TAG_ANNOTATION_REGEX = /([^]*?)(^|\r\n|\r|\n|\s)@VD ([a-zA-Z0-9-|,]*) (block|file|line)(?=\s|$)/
 
 /** The end of a block tag.
 
@@ -67,7 +70,7 @@ export const matchSingleVdTagAnnotation =
     ( str: string
     , filePath: string
     , lineNumber: string
-    ): F.Tri<"no-match", "match-block", { owner: string, tagType: Tag.VdTagType, tagAnnotationLineOffset: number }> => {
+    ): F.Tri<"no-match", "match-block", { ownerGroups: TOG.Group[], tagType: Tag.VdTagType, tagAnnotationLineOffset: number }> => {
 
   const matchVdTagAnnotationPrefix = str.match(MATCH_VD_COMMENT_PREFIX_REGEX)
 
@@ -104,13 +107,15 @@ export const matchSingleVdTagAnnotation =
 
   // Matched a single tag
   if (hasMatchedTag) {
-    const [ , optionalCharsBeforeAnnotation, newLineOrSpaceBeforeTag, owner, tagType ] =
+    const [ , optionalCharsBeforeAnnotation, newLineOrSpaceBeforeTag, ownerGroupsAsString, tagType ] =
       matchTagAnnotation as [ string, string, string, string, Tag.VdTagType ]
     const tagAnnotationLineOffset =
       SH.getNumberOfNewLineTerminators(optionalCharsBeforeAnnotation) +
       SH.getNumberOfNewLineTerminators(newLineOrSpaceBeforeTag);
 
-    return F.branch3({ owner, tagType, tagAnnotationLineOffset })
+    const ownerGroups = TOG.parseGroupsFromString(ownerGroupsAsString);
+
+    return F.branch3({ ownerGroups, tagType, tagAnnotationLineOffset })
   }
 
   // Matched end block
