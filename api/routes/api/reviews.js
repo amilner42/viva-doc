@@ -53,7 +53,7 @@ router.get('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId'
     if (pullRequestReviewObject.headCommitId === commitId) {
       commitReviewObject.approvedTags = pullRequestReviewObject.headCommitApprovedTags;
       commitReviewObject.rejectTags = pullRequestReviewObject.headCommitRejectedTags;
-      commitReviewObject.userAssessments = pullRequestReviewObject.userAssessments;
+      commitReviewObject.userAssessments = pullRequestReviewObject.headCommitUserAssessments;
     }
 
     return res.json({
