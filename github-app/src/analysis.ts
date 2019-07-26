@@ -594,7 +594,14 @@ const getCarryOverTagsFromIntermediateCommitReviewTagsPerFile =
     alteredLines
   );
 
-  const newTagsToPreviousApprovalStateMap: { [newTagId: string]: "approved" | "rejected" | "unresolved" | undefined } = { };
+  const newTagsToPreviousApprovalStateMap: {
+    [newTagId: string]:
+      {
+        previousTagId: string,
+        previousApprovalState: "approved" | "rejected" | "unresolved"
+      }
+      | undefined
+  } = { };
 
   for (let index = 0; index < tagLinks.length; index++) {
     const tagLink = tagLinks[index];
@@ -603,10 +610,14 @@ const getCarryOverTagsFromIntermediateCommitReviewTagsPerFile =
     const linkFromTag = intermediateCommitReviewTags.all[index];
     const linkToTag = unalteredTagsSinceIntermediateCommit[tagLink];
 
-    newTagsToPreviousApprovalStateMap[linkToTag.tagId.toString()] = Review.getTagApprovalState(
-      linkFromTag.tagId.toString(),
-      intermediateCommitReviewTags
-    );
+    const currentTagId = linkToTag.tagId.toString();
+    const previousTagId = linkFromTag.tagId.toString();
+
+    newTagsToPreviousApprovalStateMap[currentTagId] =
+      {
+        previousTagId,
+        previousApprovalState: Review.getTagApprovalState(previousTagId, intermediateCommitReviewTags)
+      }
   }
 
   const approvedTagsForFile = [];
@@ -617,22 +628,27 @@ const getCarryOverTagsFromIntermediateCommitReviewTagsPerFile =
   for (let unalteredTag of unalteredTagsSinceIntermediateCommit) {
 
     const tagId = unalteredTag.tagId.toString();
-    const previousApprovalState = newTagsToPreviousApprovalStateMap[tagId];
+    const previousApprovalStateAndTagId = newTagsToPreviousApprovalStateMap[tagId];
 
-    if (previousApprovalState === undefined) {
+    if (previousApprovalStateAndTagId === undefined) {
       tagsSwallowedInPreviousSuccessCommitForFile.push(tagId);
       continue;
     }
 
+    const { previousApprovalState, previousTagId } = previousApprovalStateAndTagId;
+
+    const portedUserAssessmentsForCurrentTag =
+      UA.getUserAssessmentsForTagId(intermediateCommitReviewUserAssessments, previousTagId).map(UA.newTagId(tagId));
+
+    userAssessmentsForFile.push(...portedUserAssessmentsForCurrentTag);
+
     if (previousApprovalState === "approved") {
       approvedTagsForFile.push(tagId);
-      userAssessmentsForFile.push(...UA.getUserAssessmentsForTagId(intermediateCommitReviewUserAssessments, tagId));
       continue;
     }
 
     if (previousApprovalState === "rejected") {
       rejectedTagsForFile.push(tagId);
-      userAssessmentsForFile.push(...UA.getUserAssessmentsForTagId(intermediateCommitReviewUserAssessments, tagId));
       continue;
     }
   }
