@@ -1,6 +1,6 @@
-module Api.Api exposing (GithubLoginBody, deleteApprovedTag, deleteRejectedTag, getCommitReview, getLogout, getUser, githubLoginFromCode, postApproveDocs, postApproveTags, postRejectTags)
+module Api.Api exposing (GithubLoginBody, getCommitReview, getLogout, getUser, githubLoginFromCode, postUserAssessments)
 
-{-| This module strictly contains the routes to the API and their respective errors.
+{-| This module strictly contains the routes to the API.
 
 NOTE: Extra things that are unrelated to the API requests and handling their errors should most
 likely be put in `Api.Core`.
@@ -9,9 +9,10 @@ likely be put in `Api.Core`.
 
 import Api.Core as Core
 import Api.Endpoint as Endpoint
-import Api.Errors.CommitReviewAction as CraError
 import Api.Errors.GetCommitReview as GcrError
+import Api.Errors.PostUserAssessments as PuaError
 import Api.Responses.GetCommitReview as GcrResponse
+import Api.Responses.PostUserAssessments as PuaResponse
 import CommitReview
 import Http
 import Json.Decode as Decode
@@ -73,97 +74,28 @@ getCommitReview repoId prNumber commitId handleResult =
 
 {-| TODO handle errors.
 -}
-postApproveTags :
+postUserAssessments :
     Int
     -> Int
     -> String
     -> Set.Set String
-    -> (Result.Result (Core.HttpError CraError.CommitReviewActionError) () -> msg)
-    -> Cmd.Cmd msg
-postApproveTags repoId prNumber commitId tags handleResult =
-    let
-        encodedTags =
-            Encode.object [ ( "approveTags", Encode.set Encode.string tags ) ]
-    in
-    Core.post
-        (Endpoint.commitReviewApproveTags repoId prNumber commitId)
-        standardTimeout
-        Nothing
-        (Http.jsonBody encodedTags)
-        (Core.expectJson handleResult (Decode.succeed ()) CraError.decodeCommitReviewActionError)
-
-
-{-| TODO handle errors.
--}
-deleteApprovedTag :
-    Int
-    -> Int
-    -> String
-    -> String
-    -> (Result.Result (Core.HttpError CraError.CommitReviewActionError) () -> msg)
-    -> Cmd.Cmd msg
-deleteApprovedTag repoId prNumber commitId tagId handleResult =
-    Core.delete
-        (Endpoint.commitReviewApproveTag repoId prNumber commitId tagId)
-        standardTimeout
-        Nothing
-        Http.emptyBody
-        (Core.expectJson handleResult (Decode.succeed ()) CraError.decodeCommitReviewActionError)
-
-
-{-| TODO handle errors.
--}
-postRejectTags :
-    Int
-    -> Int
-    -> String
     -> Set.Set String
-    -> (Result.Result (Core.HttpError CraError.CommitReviewActionError) () -> msg)
+    -> (Result.Result (Core.HttpError PuaError.PostUserAssessmentsError) PuaResponse.PostUserAssessmentsResponse -> msg)
     -> Cmd.Cmd msg
-postRejectTags repoId prNumber commitId tags handleResult =
+postUserAssessments repoId prNumber commitId approveTags rejectTags handleResult =
     let
-        encodedTags =
-            Encode.object [ ( "rejectTags", Encode.set Encode.string tags ) ]
+        encodedBody =
+            Encode.object
+                [ ( "approveTags", Encode.set Encode.string approveTags )
+                , ( "rejectTags", Encode.set Encode.string rejectTags )
+                ]
     in
     Core.post
-        (Endpoint.commitReviewRejectTags repoId prNumber commitId)
+        (Endpoint.commitReviewUserAssessments repoId prNumber commitId)
         standardTimeout
         Nothing
-        (Http.jsonBody encodedTags)
-        (Core.expectJson handleResult (Decode.succeed ()) CraError.decodeCommitReviewActionError)
-
-
-{-| TODO handle errors.
--}
-deleteRejectedTag :
-    Int
-    -> Int
-    -> String
-    -> String
-    -> (Result.Result (Core.HttpError CraError.CommitReviewActionError) () -> msg)
-    -> Cmd.Cmd msg
-deleteRejectedTag repoId prNumber commitId tagId handleResult =
-    Core.delete
-        (Endpoint.commitReviewRejectTag repoId prNumber commitId tagId)
-        standardTimeout
-        Nothing
-        Http.emptyBody
-        (Core.expectJson handleResult (Decode.succeed ()) CraError.decodeCommitReviewActionError)
-
-
-postApproveDocs :
-    Int
-    -> Int
-    -> String
-    -> (Result.Result (Core.HttpError CraError.CommitReviewActionError) () -> msg)
-    -> Cmd.Cmd msg
-postApproveDocs repoId prNumber commitId handleResult =
-    Core.post
-        (Endpoint.commitReviewApproveDocs repoId prNumber commitId)
-        standardTimeout
-        Nothing
-        Http.emptyBody
-        (Core.expectJson handleResult (Decode.succeed ()) CraError.decodeCommitReviewActionError)
+        (Http.jsonBody encodedBody)
+        (Core.expectJson handleResult PuaResponse.decodePostUserAssessmentsResponse PuaError.decodePostUserAssessmentsError)
 
 
 {-| TODO care about the results beyond success/error (aka unit types).

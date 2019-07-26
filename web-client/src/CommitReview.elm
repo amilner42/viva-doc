@@ -1,11 +1,14 @@
-module CommitReview exposing (AlteredLine, ApprovedState(..), CommitReview, EditType(..), FileReview, FileReviewType(..), OwnerTagStatus, Review, ReviewOrTag(..), ReviewType(..), Status(..), Tag, countTotalReviewsAndTags, countVisibleReviewsAndTags, decodeCommitReview, extractRenderEditorConfigs, getOwnerTagStatuses, readableTagType, renderConfigForReviewOrTag, updateCommitReviewForSearch, updateReviews, updateTags)
+module CommitReview exposing (AlteredLine, ApprovedState(..), CommitReview, DocReviewTagIds, EditType(..), FileReview, FileReviewType(..), Review, ReviewOrTag(..), ReviewType(..), Status(..), Tag, countTotalReviewsAndTags, countVisibleReviewsAndTags, decodeCommitReview, docReviewTagIdsToTagAndApprovalState, extractRenderEditorConfigs, getTagIdsInDocReview, readableTagType, renderConfigForReviewOrTag, updateApprovalStatesForTags, updateCommitReviewForSearch, updateReviews, updateTag, updateTagApprovalState, updateTags)
 
+import Api.Responses.PostUserAssessments as PuaResponse
 import Dict
 import Json.Decode as Decode
 import Json.Decode.Pipeline exposing (hardcoded, optional, required)
 import Language
+import OwnerGroup as OG
 import Ports
 import Set
+import UserAssessment as UA
 
 
 type alias CommitReview =
@@ -15,7 +18,6 @@ type alias CommitReview =
     , pullRequestNumber : Int
     , commitId : String
     , fileReviews : List FileReview
-    , remainingOwnersToApproveDocs : Set.Set String
     }
 
 
@@ -74,7 +76,7 @@ type EditType
 
 type alias Tag =
     { tagType : TagType
-    , owner : String
+    , ownerGroups : List OG.OwnerGroup
     , startLine : Int
     , endLine : Int
     , tagAnnotationLine : Int
@@ -84,17 +86,15 @@ type alias Tag =
     -- TODO actual error type
     , approvedState : ApprovedState ()
     , isHidden : Bool
+    , userAssessments : List UA.UserAssessment
     }
 
 
 type ApprovedState err
     = Neutral
-    | Approved
-    | Rejected
-    | RequestingApproval
-    | RequestingRemoveApproval
-    | RequestingRejection
-    | RequestingRemoveRejection
+    | NonNeutral UA.AssessmentType
+    | InDocReview UA.AssessmentType
+    | InDocReviewBeingSubmitted UA.AssessmentType
     | RequestFailed err
 
 
@@ -102,16 +102,6 @@ type TagType
     = FileTag
     | BlockTag
     | LineTag
-
-
-type alias OwnerTagStatus =
-    { username : String
-    , approvedTags : Int
-    , rejectedTags : Int
-    , neutralTags : Int
-    , totalTags : Int
-    , approvedDocs : Bool
-    }
 
 
 type Status
@@ -142,7 +132,7 @@ getNewHiddenValue searchBy tag =
                     False
 
                 Just username ->
-                    tag.owner /= username
+                    OG.isUserInAnyGroup username tag.ownerGroups
 
         isHiddenThroughApprovalFilter =
             if searchBy.filterApprovedTags then
@@ -291,14 +281,53 @@ readableTagType tagType =
             "Block Tag"
 
 
+type alias TagAndApprovalState =
+    { approvalState : ApprovedState (), tagId : String }
+
+
+updateTagApprovalState : TagAndApprovalState -> CommitReview -> CommitReview
+updateTagApprovalState { tagId, approvalState } =
+    updateApprovalStatesForTags [ { tagId = tagId, approvalState = approvalState } ]
+
+
+updateApprovalStatesForTags : List TagAndApprovalState -> CommitReview -> CommitReview
+updateApprovalStatesForTags tagAndApprovalStates =
+    updateTags
+        (\tag ->
+            let
+                maybeTagAndApprovalState =
+                    List.filter (\{ tagId } -> tagId == tag.tagId) tagAndApprovalStates
+                        |> List.head
+            in
+            case maybeTagAndApprovalState of
+                Nothing ->
+                    tag
+
+                Just { approvalState } ->
+                    { tag | approvedState = approvalState }
+        )
+
+
+updateTag : String -> (Tag -> Tag) -> CommitReview -> CommitReview
+updateTag tagId tagUpdater =
+    updateTags
+        (\tag ->
+            if tag.tagId == tagId then
+                tagUpdater tag
+
+            else
+                tag
+        )
+
+
 {-| Update all tags in a commit review.
 -}
 updateTags : (Tag -> Tag) -> CommitReview -> CommitReview
-updateTags updateTag commitReview =
+updateTags tagUpdater commitReview =
     let
         updateReview : Review -> Review
         updateReview review =
-            { review | tag = updateTag review.tag }
+            { review | tag = tagUpdater review.tag }
 
         fileReviewTagMap : FileReview -> FileReview
         fileReviewTagMap fileReview =
@@ -306,10 +335,10 @@ updateTags updateTag commitReview =
                 | fileReviewType =
                     case fileReview.fileReviewType of
                         NewFileReview tags ->
-                            NewFileReview <| List.map updateTag tags
+                            NewFileReview <| List.map tagUpdater tags
 
                         DeletedFileReview tags ->
-                            DeletedFileReview <| List.map updateTag tags
+                            DeletedFileReview <| List.map tagUpdater tags
 
                         ModifiedFileReview reviews ->
                             ModifiedFileReview <| List.map updateReview reviews
@@ -363,47 +392,6 @@ findReview tagId =
     allTagsOrReviews >> go
 
 
-getOwnerTagStatuses : CommitReview -> List OwnerTagStatus
-getOwnerTagStatuses commitReview =
-    tagFold
-        (\tag tagCountDict ->
-            Dict.update
-                tag.owner
-                (\maybeTagAcc ->
-                    Maybe.withDefault { approved = 0, rejected = 0, neutral = 0, total = 0 } maybeTagAcc
-                        |> (\acc ->
-                                case tag.approvedState of
-                                    Approved ->
-                                        { acc | approved = acc.approved + 1, total = acc.total + 1 }
-
-                                    Rejected ->
-                                        { acc | rejected = acc.rejected + 1, total = acc.total + 1 }
-
-                                    Neutral ->
-                                        { acc | neutral = acc.neutral + 1, total = acc.total + 1 }
-
-                                    _ ->
-                                        { acc | total = acc.total + 1 }
-                           )
-                        |> Just
-                )
-                tagCountDict
-        )
-        Dict.empty
-        commitReview
-        |> Dict.toList
-        |> List.map
-            (\( owner, { approved, rejected, neutral, total } ) ->
-                { username = owner
-                , totalTags = total
-                , approvedTags = approved
-                , rejectedTags = rejected
-                , neutralTags = neutral
-                , approvedDocs = not <| Set.member owner commitReview.remainingOwnersToApproveDocs
-                }
-            )
-
-
 type ReviewOrTag
     = AReview Review
     | DeletedFileTag Tag
@@ -413,11 +401,39 @@ type ReviewOrTag
 isApproved : ApprovedState err -> Bool
 isApproved approvedState =
     case approvedState of
-        Approved ->
+        NonNeutral UA.Approved ->
             True
 
         _ ->
             False
+
+
+type alias DocReviewTagIds =
+    { markedForApprovalTagIds : Set.Set String, markedForRejectionTagIds : Set.Set String }
+
+
+docReviewTagIdsToTagAndApprovalState : DocReviewTagIds -> (UA.AssessmentType -> ApprovedState ()) -> List TagAndApprovalState
+docReviewTagIdsToTagAndApprovalState { markedForApprovalTagIds, markedForRejectionTagIds } approvedStateFromAssessmentType =
+    List.concat
+        [ List.map (TagAndApprovalState (approvedStateFromAssessmentType UA.Approved)) (Set.toList markedForApprovalTagIds)
+        , List.map (TagAndApprovalState (approvedStateFromAssessmentType UA.Rejected)) (Set.toList markedForRejectionTagIds)
+        ]
+
+
+getTagIdsInDocReview : CommitReview -> DocReviewTagIds
+getTagIdsInDocReview =
+    tagFold
+        (\tag acc ->
+            if tag.approvedState == InDocReview UA.Approved then
+                { acc | markedForApprovalTagIds = Set.insert tag.tagId acc.markedForApprovalTagIds }
+
+            else if tag.approvedState == InDocReview UA.Rejected then
+                { acc | markedForRejectionTagIds = Set.insert tag.tagId acc.markedForRejectionTagIds }
+
+            else
+                acc
+        )
+        { markedForApprovalTagIds = Set.empty, markedForRejectionTagIds = Set.empty }
 
 
 {-| A basic fold on the reviews/tags.
@@ -748,95 +764,96 @@ calculateRangesAndContentWithDiff startLineNumber content alteredLines fileLineN
         { greenLineRanges = [], redLineRanges = [], contentWithDiffs = [], lineNumbersWithDiffs = [] }
 
 
-type alias ApprovedAndRejectedTags =
+type alias UserMetadataForAllTags =
     { approvedTags : Set.Set String
     , rejectedTags : Set.Set String
+    , userAssessments : List UA.UserAssessment
     }
 
 
 decodeCommitReview : Decode.Decoder CommitReview
 decodeCommitReview =
     let
-        decodeApprovedAndRejectedTags =
-            Decode.map2 ApprovedAndRejectedTags
+        decodeUserTagMetadata =
+            Decode.map3 UserMetadataForAllTags
                 (Decode.field "approvedTags" (Decode.list Decode.string |> Decode.map Set.fromList))
                 (Decode.field "rejectedTags" (Decode.list Decode.string |> Decode.map Set.fromList))
+                (Decode.field "userAssessments" (Decode.list UA.decodeUserAssessment))
     in
-    decodeApprovedAndRejectedTags
+    decodeUserTagMetadata
         |> Decode.andThen
-            (\tagStates ->
-                Decode.map7 CommitReview
+            (\metadata ->
+                Decode.map6 CommitReview
                     (Decode.field "repoId" Decode.int)
                     (Decode.field "repoFullName" Decode.string)
                     (Decode.field "branchName" Decode.string)
                     (Decode.field "pullRequestNumber" Decode.int)
                     (Decode.field "commitId" Decode.string)
-                    (Decode.field "fileReviews" (Decode.list <| decodeFileReview tagStates))
-                    (Decode.field "remainingOwnersToApproveDocs" (Decode.list Decode.string |> Decode.map Set.fromList))
+                    (Decode.field "fileReviews" (Decode.list <| decodeFileReview metadata))
             )
 
 
-decodeFileReview : ApprovedAndRejectedTags -> Decode.Decoder FileReview
-decodeFileReview tagStates =
+decodeFileReview : UserMetadataForAllTags -> Decode.Decoder FileReview
+decodeFileReview metadata =
     Decode.map4 FileReview
-        (decodeFileReviewType tagStates)
+        (decodeFileReviewType metadata)
         (Decode.field "currentFilePath" Decode.string)
         (Decode.field "currentLanguage" Language.decodeLanguage)
         (Decode.succeed False)
 
 
-decodeFileReviewType : ApprovedAndRejectedTags -> Decode.Decoder FileReviewType
-decodeFileReviewType tagStates =
+decodeFileReviewType : UserMetadataForAllTags -> Decode.Decoder FileReviewType
+decodeFileReviewType metadata =
     Decode.field "fileReviewType" Decode.string
         |> Decode.andThen
             (\reviewType ->
                 case reviewType of
                     "modified-file" ->
-                        decodeModifiedfileReview tagStates
+                        decodeModifiedfileReview metadata
 
                     "renamed-file" ->
-                        decodeRenamedFileReview tagStates
+                        decodeRenamedFileReview metadata
 
                     "new-file" ->
-                        decodeNewFileReview tagStates
+                        decodeNewFileReview metadata
 
                     "deleted-file" ->
-                        decodeDeletedFileReview tagStates
+                        decodeDeletedFileReview metadata
 
                     fileReviewType ->
                         Decode.fail <| "You have an invalid file review type: " ++ fileReviewType
             )
 
 
-decodeModifiedfileReview : ApprovedAndRejectedTags -> Decode.Decoder FileReviewType
-decodeModifiedfileReview tagStates =
+decodeModifiedfileReview : UserMetadataForAllTags -> Decode.Decoder FileReviewType
+decodeModifiedfileReview metadata =
     Decode.map ModifiedFileReview
-        (Decode.field "reviews" (Decode.list <| decodeReview tagStates))
+        (Decode.field "reviews" (Decode.list <| decodeReview metadata))
 
 
-decodeRenamedFileReview : ApprovedAndRejectedTags -> Decode.Decoder FileReviewType
-decodeRenamedFileReview tagStates =
+decodeRenamedFileReview : UserMetadataForAllTags -> Decode.Decoder FileReviewType
+decodeRenamedFileReview metadata =
     Decode.map3 RenamedFileReview
         (Decode.field "previousFilePath" Decode.string)
         (Decode.field "previousLanguage" Language.decodeLanguage)
-        (Decode.field "reviews" (Decode.list <| decodeReview tagStates))
+        (Decode.field "reviews" (Decode.list <| decodeReview metadata))
 
 
-decodeNewFileReview : ApprovedAndRejectedTags -> Decode.Decoder FileReviewType
-decodeNewFileReview tagStates =
+decodeNewFileReview : UserMetadataForAllTags -> Decode.Decoder FileReviewType
+decodeNewFileReview metadata =
     Decode.map NewFileReview
-        (Decode.field "tags" (Decode.list <| decodeTag tagStates))
+        (Decode.field "tags" (Decode.list <| decodeTag metadata))
 
 
-decodeDeletedFileReview : ApprovedAndRejectedTags -> Decode.Decoder FileReviewType
-decodeDeletedFileReview tagStates =
+decodeDeletedFileReview : UserMetadataForAllTags -> Decode.Decoder FileReviewType
+decodeDeletedFileReview metadata =
     Decode.map DeletedFileReview
-        (Decode.field "tags" (Decode.list <| decodeTag tagStates))
+        (Decode.field "tags" (Decode.list <| decodeTag metadata))
 
 
-decodeReview : ApprovedAndRejectedTags -> Decode.Decoder Review
-decodeReview tagStates =
-    decodeTagAndAlteredLinesAndReviewType tagStates
+decodeReview : UserMetadataForAllTags -> Decode.Decoder Review
+decodeReview metadata =
+    decodeTagAndAlteredLinesAndReviewType metadata
         |> Decode.andThen
             (\(TagAndAlteredLinesAndReviewType tag alteredLines reviewType) ->
                 let
@@ -871,10 +888,10 @@ type TagAndAlteredLinesAndReviewType
     = TagAndAlteredLinesAndReviewType Tag (List AlteredLine) ReviewType
 
 
-decodeTagAndAlteredLinesAndReviewType : ApprovedAndRejectedTags -> Decode.Decoder TagAndAlteredLinesAndReviewType
-decodeTagAndAlteredLinesAndReviewType tagStates =
+decodeTagAndAlteredLinesAndReviewType : UserMetadataForAllTags -> Decode.Decoder TagAndAlteredLinesAndReviewType
+decodeTagAndAlteredLinesAndReviewType metadata =
     Decode.map3 TagAndAlteredLinesAndReviewType
-        (Decode.field "tag" <| decodeTag tagStates)
+        (Decode.field "tag" <| decodeTag metadata)
         (Decode.field "alteredLines" (Decode.list decodeAlteredLine))
         (Decode.field "reviewType" Decode.string
             |> Decode.andThen
@@ -918,8 +935,8 @@ decodeAlteredLine =
         (Decode.field "content" Decode.string)
 
 
-decodeTag : ApprovedAndRejectedTags -> Decode.Decoder Tag
-decodeTag { approvedTags, rejectedTags } =
+decodeTag : UserMetadataForAllTags -> Decode.Decoder Tag
+decodeTag { approvedTags, rejectedTags, userAssessments } =
     Decode.field "tagId" Decode.string
         |> Decode.andThen
             (\tagId ->
@@ -942,7 +959,7 @@ decodeTag { approvedTags, rejectedTags } =
                                             Decode.fail <| "Invalid tag type " ++ tagType
                                 )
                         )
-                    |> required "owner" Decode.string
+                    |> required "ownerGroups" (Decode.list (Decode.list Decode.string))
                     |> required "startLine" Decode.int
                     |> required "endLine" Decode.int
                     |> required "tagAnnotationLine" Decode.int
@@ -950,13 +967,14 @@ decodeTag { approvedTags, rejectedTags } =
                     |> required "tagId" Decode.string
                     |> hardcoded
                         (if Set.member tagId approvedTags then
-                            Approved
+                            NonNeutral UA.Approved
 
                          else if Set.member tagId rejectedTags then
-                            Rejected
+                            NonNeutral UA.Rejected
 
                          else
                             Neutral
                         )
                     |> hardcoded False
+                    |> hardcoded (List.filter (UA.hasTagId tagId) userAssessments)
             )

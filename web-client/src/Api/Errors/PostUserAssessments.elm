@@ -1,15 +1,15 @@
-module Api.Errors.CommitReviewAction exposing (CommitReviewActionError(..), decodeCommitReviewActionError)
+module Api.Errors.PostUserAssessments exposing (PostUserAssessmentsError(..), decodePostUserAssessmentsError)
 
 import Json.Decode as Decode
 
 
-type CommitReviewActionError
+type PostUserAssessmentsError
     = UnknownError
     | StaleCommitError String
 
 
-decodeCommitReviewActionError : Decode.Decoder CommitReviewActionError
-decodeCommitReviewActionError =
+decodePostUserAssessmentsError : Decode.Decoder PostUserAssessmentsError
+decodePostUserAssessmentsError =
     Decode.oneOf
         [ decodeCommitStaleError |> Decode.map StaleCommitError
         , Decode.succeed UnknownError
