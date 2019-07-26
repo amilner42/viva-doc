@@ -83,16 +83,15 @@ router.post('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/userass
     );
     const allTagIds = [ ...tagIdsToReject, ...tagIdsToApprove ];
 
+    const user = verify.getLoggedInUser(req);
+    const username = user.username;
+    await verify.hasAccessToRepo(user, repoId);
+
     const newUserApprovalAssessments = createAssessments("approved", username, tagIdsToApprove);
     const newUserRejectionAssessments = createAssessments("rejected", username, tagIdsToReject);
     const newUserAssessments = [ ...newUserApprovalAssessments, ...newUserRejectionAssessments ];
 
-    const user = verify.getLoggedInUser(req);
-    await verify.hasAccessToRepo(user, repoId);
-
     const pullRequestReviewObject = await verify.getPullRequestReviewObject(repoId, pullRequestNumber);
-
-    const username = user.username;
 
     verify.isLoadedHeadCommit(pullRequestReviewObject, commitId);
     verify.ownsTags(pullRequestReviewObject.headCommitTagsOwnerGroups, allTagIds, username);
@@ -107,8 +106,8 @@ router.post('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/userass
     );
 
     if ( allTagsApproved(
-          pullRequestReviewObject.tagsOwnerGroups.length,
-          pullRequestReviewObject.approvedTags.length,
+          pullRequestReviewObject.headCommitTagsOwnerGroups.length,
+          pullRequestReviewObject.headCommitApprovedTags.length,
           addUserAssessmentsResults
          )
     ) {
@@ -215,6 +214,8 @@ const addApprovalUserAssessment = async (repoId, pullRequestNumber, commitId, us
   const { username, tagId } = userAssessment;
   const tagOwnerGroups = R.find(R.propEq("tagId", tagId), tagsOwnerGroups);
 
+  console.log(`t: ${tagOwnerGroups.groups} - ${typeof tagOwnerGroups.groups[1]}`)
+
   const userApprovalGuaranteesTagApproval = R.all((owners) => {
     return R.contains(username, owners);
   }, tagOwnerGroups.groups);
@@ -274,9 +275,11 @@ const addApprovalUserAssessment = async (repoId, pullRequestNumber, commitId, us
     const mongoQueryAtLeastOneGroupOutsideUserLacksApproval = {
       $or: groupsWithoutUser.map((owners) => {
         return {
-          $nin: owners.map((owner) => {
-            return createAssessment("approved", owner, tagId);
-          })
+          headCommitUserAssessments: {
+            $nin: owners.map((owner) => {
+              return createAssessment("approved", owner, tagId);
+            })
+          }
         }
       })
     };
@@ -313,11 +316,13 @@ const addApprovalUserAssessment = async (repoId, pullRequestNumber, commitId, us
     try {
 
       const mongoQueryAllGroupsOutsideUserHaveApproval = {
-        $and: groupsWithoutUser.map((groupOwners) => {
+        $and: groupsWithoutUser.map((owners) => {
           return {
-            $in: groupOwners.map((owner) => {
-              return createAssessment("approved", owner, tagId);
-            })
+            headCommitUserAssessments: {
+              $in: owners.map((owner) => {
+                return createAssessment("approved", owner, tagId);
+              })
+            }
           }
         })
       };
@@ -355,7 +360,12 @@ const addApprovalUserAssessment = async (repoId, pullRequestNumber, commitId, us
 
     } catch (updateErr) {
 
-      // TODO log error.
+      try {
+        // TODO log error better?
+        console.log(updateErr);
+        console.log(JSON.stringify(updateErr));
+      } catch { }
+
       return { tagId, status: "approval-failure", error: { httpCode: 500, ...errors.internalServerError } };
     }
   }

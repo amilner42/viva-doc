@@ -9,7 +9,7 @@ const updateOk = (updateResult) => {
 
 
 const updateMatchedNResults = R.curry((n, updateResult) => {
-  return update.n === n;
+  return updateResult.n === n;
 });
 
 
