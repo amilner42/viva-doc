@@ -1,4 +1,4 @@
-module CommitReview exposing (AlteredLine, ApprovedState(..), CommitReview, DocReviewTagIds, EditType(..), FileReview, FileReviewType(..), Review, ReviewOrTag(..), ReviewType(..), Status(..), Tag, countTotalReviewsAndTags, countVisibleReviewsAndTags, decodeCommitReview, docReviewTagIdsToTagAndApprovalState, extractRenderEditorConfigs, getTagIdsInDocReview, readableTagType, renderConfigForReviewOrTag, updateApprovalStatesForTags, updateCommitReviewForSearch, updateReviews, updateTag, updateTagApprovalState, updateTags)
+module CommitReview exposing (AlteredLine, ApprovedState(..), CommitReview, DocReviewTagIds, EditType(..), FileReview, FileReviewType(..), Review, ReviewOrTag(..), ReviewType(..), Status(..), Tag, ViewFilterOption(..), countTotalReviewsAndTags, countVisibleReviewsAndTags, decodeCommitReview, docReviewTagIdsToTagAndApprovalState, extractRenderEditorConfigs, getTagIdsInDocReview, readableTagType, renderConfigForReviewOrTag, updateApprovalStatesForTags, updateCommitReviewForDisplayFilter, updateReviews, updateTag, updateTagApprovalState, updateTags)
 
 import Api.Responses.PostUserAssessments as PuaResponse
 import Dict
@@ -109,47 +109,23 @@ type Status
     | Unconfirmed Int
 
 
-type alias SearchBy =
-    { filterForUser : Maybe String
-    , filterApprovedTags : Bool
-    }
+type ViewFilterOption
+    = ViewAllTags
+    | ViewTagsThatRequireUserAssessment String
+    | ViewTagsInCurrentDocReview
 
 
-updateCommitReviewForSearch :
-    SearchBy
-    -> CommitReview
-    -> CommitReview
-updateCommitReviewForSearch searchBy commitReview =
-    { commitReview | fileReviews = List.map (updateFileReviewForSearch searchBy) commitReview.fileReviews }
+updateCommitReviewForDisplayFilter : ViewFilterOption -> CommitReview -> CommitReview
+updateCommitReviewForDisplayFilter displayFilter commitReview =
+    { commitReview | fileReviews = List.map (updateFileReviewForDisplayFilter displayFilter) commitReview.fileReviews }
 
 
-getNewHiddenValue : SearchBy -> Tag -> Bool
-getNewHiddenValue searchBy tag =
-    let
-        isHiddenThroughUserFilter =
-            case searchBy.filterForUser of
-                Nothing ->
-                    False
-
-                Just username ->
-                    OG.isUserInAnyGroup username tag.ownerGroups
-
-        isHiddenThroughApprovalFilter =
-            if searchBy.filterApprovedTags then
-                isApproved tag.approvedState
-
-            else
-                False
-    in
-    isHiddenThroughApprovalFilter || isHiddenThroughUserFilter
-
-
-updateFileReviewForSearch : SearchBy -> FileReview -> FileReview
-updateFileReviewForSearch searchBy fileReview =
+updateFileReviewForDisplayFilter : ViewFilterOption -> FileReview -> FileReview
+updateFileReviewForDisplayFilter displayFilter fileReview =
     let
         filterTagsForSearch =
             List.map
-                (\tag -> { tag | isHidden = getNewHiddenValue searchBy tag })
+                (\tag -> { tag | isHidden = getNewHiddenValue displayFilter tag })
 
         filterReviewsForSearch =
             List.map
@@ -158,7 +134,7 @@ updateFileReviewForSearch searchBy fileReview =
                         reviewTag =
                             review.tag
                     in
-                    { review | tag = { reviewTag | isHidden = getNewHiddenValue searchBy reviewTag } }
+                    { review | tag = { reviewTag | isHidden = getNewHiddenValue displayFilter reviewTag } }
                 )
     in
     case fileReview.fileReviewType of
@@ -213,6 +189,45 @@ updateFileReviewForSearch searchBy fileReview =
                 | fileReviewType = RenamedFileReview prevName prevLang updatedReviews
                 , isHidden = visibleReviews == 0
             }
+
+
+getNewHiddenValue : ViewFilterOption -> Tag -> Bool
+getNewHiddenValue displayFilter tag =
+    case displayFilter of
+        ViewAllTags ->
+            False
+
+        ViewTagsInCurrentDocReview ->
+            case tag.approvedState of
+                InDocReview _ ->
+                    False
+
+                InDocReviewBeingSubmitted _ ->
+                    False
+
+                _ ->
+                    True
+
+        ViewTagsThatRequireUserAssessment username ->
+            case tag.approvedState of
+                NonNeutral _ ->
+                    True
+
+                InDocReview _ ->
+                    True
+
+                InDocReviewBeingSubmitted _ ->
+                    True
+
+                _ ->
+                    if
+                        OG.isUserInAnyGroup username tag.ownerGroups
+                            && not (List.any (UA.isForUser username) tag.userAssessments)
+                    then
+                        False
+
+                    else
+                        True
 
 
 countTotalReviewsAndTags : List FileReview -> Int

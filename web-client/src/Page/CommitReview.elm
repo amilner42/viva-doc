@@ -33,8 +33,7 @@ type alias Model =
     , commitId : String
     , commitReview :
         RemoteData.RemoteData (Core.HttpError GcrError.GetCommitReviewError) GcrResponse.CommitReviewResponse
-    , displayOnlyUsersTags : Maybe String
-    , displayOnlyTagsNeedingApproval : Bool
+    , displayFilter : CommitReview.ViewFilterOption
     , modalClosed : Bool
     , submitDocReviewState :
         RemoteData.RemoteData (Core.HttpError PuaError.PostUserAssessmentsError) PuaResponse.PostUserAssessmentsResponse
@@ -50,8 +49,7 @@ init session repoId prNumber commitId =
             , prNumber = prNumber
             , commitId = commitId
             , commitReview = RemoteData.NotAsked
-            , displayOnlyUsersTags = Nothing
-            , displayOnlyTagsNeedingApproval = False
+            , displayFilter = CommitReview.ViewAllTags
             , modalClosed = False
             , submitDocReviewState = RemoteData.NotAsked
             }
@@ -122,8 +120,7 @@ view model =
                                     GcrResponse.Complete commitReview ->
                                         renderCommitReview
                                             { username = Viewer.getUsername viewer
-                                            , displayOnlyUsersTags = model.displayOnlyUsersTags
-                                            , displayOnlyTagsNeedingApproval = model.displayOnlyTagsNeedingApproval
+                                            , displayFilter = model.displayFilter
                                             , isCommitStale = model.commitId /= headCommitId
                                             }
                                             commitReview
@@ -132,8 +129,7 @@ view model =
 
 renderCommitReview :
     { username : String
-    , displayOnlyUsersTags : Maybe String
-    , displayOnlyTagsNeedingApproval : Bool
+    , displayFilter : CommitReview.ViewFilterOption
     , isCommitStale : Bool
     }
     -> CommitReview.CommitReview
@@ -149,8 +145,7 @@ renderCommitReview config commitReview =
         commitReviewHeader =
             renderCommitReviewHeader
                 config.username
-                config.displayOnlyUsersTags
-                config.displayOnlyTagsNeedingApproval
+                config.displayFilter
                 displayingReviews
                 totalReviews
 
@@ -185,8 +180,8 @@ renderCommitReview config commitReview =
     approveDocButton :: commitReviewHeader :: fileReviews
 
 
-renderCommitReviewHeader : String -> Maybe String -> Bool -> Int -> Int -> Html.Html Msg
-renderCommitReviewHeader username displayOnlyUsersTags displayOnlyTagsNeedingApproval displayingReviews totalReviews =
+renderCommitReviewHeader : String -> CommitReview.ViewFilterOption -> Int -> Int -> Html.Html Msg
+renderCommitReviewHeader username displayFilter displayingReviews totalReviews =
     div
         [ class "level is-mobile"
         , style "margin-bottom" "0px"
@@ -220,49 +215,60 @@ renderCommitReviewHeader username displayOnlyUsersTags displayOnlyTagsNeedingApp
             ]
         , div [ class "buttons level-right" ]
             [ button
-                [ class "button"
-                , onClick <|
-                    SetDisplayOnlyUsersTags
-                        (case displayOnlyUsersTags of
-                            Nothing ->
-                                Just username
-
-                            Just _ ->
-                                Nothing
-                        )
-                        username
+                [ class "button is-rounded"
+                , onClick <| SetDisplayFilter CommitReview.ViewAllTags
                 ]
                 [ span [ class "icon is-small" ]
                     [ i
                         [ class "material-icons" ]
                         [ text <|
-                            case displayOnlyUsersTags of
-                                Nothing ->
-                                    "check_box_outline_blank"
+                            case displayFilter of
+                                CommitReview.ViewAllTags ->
+                                    "radio_button_checked"
 
-                                Just _ ->
-                                    "check_box"
+                                _ ->
+                                    "radio_button_unchecked"
                         ]
                     ]
-                , div [] [ text "Your Tags" ]
+                , div [] [ text "All" ]
                 ]
             , button
-                [ class "button"
-                , onClick <| SetDisplayOnlyTagsNeedingApproval (not displayOnlyTagsNeedingApproval)
+                [ class "button is-rounded"
+                , onClick <| SetDisplayFilter <| CommitReview.ViewTagsThatRequireUserAssessment username
                 ]
                 [ span
                     [ class "icon is-small" ]
                     [ i
                         [ class "material-icons" ]
                         [ text <|
-                            if displayOnlyTagsNeedingApproval then
-                                "check_box"
+                            case displayFilter of
+                                CommitReview.ViewTagsThatRequireUserAssessment _ ->
+                                    "radio_button_checked"
 
-                            else
-                                "check_box_outline_blank"
+                                _ ->
+                                    "radio_button_unchecked"
                         ]
                     ]
-                , div [] [ text "Requires Approval" ]
+                , div [] [ text "Requires Your Assessment" ]
+                ]
+            , button
+                [ class "button is-rounded"
+                , onClick <| SetDisplayFilter CommitReview.ViewTagsInCurrentDocReview
+                ]
+                [ span
+                    [ class "icon is-small" ]
+                    [ i
+                        [ class "material-icons" ]
+                        [ text <|
+                            case displayFilter of
+                                CommitReview.ViewTagsInCurrentDocReview ->
+                                    "radio_button_checked"
+
+                                _ ->
+                                    "radio_button_unchecked"
+                        ]
+                    ]
+                , div [] [ text "In Current Doc Review" ]
                 ]
             ]
         ]
@@ -680,8 +686,9 @@ prettyPrintApproveDocSubtitle approvedTags rejectedTags =
 
 type Msg
     = CompletedGetCommitReview (Result.Result (Core.HttpError GcrError.GetCommitReviewError) GcrResponse.CommitReviewResponse)
-    | SetDisplayOnlyUsersTags (Maybe String) String
-    | SetDisplayOnlyTagsNeedingApproval Bool
+    | SetDisplayFilter CommitReview.ViewFilterOption
+      -- | SetDisplayOnlyUsersTags (Maybe String) String
+      -- | SetDisplayOnlyTagsNeedingApproval Bool
     | SetShowAlteredLines Language.Language CommitReview.Review
     | SetModalClosed Bool GcrResponse.CommitReviewResponseType
     | AddToDocReview UA.AssessmentType String
@@ -715,32 +722,13 @@ update msg model =
         CompletedGetCommitReview (Result.Err err) ->
             ( { model | commitReview = RemoteData.Failure err }, Cmd.none )
 
-        SetDisplayOnlyUsersTags displayOnlyUsersTags username ->
+        SetDisplayFilter viewFilterOption ->
             ( { model
-                | displayOnlyUsersTags = displayOnlyUsersTags
+                | displayFilter = viewFilterOption
                 , commitReview =
                     model.commitReview
                         |> updateCompleteCommitReview
-                            (CommitReview.updateCommitReviewForSearch
-                                { filterForUser = displayOnlyUsersTags
-                                , filterApprovedTags = model.displayOnlyTagsNeedingApproval
-                                }
-                            )
-              }
-            , Cmd.none
-            )
-
-        SetDisplayOnlyTagsNeedingApproval displayOnlyTagsNeedingApproval ->
-            ( { model
-                | displayOnlyTagsNeedingApproval = displayOnlyTagsNeedingApproval
-                , commitReview =
-                    model.commitReview
-                        |> updateCompleteCommitReview
-                            (CommitReview.updateCommitReviewForSearch
-                                { filterForUser = model.displayOnlyUsersTags
-                                , filterApprovedTags = displayOnlyTagsNeedingApproval
-                                }
-                            )
+                            (CommitReview.updateCommitReviewForDisplayFilter viewFilterOption)
               }
             , Cmd.none
             )
@@ -797,6 +785,8 @@ update msg model =
                             (CommitReview.updateTagApprovalState
                                 { tagId = tagId, approvalState = CommitReview.InDocReview assessmentType }
                             )
+                        |> updateCompleteCommitReview
+                            (CommitReview.updateCommitReviewForDisplayFilter model.displayFilter)
               }
             , Cmd.none
             )
@@ -809,6 +799,8 @@ update msg model =
                             (CommitReview.updateTagApprovalState
                                 { tagId = tagId, approvalState = CommitReview.Neutral }
                             )
+                        |> updateCompleteCommitReview
+                            (CommitReview.updateCommitReviewForDisplayFilter model.displayFilter)
               }
             , Cmd.none
             )
@@ -884,6 +876,8 @@ update msg model =
                                                     { tag | approvedState = CommitReview.RequestFailed () }
                                 )
                             )
+                        |> updateCompleteCommitReview
+                            (CommitReview.updateCommitReviewForDisplayFilter model.displayFilter)
               }
             , Cmd.none
             )
@@ -905,6 +899,8 @@ update msg model =
                         , commitReview =
                             model.commitReview
                                 |> updateCompleteCommitReview updateCommitReviewDocTagIdsToNeutral
+                                |> updateCompleteCommitReview
+                                    (CommitReview.updateCommitReviewForDisplayFilter model.displayFilter)
                                 |> RemoteData.map (\crr -> { crr | headCommitId = newHeadCommitId })
                     }
 
