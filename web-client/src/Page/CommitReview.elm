@@ -261,15 +261,11 @@ renderCommitReviewHeader config =
                     , span
                         [ class "has-text-grey is-size-6" ]
                         [ text <|
-                            if config.displayingReviewsCount == config.totalReviewsCount then
-                                "displaying all " ++ String.fromInt config.totalReviewsCount ++ " tags"
-
-                            else
-                                "displaying "
-                                    ++ String.fromInt config.displayingReviewsCount
-                                    ++ " of "
-                                    ++ String.fromInt config.totalReviewsCount
-                                    ++ " tags"
+                            "displaying "
+                                ++ String.fromInt config.displayingReviewsCount
+                                ++ " of "
+                                ++ String.fromInt config.totalReviewsCount
+                                ++ " tags"
                         ]
                     ]
                 ]
