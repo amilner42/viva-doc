@@ -1,4 +1,4 @@
-module CommitReview exposing (AlteredLine, ApprovedState(..), CommitReview, DocReviewTagIds, EditType(..), FileReview, FileReviewType(..), Review, ReviewOrTag(..), ReviewType(..), Status(..), Tag, ViewFilterOption(..), countTotalReviewsAndTags, countVisibleReviewsAndTags, decodeCommitReview, docReviewTagIdsToTagAndApprovalState, extractRenderEditorConfigs, getTagIdsInDocReview, readableTagType, renderConfigForReviewOrTag, updateApprovalStatesForTags, updateCommitReviewForDisplayFilter, updateReviews, updateTag, updateTagApprovalState, updateTags)
+module CommitReview exposing (AlteredLine, ApprovedState(..), CommitReview, DocReviewTagIds, EditType(..), FileReview, FileReviewType(..), Review, ReviewOrTag(..), ReviewType(..), Status(..), Tag, ViewFilterOption(..), countTotalReviewsAndTags, countVisibleReviewsAndTags, decodeCommitReview, docReviewTagIdsToTagAndApprovalState, extractRenderEditorConfigs, getTagIdsInDocReview, hasTagsInDocReview, markedForApprovalCount, markedForRejectionCount, readableTagType, renderConfigForReviewOrTag, updateApprovalStatesForTags, updateCommitReviewForDisplayFilter, updateReviews, updateTag, updateTagApprovalState, updateTags)
 
 import Api.Responses.PostUserAssessments as PuaResponse
 import Dict
@@ -425,6 +425,21 @@ isApproved approvedState =
 
 type alias DocReviewTagIds =
     { markedForApprovalTagIds : Set.Set String, markedForRejectionTagIds : Set.Set String }
+
+
+markedForApprovalCount : DocReviewTagIds -> Int
+markedForApprovalCount =
+    .markedForApprovalTagIds >> Set.size
+
+
+markedForRejectionCount : DocReviewTagIds -> Int
+markedForRejectionCount =
+    .markedForRejectionTagIds >> Set.size
+
+
+hasTagsInDocReview : DocReviewTagIds -> Bool
+hasTagsInDocReview docReviewTagIds =
+    markedForApprovalCount docReviewTagIds > 0 || markedForRejectionCount docReviewTagIds > 0
 
 
 docReviewTagIdsToTagAndApprovalState : DocReviewTagIds -> (UA.AssessmentType -> ApprovedState ()) -> List TagAndApprovalState

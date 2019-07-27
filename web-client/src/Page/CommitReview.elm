@@ -20,6 +20,7 @@ import Session exposing (Session)
 import Set
 import UserAssessment as UA
 import Viewer
+import Words
 
 
 
@@ -136,52 +137,112 @@ renderCommitReview :
     -> List (Html.Html Msg)
 renderCommitReview config commitReview =
     let
-        totalReviews =
+        totalReviewsCount =
             CommitReview.countTotalReviewsAndTags commitReview.fileReviews
 
-        displayingReviews =
+        displayingReviewsCount =
             CommitReview.countVisibleReviewsAndTags commitReview.fileReviews
+
+        docReviewTagIds =
+            CommitReview.getTagIdsInDocReview commitReview
 
         commitReviewHeader =
             renderCommitReviewHeader
-                config.username
-                config.displayFilter
-                displayingReviews
-                totalReviews
+                { username = config.username
+                , displayFilter = config.displayFilter
+                , displayingReviewsCount = displayingReviewsCount
+                , totalReviewsCount = totalReviewsCount
+                }
 
-        ({ markedForApprovalTagIds, markedForRejectionTagIds } as docReviewTagIds) =
-            CommitReview.getTagIdsInDocReview commitReview
-
-        anyTagsInDocReview =
-            Set.size markedForApprovalTagIds + Set.size markedForRejectionTagIds > 0
-
-        fileReviews =
-            commitReview.fileReviews
-                |> List.map (renderFileReview config.username config.isCommitStale)
-
-        approveDocButton =
-            if anyTagsInDocReview then
-                div
-                    [ class "section"
-                    , style "margin-top" "0px"
-                    , style "padding-top" "0px"
-                    ]
-                    [ button
-                        [ class "button is-success is-fullwidth is-large"
-                        , onClick <| SubmitDocReview config.username docReviewTagIds
-                        ]
-                        [ text "Submit Documentation Review" ]
-                    , text <| prettyPrintApproveDocSubtitle markedForApprovalTagIds markedForRejectionTagIds
-                    ]
+        noReviewsDisplayedText =
+            if displayingReviewsCount == 0 then
+                renderNoReviewsDisplayedText
+                    { displayFilter = config.displayFilter, docReviewTagIds = docReviewTagIds }
 
             else
                 div [ class "is-hidden" ] []
+
+        submitReviewButton =
+            renderSubmitReviewButton
+                { username = config.username
+                , displayFilter = config.displayFilter
+                , docReviewTagIds = docReviewTagIds
+                }
+
+        fileReviews =
+            commitReview.fileReviews
+                |> List.map (renderFileReview config)
     in
-    approveDocButton :: commitReviewHeader :: fileReviews
+    if totalReviewsCount == 0 then
+        [ div
+            [ class "title has-text-centered" ]
+            [ text "No documentation needs review" ]
+        , div
+            [ class "subtitle has-text-centered" ]
+            [ text "Let's call it a day and grab a beer..." ]
+        ]
+
+    else
+        -- NOTE We always render the file reviews and hide them with "is-hidden" because of the nature of elm's VDOM
+        -- not being aware of the code editors. This prevents us from calling to the port every time as they stay
+        -- rendered but hidden.
+        commitReviewHeader
+            :: noReviewsDisplayedText
+            :: submitReviewButton
+            :: fileReviews
 
 
-renderCommitReviewHeader : String -> CommitReview.ViewFilterOption -> Int -> Int -> Html.Html Msg
-renderCommitReviewHeader username displayFilter displayingReviews totalReviews =
+type alias RenderNoReviewsDisplayedTextConfig =
+    { displayFilter : CommitReview.ViewFilterOption
+    , docReviewTagIds : CommitReview.DocReviewTagIds
+    }
+
+
+renderNoReviewsDisplayedText : RenderNoReviewsDisplayedTextConfig -> Html Msg
+renderNoReviewsDisplayedText config =
+    div
+        [ class "section has-text-centered" ]
+        (case config.displayFilter of
+            -- Impossible case, if no tags require review we don't call `noDisplayedReviewsText`
+            CommitReview.ViewAllTags ->
+                []
+
+            CommitReview.ViewTagsThatRequireUserAssessment username ->
+                if CommitReview.hasTagsInDocReview config.docReviewTagIds then
+                    [ div
+                        [ class "subtitle has-text-centered" ]
+                        [ text "You have assessed all documentation under your responsibility" ]
+                    , button
+                        [ class "button"
+                        , onClick <| SetDisplayFilter CommitReview.ViewTagsInCurrentDocReview
+                        ]
+                        [ text "review and submit assessments" ]
+                    ]
+
+                else
+                    [ div
+                        [ class "subtitle has-text-centered" ]
+                        [ text "nothing requires your approval" ]
+                    ]
+
+            CommitReview.ViewTagsInCurrentDocReview ->
+                [ div
+                    [ class "subtitle has-text-centered" ]
+                    [ text "you have no assessments to submit" ]
+                ]
+        )
+
+
+type alias RenderCommitReviewHeaderConfig =
+    { username : String
+    , displayFilter : CommitReview.ViewFilterOption
+    , displayingReviewsCount : Int
+    , totalReviewsCount : Int
+    }
+
+
+renderCommitReviewHeader : RenderCommitReviewHeaderConfig -> Html.Html Msg
+renderCommitReviewHeader config =
     div
         [ class "level is-mobile"
         , style "margin-bottom" "0px"
@@ -196,19 +257,19 @@ renderCommitReviewHeader username displayFilter displayingReviews totalReviews =
                         [ class "has-text-black-ter is-size-3 title"
                         , style "padding-right" "15px"
                         ]
-                        [ text "Reviews" ]
+                        [ text "Documentation Review" ]
                     , span
                         [ class "has-text-grey is-size-6" ]
                         [ text <|
-                            if displayingReviews == totalReviews then
-                                "displaying all " ++ String.fromInt totalReviews ++ " reviews"
+                            if config.displayingReviewsCount == config.totalReviewsCount then
+                                "displaying all " ++ String.fromInt config.totalReviewsCount ++ " tags"
 
                             else
                                 "displaying "
-                                    ++ String.fromInt displayingReviews
+                                    ++ String.fromInt config.displayingReviewsCount
                                     ++ " of "
-                                    ++ String.fromInt totalReviews
-                                    ++ " reviews"
+                                    ++ String.fromInt config.totalReviewsCount
+                                    ++ " tags"
                         ]
                     ]
                 ]
@@ -222,7 +283,7 @@ renderCommitReviewHeader username displayFilter displayingReviews totalReviews =
                     [ i
                         [ class "material-icons" ]
                         [ text <|
-                            case displayFilter of
+                            case config.displayFilter of
                                 CommitReview.ViewAllTags ->
                                     "radio_button_checked"
 
@@ -234,14 +295,14 @@ renderCommitReviewHeader username displayFilter displayingReviews totalReviews =
                 ]
             , button
                 [ class "button is-rounded"
-                , onClick <| SetDisplayFilter <| CommitReview.ViewTagsThatRequireUserAssessment username
+                , onClick <| SetDisplayFilter <| CommitReview.ViewTagsThatRequireUserAssessment config.username
                 ]
                 [ span
                     [ class "icon is-small" ]
                     [ i
                         [ class "material-icons" ]
                         [ text <|
-                            case displayFilter of
+                            case config.displayFilter of
                                 CommitReview.ViewTagsThatRequireUserAssessment _ ->
                                     "radio_button_checked"
 
@@ -260,7 +321,7 @@ renderCommitReviewHeader username displayFilter displayingReviews totalReviews =
                     [ i
                         [ class "material-icons" ]
                         [ text <|
-                            case displayFilter of
+                            case config.displayFilter of
                                 CommitReview.ViewTagsInCurrentDocReview ->
                                     "radio_button_checked"
 
@@ -268,44 +329,89 @@ renderCommitReviewHeader username displayFilter displayingReviews totalReviews =
                                     "radio_button_unchecked"
                         ]
                     ]
-                , div [] [ text "In Current Doc Review" ]
+                , div [] [ text "Ready for Submission" ]
                 ]
             ]
         ]
 
 
-renderFileReview : String -> Bool -> CommitReview.FileReview -> Html.Html Msg
-renderFileReview username isCommitStale fileReview =
+type alias RenderSubmitReviewButtonConfig =
+    { displayFilter : CommitReview.ViewFilterOption
+    , docReviewTagIds : CommitReview.DocReviewTagIds
+    , username : String
+    }
+
+
+renderSubmitReviewButton : RenderSubmitReviewButtonConfig -> Html Msg
+renderSubmitReviewButton config =
+    case ( config.displayFilter, CommitReview.hasTagsInDocReview config.docReviewTagIds ) of
+        ( CommitReview.ViewTagsInCurrentDocReview, True ) ->
+            div
+                [ class "section"
+                , style "padding" "1.5rem"
+                , style "margin-bottom" "-50px"
+                ]
+                [ hr [] []
+                , button
+                    [ class "button is-success is-large is-fullwidth"
+                    , onClick <| SubmitDocReview config.username config.docReviewTagIds
+                    ]
+                    [ text <|
+                        "Submit "
+                            ++ Words.pluralizeWithNumericPrefix
+                                (CommitReview.markedForApprovalCount config.docReviewTagIds)
+                                "Approval"
+                            ++ " and "
+                            ++ Words.pluralizeWithNumericPrefix
+                                (CommitReview.markedForRejectionCount config.docReviewTagIds)
+                                "Rejection"
+                    ]
+                , hr [] []
+                ]
+
+        _ ->
+            div [ class "is-hidden" ] []
+
+
+type alias RenderFileReviewConfig =
+    { username : String
+    , isCommitStale : Bool
+    , displayFilter : CommitReview.ViewFilterOption
+    }
+
+
+renderFileReview : RenderFileReviewConfig -> CommitReview.FileReview -> Html.Html Msg
+renderFileReview config fileReview =
     div [ classList [ ( "section", True ), ( "is-hidden", fileReview.isHidden ) ] ] <|
         [ renderFileReviewHeader fileReview.currentFilePath fileReview.fileReviewType
         , case fileReview.fileReviewType of
             CommitReview.NewFileReview tags ->
                 renderTags
-                    username
+                    config.username
                     "This tag has been added to a new file"
-                    isCommitStale
+                    config.isCommitStale
                     fileReview.currentLanguage
                     tags
 
             CommitReview.DeletedFileReview tags ->
                 renderTags
-                    username
+                    config.username
                     "This tag is being removed inside a deleted file"
-                    isCommitStale
+                    config.isCommitStale
                     fileReview.currentLanguage
                     tags
 
             CommitReview.ModifiedFileReview reviews ->
                 renderReviews
-                    username
-                    isCommitStale
+                    config.username
+                    config.isCommitStale
                     fileReview.currentLanguage
                     reviews
 
             CommitReview.RenamedFileReview _ _ reviews ->
                 renderReviews
-                    username
-                    isCommitStale
+                    config.username
+                    config.isCommitStale
                     fileReview.currentLanguage
                     reviews
         ]
@@ -433,7 +539,7 @@ renderTagOrReview config tag =
                                         CommitReview.InDocReview assessmentType ->
                                             div
                                                 [ class "level-right has-text-grey-light" ]
-                                                [ text <| UA.prettyPrintAssessmentTypeWithCapital assessmentType ++ " in Current Doc Review" ]
+                                                [ text <| "You " ++ UA.prettyPrintAssessmentType assessmentType ++ " this tag" ]
 
                                         CommitReview.InDocReviewBeingSubmitted assessmentType ->
                                             div
