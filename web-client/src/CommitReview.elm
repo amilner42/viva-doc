@@ -1,4 +1,4 @@
-module CommitReview exposing (AlteredLine, ApprovedState(..), CommitReview, DocReviewTagIds, EditType(..), FileReview, FileReviewType(..), Review, ReviewOrTag(..), ReviewType(..), Status(..), Tag, ViewFilterOption(..), countTotalReviewsAndTags, countVisibleReviewsAndTags, decodeCommitReview, docReviewTagIdsToTagAndApprovalState, extractRenderEditorConfigs, getTagIdsInDocReview, hasTagsInDocReview, markedForApprovalCount, markedForRejectionCount, readableTagType, renderConfigForReviewOrTag, updateApprovalStatesForTags, updateCommitReviewForDisplayFilter, updateReviews, updateTag, updateTagApprovalState, updateTags)
+module CommitReview exposing (AlteredLine, ApprovedState(..), CommitReview, DocReviewTagIds, EditType(..), FileReview, FileReviewType(..), Review, ReviewOrTag(..), ReviewType(..), Status(..), Tag, ViewFilterOption(..), countVisibleReviewsAndTags, decodeCommitReview, docReviewTagIdsToTagAndApprovalState, extractRenderEditorConfigs, getTagCountBreakdownForFiles, getTagIdsInDocReview, hasTagsInDocReview, markedForApprovalCount, markedForRejectionCount, readableTagType, renderConfigForReviewOrTag, updateApprovalStatesForTags, updateCommitReviewForDisplayFilter, updateReviews, updateTag, updateTagApprovalState, updateTags)
 
 import Api.Responses.PostUserAssessments as PuaResponse
 import Dict
@@ -230,9 +230,64 @@ getNewHiddenValue displayFilter tag =
                         True
 
 
-countTotalReviewsAndTags : List FileReview -> Int
-countTotalReviewsAndTags =
-    List.foldl (\fileReview totalCount -> totalCount + reviewOrTagCount fileReview) 0
+type alias TagBreakdown =
+    { totalCount : Int, approvedCount : Int, rejectedCount : Int, unresolvedCount : Int }
+
+
+emptyTagBreakdown : TagBreakdown
+emptyTagBreakdown =
+    { totalCount = 0
+    , approvedCount = 0
+    , rejectedCount = 0
+    , unresolvedCount = 0
+    }
+
+
+getTagCountBreakdownForFiles : List FileReview -> TagBreakdown
+getTagCountBreakdownForFiles =
+    tagFoldOnFileReviews
+        (\tag tagBreakdownAcc ->
+            let
+                tagBreakdownAccWithUpdatedTotal =
+                    { tagBreakdownAcc | totalCount = tagBreakdownAcc.totalCount + 1 }
+
+                tagBreakdownIncUnresolved =
+                    { tagBreakdownAccWithUpdatedTotal
+                        | unresolvedCount = tagBreakdownAccWithUpdatedTotal.unresolvedCount + 1
+                    }
+
+                tagBreakdownIncApproved =
+                    { tagBreakdownAccWithUpdatedTotal
+                        | approvedCount = tagBreakdownAccWithUpdatedTotal.approvedCount + 1
+                    }
+
+                tagBreakdownIncRejected =
+                    { tagBreakdownAccWithUpdatedTotal
+                        | rejectedCount = tagBreakdownAccWithUpdatedTotal.rejectedCount + 1
+                    }
+            in
+            case tag.approvedState of
+                Neutral ->
+                    tagBreakdownIncUnresolved
+
+                NonNeutral assessmentType ->
+                    case assessmentType of
+                        UA.Approved ->
+                            tagBreakdownIncApproved
+
+                        UA.Rejected ->
+                            tagBreakdownIncRejected
+
+                InDocReview _ ->
+                    tagBreakdownIncUnresolved
+
+                InDocReviewBeingSubmitted _ ->
+                    tagBreakdownIncUnresolved
+
+                RequestFailed err ->
+                    tagBreakdownIncUnresolved
+        )
+        emptyTagBreakdown
 
 
 reviewOrTagCount : FileReview -> Int
@@ -466,11 +521,14 @@ getTagIdsInDocReview =
         { markedForApprovalTagIds = Set.empty, markedForRejectionTagIds = Set.empty }
 
 
-{-| A basic fold on the reviews/tags.
--}
 reviewOrTagFold : (ReviewOrTag -> acc -> acc) -> acc -> CommitReview -> acc
 reviewOrTagFold foldFunc initAcc =
-    allTagsOrReviews >> List.foldl foldFunc initAcc
+    .fileReviews >> reviewOrTagFoldOnFileReviews foldFunc initAcc
+
+
+reviewOrTagFoldOnFileReviews : (ReviewOrTag -> acc -> acc) -> acc -> List FileReview -> acc
+reviewOrTagFoldOnFileReviews foldFunc initAcc =
+    allTagsOrReviewsInFileReviews >> List.foldl foldFunc initAcc
 
 
 getTagsOrReviewsFromFileReview : FileReview -> List ReviewOrTag
@@ -489,24 +547,29 @@ getTagsOrReviewsFromFileReview fileReview =
             List.map AReview reviews
 
 
-{-| Get all tags and reviews from all file reviews
--}
 allTagsOrReviews : CommitReview -> List ReviewOrTag
 allTagsOrReviews =
-    .fileReviews
-        >> List.foldl
-            (\fileReview reviewsOrTags ->
-                List.append reviewsOrTags <|
-                    getTagsOrReviewsFromFileReview fileReview
-            )
-            []
+    .fileReviews >> allTagsOrReviewsInFileReviews
 
 
-{-| A basic fold on the tags.
--}
+allTagsOrReviewsInFileReviews : List FileReview -> List ReviewOrTag
+allTagsOrReviewsInFileReviews =
+    List.foldl
+        (\fileReview reviewsOrTags ->
+            List.append reviewsOrTags <|
+                getTagsOrReviewsFromFileReview fileReview
+        )
+        []
+
+
 tagFold : (Tag -> acc -> acc) -> acc -> CommitReview -> acc
-tagFold foldFunc =
-    reviewOrTagFold
+tagFold foldFunc initAcc =
+    .fileReviews >> tagFoldOnFileReviews foldFunc initAcc
+
+
+tagFoldOnFileReviews : (Tag -> acc -> acc) -> acc -> List FileReview -> acc
+tagFoldOnFileReviews foldFunc =
+    reviewOrTagFoldOnFileReviews
         (\tagOrReview ->
             foldFunc <|
                 case tagOrReview of

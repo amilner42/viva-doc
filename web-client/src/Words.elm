@@ -1,4 +1,4 @@
-module Words exposing (pluralize, pluralizeWithNumericPrefix)
+module Words exposing (pluralize, pluralizeWithNumericPrefix, singularAndPlural)
 
 
 pluralize : Int -> String -> String
@@ -17,3 +17,20 @@ pluralizeWithNumericPrefix number baseWord =
 
     else
         String.fromInt number ++ " " ++ baseWord ++ "s"
+
+
+type alias SingularAndPluralParams =
+    { count : Int
+    , singular : String
+    , pluralPrefix : String
+    , pluralSuffix : String
+    }
+
+
+singularAndPlural : SingularAndPluralParams -> String
+singularAndPlural { count, singular, pluralPrefix, pluralSuffix } =
+    if count == 1 then
+        singular
+
+    else
+        pluralPrefix ++ String.fromInt count ++ pluralSuffix

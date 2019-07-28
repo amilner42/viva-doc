@@ -9,11 +9,12 @@ import Api.Responses.PostUserAssessments as PuaResponse
 import CodeEditor
 import CommitReview
 import Html exposing (Html, a, button, div, dl, dt, hr, i, li, ol, p, progress, section, span, table, tbody, td, text, th, thead, tr)
-import Html.Attributes exposing (class, classList, disabled, style)
+import Html.Attributes exposing (class, classList, disabled, max, style, value)
 import Html.Events exposing (onClick)
 import Language
 import OwnerGroup as OG
 import Ports
+import Progress
 import RemoteData
 import Route
 import Session exposing (Session)
@@ -137,8 +138,8 @@ renderCommitReview :
     -> List (Html.Html Msg)
 renderCommitReview config commitReview =
     let
-        totalReviewsCount =
-            CommitReview.countTotalReviewsAndTags commitReview.fileReviews
+        tagCountBreakdown =
+            CommitReview.getTagCountBreakdownForFiles commitReview.fileReviews
 
         displayingReviewsCount =
             CommitReview.countVisibleReviewsAndTags commitReview.fileReviews
@@ -146,12 +147,21 @@ renderCommitReview config commitReview =
         docReviewTagIds =
             CommitReview.getTagIdsInDocReview commitReview
 
+        status =
+            renderStatus
+                { totalTagCount = tagCountBreakdown.totalCount
+                , approvedTagCount = tagCountBreakdown.approvedCount
+                , rejectedTagCount = tagCountBreakdown.rejectedCount
+                , unresolvedTagCount = tagCountBreakdown.unresolvedCount
+                , docReviewTagIds = docReviewTagIds
+                }
+
         commitReviewHeader =
             renderCommitReviewHeader
                 { username = config.username
                 , displayFilter = config.displayFilter
                 , displayingReviewsCount = displayingReviewsCount
-                , totalReviewsCount = totalReviewsCount
+                , totalReviewsCount = tagCountBreakdown.totalCount
                 }
 
         noReviewsDisplayedText =
@@ -173,7 +183,7 @@ renderCommitReview config commitReview =
             commitReview.fileReviews
                 |> List.map (renderFileReview config)
     in
-    if totalReviewsCount == 0 then
+    if tagCountBreakdown.totalCount == 0 then
         [ div
             [ class "title has-text-centered" ]
             [ text "No documentation needs review" ]
@@ -186,10 +196,88 @@ renderCommitReview config commitReview =
         -- NOTE We always render the file reviews and hide them with "is-hidden" because of the nature of elm's VDOM
         -- not being aware of the code editors. This prevents us from calling to the port every time as they stay
         -- rendered but hidden.
-        commitReviewHeader
+        status
+            :: commitReviewHeader
             :: noReviewsDisplayedText
             :: submitReviewButton
             :: fileReviews
+
+
+type alias RenderStatusConfig =
+    { totalTagCount : Int
+    , approvedTagCount : Int
+    , rejectedTagCount : Int
+    , unresolvedTagCount : Int
+    , docReviewTagIds : CommitReview.DocReviewTagIds
+    }
+
+
+renderStatus : RenderStatusConfig -> Html Msg
+renderStatus config =
+    div
+        []
+        [ div
+            [ class "title" ]
+            [ text "Status Summary" ]
+        , Progress.progress
+            { height = "30px"
+            , bars =
+                [ { color = Progress.Success
+                  , widthPercent = toFloat config.approvedTagCount / toFloat config.totalTagCount * 100
+                  , text = Just "approved"
+                  }
+                , { color = Progress.Danger
+                  , widthPercent = toFloat config.rejectedTagCount / toFloat config.totalTagCount * 100
+                  , text = Just "rejected"
+                  }
+                ]
+            }
+        , div
+            [ class "section"
+            , style "padding-top" "10px"
+            ]
+            [ div
+                []
+                [ text <|
+                    Words.singularAndPlural
+                        { count = config.totalTagCount
+                        , singular = "There is 1 tag."
+                        , pluralPrefix = "There are a total of "
+                        , pluralSuffix = " tags."
+                        }
+                ]
+            , div
+                []
+                [ text <|
+                    Words.singularAndPlural
+                        { count = config.approvedTagCount
+                        , singular = "1 tag has been approved."
+                        , pluralPrefix = ""
+                        , pluralSuffix = " tags have been approved."
+                        }
+                ]
+            , div
+                []
+                [ text <|
+                    Words.singularAndPlural
+                        { count = config.rejectedTagCount
+                        , singular = "1 tag has been rejected."
+                        , pluralPrefix = ""
+                        , pluralSuffix = " tags have been rejected."
+                        }
+                ]
+            , div
+                []
+                [ text <|
+                    Words.singularAndPlural
+                        { count = config.unresolvedTagCount
+                        , singular = "1 tag remains unresolved."
+                        , pluralPrefix = ""
+                        , pluralSuffix = " tags remain unresolved."
+                        }
+                ]
+            ]
+        ]
 
 
 type alias RenderNoReviewsDisplayedTextConfig =
