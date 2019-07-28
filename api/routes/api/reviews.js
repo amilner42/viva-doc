@@ -113,6 +113,8 @@ router.post('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/userass
     ) {
 
       // TODO wrap in try-catch and handle error
+      const repoName = pullRequestReviewObject.repoName;
+
       const repoObject = await verify.getRepoObject(repoId);
       await githubApp.putSuccessStatusOnCommit(
         repoObject.installationId,
