@@ -54,9 +54,9 @@ const PullRequestReviewSchema = new mongoose.Schema({
   headCommitId: { type: String, required: [true, "can't be blank"], index: true },
   headCommitApprovedTags: { type: [ String ] },
   headCommitRejectedTags: { type: [String ] },
-  headCommitUserAssessments: { type: [ { username: String, tagId: String, assessmentType: String } ] },
-  headCommitTagsOwnerGroups: { type: [ { tagId: String, groups: [ [ String ] ] } ] },
-  pendingAnalysisForCommits: { type: [ { head: String, base: String } ], required: [ true, "can't be blank"] },
+  headCommitUserAssessments: { type: [ { _id: false, username: String, tagId: String, assessmentType: String } ] },
+  headCommitTagsOwnerGroups: { type: [ { _id: false, tagId: String, groups: [ [ String ] ] } ] },
+  pendingAnalysisForCommits: { type: [ { _id: false, head: String, base: String } ], required: [ true, "can't be blank"] },
   analyzedCommitsWithSuccessStatus: { type: [ String ], required: [ true, "can't be blank" ] },
   analyzedCommits: { type: [ String ], required: [ true, "can't be blank"] },
   commitReviewErrors: { type:  [ mongoose.Schema.Types.Mixed ], required: [true, "can't be blank"] }

@@ -9,7 +9,6 @@ const mongoHelpers = require("../../mongo-helpers");
 
 const mongoose = require('mongoose');
 const PullRequestReviewModel = mongoose.model('PullRequestReview');
-const RepoModel = mongoose.model('Repo');
 
 
 router.get('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId'
@@ -216,110 +215,53 @@ const addApprovalUserAssessment = async (repoId, pullRequestNumber, commitId, us
   const { username, tagId } = userAssessment;
   const tagOwnerGroups = R.find(R.propEq("tagId", tagId), tagsOwnerGroups);
 
+  // In the case that the user approval may or may not cause the tag to be approved we do two updates. We do this
+  // because we want everything to be atomic, so we try multiple atomic operations to cover all cases.
+  //  - first doing an update with query settings assuming that the approval will not cause the tag to be approved
+  //  - second, if that fails, we try again this time with query settings assuming this update will cause the tag to be
+  //    approved.
+  //      - Here again we have to do two atomic updates, one assuming this is the last tag to be approved and one
+  //        assuming this is not the last tag to be approved.
+
   const userApprovalGuaranteesTagApproval = R.all((owners) => {
     return R.contains(username, owners);
   }, tagOwnerGroups.groups);
-
-  if (userApprovalGuaranteesTagApproval) {
-    try {
-
-      const addApprovalUpdateResult = await PullRequestReviewModel.update(
-        {
-          repoId,
-          pullRequestNumber,
-          headCommitId: commitId,
-          headCommitApprovedTags: { $nin: [ tagId ] },
-          headCommitRejectedTags: { $nin: [ tagId ] },
-          headCommitUserAssessments: { $nin: [ userAssessment ] }
-        },
-        {
-          $push: {
-            "headCommitUserAssessments": userAssessment,
-            "headCommitApprovedTags": tagId
-          }
-        }
-      ).exec();
-
-
-      // TODO log error if needed.
-      // TODO make these errors better (priority: for the head commit updating / tag already being approved/rejected)
-      if ( !mongoHelpers.updateOk(addApprovalUpdateResult)
-            || !mongoHelpers.updateMatchedOneResult(addApprovalUpdateResult)
-            || !mongoHelpers.updateModifiedOneResult(addApprovalUpdateResult)
-      ) {
-        return { tagId, status: "approval-failure", error: { httpCode: 500, ...errors.internalServerError } }
-      }
-
-      return { tagId, status: "approval-success", tagApproved: true };
-
-    } catch (err) {
-
-      // TODO log error
-      return { tagId, status: "approval-failure", error: { httpCode: 500, ...errors.internalServerError } }
-    }
-  }
-
-  // In the following case, the user approval may or may not cause the tag to be approved. To do this atomically, we do
-  // two atomic updates below, first doing an update with query settings assuming that the approval will not cause the
-  // tag to be approved, and then if that fails, we try again this time with query settings assuming this update will
-  // cause the tag to be approved. If both fail we pass along the error.
 
   const groupsWithoutUser = R.filter((owners) => {
     return !R.contains(username, owners);
   }, tagOwnerGroups.groups);
 
+  const createMongoQueryFilterForUpdate = (andAdditionalQueryFilter) => {
 
-  // First try an atomic update assuming that this assessment will NOT cause the tag to be approved.
-  try {
-
-    const mongoQueryAtLeastOneGroupOutsideUserLacksApproval = {
-      $or: groupsWithoutUser.map((owners) => {
-        return {
-          headCommitUserAssessments: {
-            $nin: owners.map((owner) => {
-              return createAssessment("approved", owner, tagId);
-            })
-          }
-        }
-      })
+    const baseFilter = {
+      repoId,
+      pullRequestNumber,
+      headCommitId: commitId,
+      headCommitApprovedTags: { $nin: [ userAssessment.tagId ] },
+      headCommitRejectedTags: { $nin: [ userAssessment.tagId ] },
+      headCommitUserAssessments: { $nin: [ userAssessment ] }
     };
 
-    const addAssessmentUpdateResult = await PullRequestReviewModel.update(
-      {
-        repoId,
-        pullRequestNumber,
-        headCommitId: commitId,
-        headCommitApprovedTags: { $nin: [ userAssessment.tagId ] },
-        headCommitRejectedTags: { $nin: [ userAssessment.tagId ] },
-        $and: [
-          { headCommitUserAssessments: { $nin: [ userAssessment ] } },
-          mongoQueryAtLeastOneGroupOutsideUserLacksApproval
-        ]
-      },
-      {
-        $push: { "headCommitUserAssessments": userAssessment },
-      }
-    ).exec();
-
-    if ( !mongoHelpers.updateOk(addAssessmentUpdateResult)
-          || !mongoHelpers.updateMatchedOneResult(addAssessmentUpdateResult)
-          || !mongoHelpers.updateModifiedOneResult(addAssessmentUpdateResult)
-    ) {
-      throw "value-meaningless error to skip to catch block";
+    if (andAdditionalQueryFilter === null) {
+      return baseFilter;
     }
 
-    return { tagId, status: "approval-success", tagApproved: false };
+    return {
+      ...baseFilter,
+      $and: [ andAdditionalQueryFilter ]
+    }
+  }
 
-  } catch {
+  if (!userApprovalGuaranteesTagApproval) {
 
-    // Second, try an atomic update assuming that this assessment will cause the tag to be approved.
+    // First try an atomic update assuming that this assessment will NOT cause the tag to be approved.
     try {
 
-      const mongoQueryAllGroupsOutsideUserHaveApproval = {
-        $and: groupsWithoutUser.map((owners) => {
+      const mongoQueryFilterAtLeastOneGroupOutsideUserLacksApproval = {
+        $or: groupsWithoutUser.map((owners) => {
           return {
             headCommitUserAssessments: {
-              $in: owners.map((owner) => {
+              $nin: owners.map((owner) => {
                 return createAssessment("approved", owner, tagId);
               })
             }
@@ -327,47 +269,117 @@ const addApprovalUserAssessment = async (repoId, pullRequestNumber, commitId, us
         })
       };
 
-      const addApprovalUpdateResult = await PullRequestReviewModel.update(
+      const completeQueryFilter =
+        createMongoQueryFilterForUpdate(mongoQueryFilterAtLeastOneGroupOutsideUserLacksApproval);
+
+      const addAssessmentUpdateResult = await PullRequestReviewModel.update(
+        completeQueryFilter,
         {
-          repoId,
-          pullRequestNumber,
-          headCommitId: commitId,
-          headCommitApprovedTags: { $nin: [ userAssessment.tagId ] },
-          headCommitRejectedTags: { $nin: [ userAssessment.tagId ] },
-          $and: [
-            { headCommitUserAssessments: { $nin: [ userAssessment ] } },
-            mongoQueryAllGroupsOutsideUserHaveApproval
-          ]
-        },
-        {
-          $push: {
-            "headCommitUserAssessments": userAssessment,
-            "headCommitApprovedTags": tagId
-          },
+          $push: { "headCommitUserAssessments": userAssessment }
         }
       ).exec();
 
-      // TODO log error if needed.
-      // TODO make these errors better (priority: for the head commit updating / tag already being approved/rejected)
-      if ( !mongoHelpers.updateOk(addApprovalUpdateResult)
-            || !mongoHelpers.updateMatchedOneResult(addApprovalUpdateResult)
-            || !mongoHelpers.updateModifiedOneResult(addApprovalUpdateResult)
+      if ( !mongoHelpers.updateOk(addAssessmentUpdateResult)
+            || !mongoHelpers.updateMatchedOneResult(addAssessmentUpdateResult)
+            || !mongoHelpers.updateModifiedOneResult(addAssessmentUpdateResult)
       ) {
-        return { tagId, status: "approval-failure", error: { httpCode: 500, ...errors.internalServerError } };
+        throw "value-meaningless error to move to next atomic update";
       }
 
-      return { tagId, status: "approval-success", tagApproved: true };
+      return { tagId, status: "approval-success", tagApproved: false };
 
-    } catch (updateErr) {
+    } catch { /* Error ignored to try second atomic update.*/ }
 
-      try {
-        // TODO log error better?
-        console.log(updateErr);
-        console.log(JSON.stringify(updateErr));
-      } catch { }
+  }
 
+  const totalTags = tagsOwnerGroups.length;
+
+  const mongoQueryFilterAllGroupsOutsideUserHaveApproval =
+    userApprovalGuaranteesTagApproval
+      ? { }
+      : {
+          $and: groupsWithoutUser.map((owners) => {
+            return {
+              headCommitUserAssessments: {
+                $in: owners.map((owner) => {
+                  return createAssessment("approved", owner, tagId);
+                })
+              }
+            }
+          })
+        }
+
+  // Second, try an atomic update assuming that this assessment will cause the tag to be approved but that this is NOT
+  // the last tag needing approval in the commit.
+  try {
+
+    const completeQuery = createMongoQueryFilterForUpdate({
+      headCommitApprovedTags: { $not: { $size: totalTags - 1 } },
+      ...mongoQueryFilterAllGroupsOutsideUserHaveApproval
+    });
+
+    const addApprovalUpdateResult = await PullRequestReviewModel.update(
+      completeQuery,
+      {
+        $push: {
+          "headCommitUserAssessments": userAssessment,
+          "headCommitApprovedTags": tagId
+        }
+      }
+    ).exec();
+
+    if ( !mongoHelpers.updateOk(addApprovalUpdateResult)
+          || !mongoHelpers.updateMatchedOneResult(addApprovalUpdateResult)
+          || !mongoHelpers.updateModifiedOneResult(addApprovalUpdateResult)
+    ) {
+      throw "value-meaningless error to move to next atomic update";
+    }
+
+    return { tagId, status: "approval-success", tagApproved: true };
+
+  } catch { /* Error ignored to try third atomic update. */  }
+
+
+  // Third, try an atomic update assuming this will cause the tag to be approved and that this is the last tag needing
+  // approval.
+  try {
+
+    const completeQuery = createMongoQueryFilterForUpdate({
+      headCommitApprovedTags: { $size: totalTags - 1 },
+      ...mongoQueryFilterAllGroupsOutsideUserHaveApproval
+    });
+
+    const addApprovalOnLastTagUpdateResult = await PullRequestReviewModel.update(
+      completeQuery,
+      {
+        $push: {
+          "headCommitUserAssessments": userAssessment,
+          "headCommitApprovedTags": tagId,
+          "analyzedCommitsWithSuccessStatus": commitId
+        }
+      }
+    ).exec();
+
+    // TODO log error if needed.
+    // TODO make these errors better (priority: for the head commit updating / tag already being approved/rejected)
+    if ( !mongoHelpers.updateOk(addApprovalOnLastTagUpdateResult)
+          || !mongoHelpers.updateMatchedOneResult(addApprovalOnLastTagUpdateResult)
+          || !mongoHelpers.updateModifiedOneResult(addApprovalOnLastTagUpdateResult)
+    ) {
       return { tagId, status: "approval-failure", error: { httpCode: 500, ...errors.internalServerError } };
     }
+
+    return { tagId, status: "approval-success", tagApproved: true };
+
+  } catch (updateErr) {
+
+    try {
+      // TODO log error better?
+      console.log(updateErr);
+      console.log(JSON.stringify(updateErr));
+    } catch { }
+
+    return { tagId, status: "approval-failure", error: { httpCode: 500, ...errors.internalServerError } };
   }
 }
 
