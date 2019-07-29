@@ -8,7 +8,7 @@ import Api.Responses.GetCommitReview as GcrResponse
 import Api.Responses.PostUserAssessments as PuaResponse
 import CodeEditor
 import CommitReview
-import Html exposing (Html, a, button, div, dl, dt, hr, i, li, ol, p, progress, section, span, table, tbody, td, text, th, thead, tr)
+import Html exposing (Html, a, button, dd, div, dl, dt, hr, i, li, ol, p, progress, section, span, table, tbody, td, text, th, thead, tr)
 import Html.Attributes exposing (class, classList, disabled, max, style, value)
 import Html.Events exposing (onClick)
 import Language
@@ -585,6 +585,12 @@ renderTagOrReview :
     -> CommitReview.Tag
     -> Html.Html Msg
 renderTagOrReview config tag =
+    let
+        ownerGroups =
+            renderOwnerGroupsForTag
+                tag.ownerGroups
+                tag.userAssessments
+    in
     div [ classList [ ( "tile is-parent", True ), ( "is-hidden", tag.isHidden ) ] ]
         [ div
             [ class "tile is-8 is-child has-code-editor" ]
@@ -601,8 +607,7 @@ renderTagOrReview config tag =
                     ]
                     [ div
                         [ class "content is-small" ]
-                        [ dl
-                            []
+                        [ dl [] <|
                             [ dt
                                 []
                                 [ div [ class "level" ]
@@ -626,16 +631,21 @@ renderTagOrReview config tag =
 
                                         CommitReview.NonNeutral assessmentType ->
                                             div
-                                                [ class "level-right has-text-grey-light" ]
+                                                [ classList
+                                                    [ ( "level-right", True )
+                                                    , ( "has-text-success", UA.isApproved assessmentType )
+                                                    , ( "has-text-danger", UA.isRejected assessmentType )
+                                                    ]
+                                                ]
                                                 [ text <| UA.prettyPrintAssessmentTypeWithCapital assessmentType ]
 
                                         CommitReview.RequestFailed err ->
                                             div [ class "is-hidden" ] []
                                     ]
                                 ]
-                            , dt [] [ text <| "Owner: " ++ "TODO" ]
                             ]
-                        , p [] [ text config.description ]
+                                ++ ownerGroups
+                        , p [ style "margin-top" "20px" ] [ text config.description ]
                         ]
                     , div [ class "buttons" ] <|
                         (if
@@ -721,6 +731,81 @@ renderTagOrReview config tag =
                 ]
             ]
         ]
+
+
+renderOwnerGroupsForTag : List OG.OwnerGroup -> List UA.UserAssessment -> List (Html msg)
+renderOwnerGroupsForTag ownerGroups userAssessments =
+    let
+        renderGroup group =
+            let
+                isApprovedGroup =
+                    List.any
+                        (\owner ->
+                            List.any
+                                (UA.isAll [ .assessmentType >> UA.isApproved, UA.isForUser owner ])
+                                userAssessments
+                        )
+                        group
+
+                isRejectedGroup =
+                    List.any
+                        (\owner ->
+                            List.any
+                                (UA.isAll [ .assessmentType >> UA.isRejected, UA.isForUser owner ])
+                                userAssessments
+                        )
+                        group
+            in
+            dd
+                [ class "level"
+                , style "margin" "5px 0 5px 10px"
+                ]
+                [ div [ class "level-left" ] <|
+                    [ span [ class "icon is-small" ]
+                        [ i
+                            [ classList
+                                [ ( "material-icons", True )
+                                , ( "has-text-light", not isApprovedGroup && not isRejectedGroup )
+                                , ( "has-text-success", isApprovedGroup )
+                                , ( "has-text-danger", isRejectedGroup )
+                                ]
+                            ]
+                            [ text <|
+                                case ( isRejectedGroup, isApprovedGroup ) of
+                                    ( True, False ) ->
+                                        "indeterminate_check_box"
+
+                                    ( True, True ) ->
+                                        "indeterminate_check_box"
+
+                                    ( False, True ) ->
+                                        "check_box"
+
+                                    ( False, False ) ->
+                                        "check_box_outline_blank"
+                            ]
+                        ]
+                    , span [ style "white-space" "pre" ] [ text " " ]
+                    ]
+                        ++ List.map renderOwner group
+                ]
+
+        renderOwner owner =
+            span
+                [ style "white-space" "pre"
+                , classList
+                    [ ( "has-text-success"
+                      , List.any (UA.isAll [ UA.isForUser owner, .assessmentType >> UA.isApproved ]) userAssessments
+                      )
+                    , ( "has-text-danger"
+                      , List.any (UA.isAll [ UA.isForUser owner, .assessmentType >> UA.isRejected ]) userAssessments
+                      )
+                    ]
+                ]
+                [ text <| "  " ++ owner ]
+    in
+    [ dt [] [ text <| "Owner Groups" ] ]
+        ++ List.map renderGroup ownerGroups
 
 
 renderHeadUpdatedModal : GcrResponse.CommitReviewResponseType -> String -> Route.Route -> List (Html.Html Msg)

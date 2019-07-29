@@ -1,4 +1,4 @@
-module UserAssessment exposing (AssessmentType(..), UserAssessment, decodeUserAssessment, hasTagId, isForUser, prettyPrintAssessmentType, prettyPrintAssessmentTypeWithCapital)
+module UserAssessment exposing (AssessmentType(..), UserAssessment, decodeUserAssessment, hasTagId, isAll, isApproved, isForUser, isRejected, prettyPrintAssessmentType, prettyPrintAssessmentTypeWithCapital)
 
 import Json.Decode as Decode
 import Json.Decode.Pipeline exposing (hardcoded, optional, required)
@@ -14,6 +14,31 @@ type alias UserAssessment =
 type AssessmentType
     = Approved
     | Rejected
+
+
+isAll : List (UserAssessment -> Bool) -> UserAssessment -> Bool
+isAll hasProperties userAssessment =
+    List.all (\hasProperty -> hasProperty userAssessment) hasProperties
+
+
+isApproved : AssessmentType -> Bool
+isApproved assessmentType =
+    case assessmentType of
+        Approved ->
+            True
+
+        Rejected ->
+            False
+
+
+isRejected : AssessmentType -> Bool
+isRejected assessmentType =
+    case assessmentType of
+        Approved ->
+            False
+
+        Rejected ->
+            True
 
 
 hasTagId : String -> UserAssessment -> Bool
