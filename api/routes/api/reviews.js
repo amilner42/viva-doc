@@ -216,8 +216,6 @@ const addApprovalUserAssessment = async (repoId, pullRequestNumber, commitId, us
   const { username, tagId } = userAssessment;
   const tagOwnerGroups = R.find(R.propEq("tagId", tagId), tagsOwnerGroups);
 
-  console.log(`t: ${tagOwnerGroups.groups} - ${typeof tagOwnerGroups.groups[1]}`)
-
   const userApprovalGuaranteesTagApproval = R.all((owners) => {
     return R.contains(username, owners);
   }, tagOwnerGroups.groups);
