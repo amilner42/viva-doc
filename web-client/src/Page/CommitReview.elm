@@ -154,6 +154,8 @@ renderCommitReview config commitReview =
                 , rejectedTagCount = tagCountBreakdown.rejectedCount
                 , unresolvedTagCount = tagCountBreakdown.unresolvedCount
                 , docReviewTagIds = docReviewTagIds
+                , displayFilter = config.displayFilter
+                , username = config.username
                 }
 
         commitReviewHeader =
@@ -171,13 +173,6 @@ renderCommitReview config commitReview =
 
             else
                 div [ class "is-hidden" ] []
-
-        submitReviewButton =
-            renderSubmitReviewButton
-                { username = config.username
-                , displayFilter = config.displayFilter
-                , docReviewTagIds = docReviewTagIds
-                }
 
         fileReviews =
             commitReview.fileReviews
@@ -199,7 +194,6 @@ renderCommitReview config commitReview =
         status
             :: commitReviewHeader
             :: noReviewsDisplayedText
-            :: submitReviewButton
             :: fileReviews
 
 
@@ -209,11 +203,21 @@ type alias RenderStatusConfig =
     , rejectedTagCount : Int
     , unresolvedTagCount : Int
     , docReviewTagIds : CommitReview.DocReviewTagIds
+    , displayFilter : CommitReview.ViewFilterOption
+    , username : String
     }
 
 
 renderStatus : RenderStatusConfig -> Html Msg
 renderStatus config =
+    let
+        submitReviewButton =
+            renderSubmitReviewButton
+                { username = config.username
+                , displayFilter = config.displayFilter
+                , docReviewTagIds = config.docReviewTagIds
+                }
+    in
     div
         []
         [ div
@@ -277,7 +281,40 @@ renderStatus config =
                         }
                 ]
             ]
+        , submitReviewButton
         ]
+
+
+type alias RenderSubmitReviewButtonConfig =
+    { displayFilter : CommitReview.ViewFilterOption
+    , docReviewTagIds : CommitReview.DocReviewTagIds
+    , username : String
+    }
+
+
+renderSubmitReviewButton : RenderSubmitReviewButtonConfig -> Html Msg
+renderSubmitReviewButton config =
+    if CommitReview.hasTagsInDocReview config.docReviewTagIds then
+        div
+            [ class "section", style "margin-top" "-50px" ]
+            [ button
+                [ class "button is-success is-large is-outlined is-fullwidth"
+                , onClick <| SubmitDocReview config.username config.docReviewTagIds
+                ]
+                [ text <|
+                    "Submit "
+                        ++ Words.pluralizeWithNumericPrefix
+                            (CommitReview.markedForApprovalCount config.docReviewTagIds)
+                            "Approval"
+                        ++ " and "
+                        ++ Words.pluralizeWithNumericPrefix
+                            (CommitReview.markedForRejectionCount config.docReviewTagIds)
+                            "Rejection"
+                ]
+            ]
+
+    else
+        div [ class "is-hidden" ] []
 
 
 type alias RenderNoReviewsDisplayedTextConfig =
@@ -300,11 +337,6 @@ renderNoReviewsDisplayedText config =
                     [ div
                         [ class "subtitle has-text-centered" ]
                         [ text "You have assessed all documentation under your responsibility" ]
-                    , button
-                        [ class "button"
-                        , onClick <| SetDisplayFilter CommitReview.ViewTagsInCurrentDocReview
-                        ]
-                        [ text "review and submit assessments" ]
                     ]
 
                 else
@@ -417,44 +449,6 @@ renderCommitReviewHeader config =
                 ]
             ]
         ]
-
-
-type alias RenderSubmitReviewButtonConfig =
-    { displayFilter : CommitReview.ViewFilterOption
-    , docReviewTagIds : CommitReview.DocReviewTagIds
-    , username : String
-    }
-
-
-renderSubmitReviewButton : RenderSubmitReviewButtonConfig -> Html Msg
-renderSubmitReviewButton config =
-    case ( config.displayFilter, CommitReview.hasTagsInDocReview config.docReviewTagIds ) of
-        ( CommitReview.ViewTagsInCurrentDocReview, True ) ->
-            div
-                [ class "section"
-                , style "padding" "1.5rem"
-                , style "margin-bottom" "-50px"
-                ]
-                [ hr [] []
-                , button
-                    [ class "button is-success is-large is-fullwidth"
-                    , onClick <| SubmitDocReview config.username config.docReviewTagIds
-                    ]
-                    [ text <|
-                        "Submit "
-                            ++ Words.pluralizeWithNumericPrefix
-                                (CommitReview.markedForApprovalCount config.docReviewTagIds)
-                                "Approval"
-                            ++ " and "
-                            ++ Words.pluralizeWithNumericPrefix
-                                (CommitReview.markedForRejectionCount config.docReviewTagIds)
-                                "Rejection"
-                    ]
-                , hr [] []
-                ]
-
-        _ ->
-            div [ class "is-hidden" ] []
 
 
 type alias RenderFileReviewConfig =
@@ -865,11 +859,6 @@ renderGetCommitReviewErrorModal httpError =
     ]
 
 
-prettyPrintApproveDocSubtitle : Set.Set String -> Set.Set String -> String
-prettyPrintApproveDocSubtitle approvedTags rejectedTags =
-    "TODO"
-
-
 
 -- UPDATE
 
@@ -877,8 +866,6 @@ prettyPrintApproveDocSubtitle approvedTags rejectedTags =
 type Msg
     = CompletedGetCommitReview (Result.Result (Core.HttpError GcrError.GetCommitReviewError) GcrResponse.CommitReviewResponse)
     | SetDisplayFilter CommitReview.ViewFilterOption
-      -- | SetDisplayOnlyUsersTags (Maybe String) String
-      -- | SetDisplayOnlyTagsNeedingApproval Bool
     | SetShowAlteredLines Language.Language CommitReview.Review
     | SetModalClosed Bool GcrResponse.CommitReviewResponseType
     | AddToDocReview UA.AssessmentType String
