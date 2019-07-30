@@ -2,7 +2,7 @@ import mongoose = require("mongoose")
 
 import * as TOG from "../tag-owner-group";
 import { FileReviewWithMetadata } from "../github-app/review";
-import * as AppError from "../github-app/error";
+import * as AppError from "../app-error";
 import * as F from "../functional";
 import * as UA from "../user-assessment";
 
@@ -20,6 +20,7 @@ export interface CommitReview {
   userAssessments: UA.UserAssessment[],
   tagsOwnerGroups: TOG.TagOwnerGroups[],
 }
+
 
 const CommitReviewSchema = new mongoose.Schema({
   repoId: { type: Number, required: [true, "can't be blank"], index: true },
@@ -44,7 +45,7 @@ const CommitReviewModel = mongoose.model("CommitReview", CommitReviewSchema);
 
 // Saves a new commit review.
 //
-// @THROWS `GithubAppLoggableError` upon failure to save new commit.
+// @THROWS `AppError.LogFriendlyGithubAppError` upon failure to save new commit.
 export const newCommitReview = async (installationId: number, commitReviewObject: CommitReview): Promise<void> => {
 
   try {
@@ -53,11 +54,9 @@ export const newCommitReview = async (installationId: number, commitReviewObject
 
   } catch (err) {
 
-    const saveCommitLoggableError: AppError.GithubAppLoggableError = {
-      errorName: "save-new-commit-review-failure",
+    const saveCommitLoggableError: AppError.LogFriendlyGithubAppError = {
+      name: "save-new-commit-review-failure",
       installationId,
-      githubAppError: true,
-      loggable: true,
       isSevere: false,
       stack: AppError.getStack(),
       data: {
@@ -74,7 +73,7 @@ export const newCommitReview = async (installationId: number, commitReviewObject
 
 // Retrieve a commit review that should already exist.
 //
-// @THROWS `GithubAppLoggableError` upon failure to find/retrieve commit review.
+// @THROWS `AppError.LogFriendlyGithubAppError` upon failure to find/retrieve commit review.
 export const getExistantCommitReview = async (installationId: number, repoId: number, commitId: string): Promise<CommitReview> => {
 
   try {
@@ -89,11 +88,9 @@ export const getExistantCommitReview = async (installationId: number, repoId: nu
 
   } catch (getCommitReviewErr) {
 
-    const getCommitReviewLoggableError: AppError.GithubAppLoggableError = {
-      errorName: "get-existant-commit-review-failure",
+    const getCommitReviewLoggableError: AppError.LogFriendlyGithubAppError = {
+      name: "get-existant-commit-review-failure",
       installationId,
-      githubAppError: true,
-      loggable: true,
       stack: AppError.getStack(),
       isSevere: false,
       data: {
@@ -109,7 +106,7 @@ export const getExistantCommitReview = async (installationId: number, repoId: nu
 
 
 // Returns a commit review if it exists, `null` otherwise.
-// @THROWS `GithubAppLoggableError` upon failure to execute mongo query.
+// @THROWS `AppError.LogFriendlyGithubAppError` upon failure to execute mongo query.
 export const getPossiblyExistantCommitReview =
   async ( installationId: number
         , repoId: number
@@ -125,11 +122,9 @@ export const getPossiblyExistantCommitReview =
 
   } catch (err) {
 
-    const getCommitReviewLoggableError: AppError.GithubAppLoggableError = {
-      errorName: "get-possibly-existant-commit-review-failure",
+    const getCommitReviewLoggableError: AppError.LogFriendlyGithubAppError = {
+      name: "get-possibly-existant-commit-review-failure",
       installationId,
-      githubAppError: true,
-      loggable: true,
       isSevere: false,
       stack: AppError.getStack(),
       data: {
@@ -157,7 +152,7 @@ interface PullRequestReviewHeadXXXFields {
 // Returns all the `PullRequestReviewHeadXXXFields` fields for a possibly existant commit review. If the commit review
 // does not exist they will all be `null`, otherwise they will be the respective values from the commit review.
 //
-// @THROWS `GithubAppLoggableError` upon failure to execute mongo query.
+// @THROWS `AppError.LogFriendlyGithubAppError` upon failure to execute mongo query.
 export const getPullRequestReviewHeadXXXDataFromPossiblyExistantCommitReview =
   async ( installationId: number
         , repoId: number
@@ -185,7 +180,7 @@ export const getPullRequestReviewHeadXXXDataFromPossiblyExistantCommitReview =
 
 
 // Delete commit reviews which have a repoId in `repoIds`.
-// @THROWS only `GithubAppLoggableError` upon failed deletion.
+// @THROWS only `AppError.LogFriendlyGithubAppError` upon failed deletion.
 export const deleteCommitReviewsForRepos =
   async ( installationId: number
         , repoIds: number[]
@@ -202,10 +197,8 @@ export const deleteCommitReviewsForRepos =
 
   } catch (err) {
 
-    const deleteCommitReviewsLoggableError: AppError.GithubAppLoggableError = {
-      errorName,
-      githubAppError: true,
-      loggable: true,
+    const deleteCommitReviewsLoggableError: AppError.LogFriendlyGithubAppError = {
+      name: errorName,
       isSevere: false,
       installationId,
       stack: AppError.getStack(),
@@ -220,7 +213,7 @@ export const deleteCommitReviewsForRepos =
 
 // Save some data to a commit review.
 //
-// @THROWS only `GithubAppLoggableError` upon failed update.
+// @THROWS only `AppError.LogFriendlyGithubAppError` upon failed update.
 export const updateCommitReview =
   async ( installationId: number
         , repoId: number
@@ -254,11 +247,9 @@ export const updateCommitReview =
 
   } catch (err) {
 
-    const updateCommitReviewLoggableError: AppError.GithubAppLoggableError = {
-      errorName,
+    const updateCommitReviewLoggableError: AppError.LogFriendlyGithubAppError = {
+      name: errorName,
       installationId,
-      githubAppError: true,
-      loggable: true,
       isSevere: true,
       stack: AppError.getStack(),
       data: {

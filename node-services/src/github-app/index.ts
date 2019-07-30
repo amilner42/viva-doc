@@ -20,7 +20,7 @@ mongoose.connect(config.mongoDbUri, { useNewUrlParser: true }, (err) => {
 
 // NOTE: Order of these requires matters, LoggableError must be first.
 // @VD amilner42 block
-require("../models/LoggableError");
+require("../models/LogError");
 require("../models/CommitReview");
 require("../models/PullRequestReview");
 require("../models/Repo");
@@ -31,7 +31,7 @@ import * as Repo from "../models/Repo";
 import * as CommitReview from "../models/CommitReview";
 import * as PullRequestReview from "../models/PullRequestReview";
 import * as Analysis from "./analysis"
-import * as AppError from "./error"
+import * as AppError from "../app-error"
 import * as PromisesExtra from "../promises-extra"
 import * as GH from "./github-helpers";
 
@@ -198,8 +198,8 @@ export = (app: Probot.Application) => {
 
 
 // @THROWS either:
-//  - single `GithubAppLoggableError` if unable to update commit review.
-//  - array of `GithubAppLoggableError` for each of:
+//  - single `AppError.LogFriendlyGithubAppError` if unable to update commit review.
+//  - array of `AppError.LogFriendlyGithubAppError` for each of:
 //     1. unable to update commit review
 //     2. unable to remove headCommitId from pending commit analysis
 const analyzeOldPullRequest =
@@ -277,7 +277,7 @@ const analyzeOldPullRequest =
 }
 
 
-// @THROWS `GithubAppLoggableError` if unable to create the new pull request review.
+// @THROWS `AppError.LogFriendlyGithubAppError` if unable to create the new pull request review.
 const analyzeNewPullRequest =
   async ( installationId: number
   , context: Probot.Context

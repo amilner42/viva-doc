@@ -5,7 +5,7 @@ import R from "ramda"
 import * as Lang from "./languages/"
 import * as File from "../file"
 import * as F from "../functional"
-import * as AppError from "./error"
+
 
 /** EXTERNAL TYPES */
 
@@ -76,15 +76,14 @@ export type DeletedFileDiffWithLanguage = DeletedFileDiff & Lang.HasCurrentLangu
 
 /** ERRORS */
 
-export interface DiffParserError extends AppError.GithubAppError {
-  errorName: "diff-parser";
+export interface DiffParserError {
+  name: "diff-parser";
   message: string;
 }
 
 const createDiffParserError = (errMssg: string): DiffParserError => {
   return {
-    githubAppError: true,
-    errorName: "diff-parser",
+    name: "diff-parser",
     message: errMssg
   }
 }

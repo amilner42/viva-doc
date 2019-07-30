@@ -4,13 +4,13 @@ import * as R from "ramda";
 
 import * as Probot from 'probot';
 import * as T from "../types";
-import * as AppError from "./error";
+import * as AppError from "../app-error";
 
 
 const VIVA_DOC_STATUS_NAME = "continuous-documentation/viva-doc"
 
 
-// @THROWS only `GithubApp.LoggableError` upon failure to retrieve open PRs.
+// @THROWS only `AppError.LogFriendlyGithubAppError` upon failure to retrieve open PRs.
 export const getOpenPullRequests =
   async ( installationId: number
         , context: Probot.Context
@@ -30,10 +30,8 @@ export const getOpenPullRequests =
 
   } catch (err) {
 
-    const getPullRequestsLoggableError: AppError.GithubAppLoggableError = {
-      errorName: "github-retrieve-open-pull-requests-failure",
-      githubAppError: true,
-      loggable: true,
+    const getPullRequestsLoggableError: AppError.LogFriendlyGithubAppError = {
+      name: "github-retrieve-open-pull-requests-failure",
       isSevere: true,
       installationId,
       stack: AppError.getStack(),
@@ -50,7 +48,7 @@ export const getOpenPullRequests =
 }
 
 
-// @THROWS only `GithubApp.LoggableError` upon failure to retrieve diff.
+// @THROWS only `AppError.LogFriendlyGithubAppError` upon failure to retrieve diff.
 // @REFER https://developer.github.com/v3/repos/commits/#compare-two-commits
 //     - Refer to GitHub API to see format of `baseRef` and `headRef`
 export const retrieveDiff = R.curry(
@@ -82,11 +80,9 @@ export const retrieveDiff = R.curry(
 
   } catch (err) {
 
-    const retrieveDiffLoggableError: AppError.GithubAppLoggableError = {
-      errorName: "retrieve-diff-failure",
+    const retrieveDiffLoggableError: AppError.LogFriendlyGithubAppError = {
+      name: "retrieve-diff-failure",
       installationId,
-      githubAppError: true,
-      loggable: true,
       isSevere: false,
       stack: AppError.getStack(),
       data: {
@@ -104,7 +100,7 @@ export const retrieveDiff = R.curry(
 });
 
 
-// @THROWS only `GithubApp.LoggableError` upon failure to retrieve file.
+// @THROWS only `AppError.LogFriendlyGithubAppError` upon failure to retrieve file.
 // @REFER https://developer.github.com/v3/repos/contents/#get-contents
 export const retrieveFile = R.curry(
   async ( installationId: number
@@ -130,10 +126,8 @@ export const retrieveFile = R.curry(
 
   } catch (err) {
 
-    const failureToRetrieveFileLoggableError: AppError.GithubAppLoggableError = {
-      errorName: "github-retrieve-file-failure",
-      githubAppError: true,
-      loggable: true,
+    const failureToRetrieveFileLoggableError: AppError.LogFriendlyGithubAppError = {
+      name: "github-retrieve-file-failure",
       isSevere: false,
       data: {
         err,
@@ -151,7 +145,7 @@ export const retrieveFile = R.curry(
 });
 
 
-// @THROWS only `GithubAppLoggableError` upon failure to set status.
+// @THROWS only `AppError.LogFriendlyGithubAppError` upon failure to set status.
 export const setCommitStatus = R.curry(
   async (installationId: number
   , context: Probot.Context
@@ -178,10 +172,8 @@ export const setCommitStatus = R.curry(
 
   } catch (err) {
 
-    const setStatusLoggableError: AppError.GithubAppLoggableError = {
-      errorName: "github-set-status-failure",
-      githubAppError: true,
-      loggable: true,
+    const setStatusLoggableError: AppError.LogFriendlyGithubAppError = {
+      name: "github-set-status-failure",
       installationId,
       isSevere: true,
       stack: AppError.getStack(),
@@ -205,7 +197,7 @@ export type PullRequestCommits = T.Unpacked<ReturnType<typeof listPullRequestCom
 
 // TODO Check if pagination works when >250 commits, DOCS OUT OF DATE.
 // @REFER https://developer.github.com/v3/pulls/#list-commits-on-a-pull-request
-// @THROWS only `GithubAppLoggableError` upon failure to get pull request commits.
+// @THROWS only `AppError.LogFriendlyGithubAppError` upon failure to get pull request commits.
 export const listPullRequestCommits =
   async ( installationId: number
   , context: Probot.Context
@@ -246,10 +238,8 @@ export const listPullRequestCommits =
 
   } catch (err) {
 
-    const getPullRequestCommitsLoggableError: AppError.GithubAppLoggableError = {
-      errorName: "github-get-pull-request-commits-failure",
-      githubAppError: true,
-      loggable: true,
+    const getPullRequestCommitsLoggableError: AppError.LogFriendlyGithubAppError = {
+      name: "github-get-pull-request-commits-failure",
       installationId,
       isSevere: false,
       stack: AppError.getStack(),

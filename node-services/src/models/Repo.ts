@@ -1,5 +1,6 @@
 import mongoose = require("mongoose")
-import * as AppError from "../github-app/error";
+
+import * as AppError from "../app-error";
 
 
 export interface Repo {
@@ -23,7 +24,7 @@ const RepoModel = mongoose.model("Repo", RepoSchema);
 
 
 // Initialize a new repo.
-// @THROWS only `GithubAppLoggableError` upon failed creation.
+// @THROWS only `AppError.LogFriendlyGithubAppError` upon failed creation.
 export const newInstallation = async (installationId: number, owner: string, repoIds: number[], errorName: string) => {
   try {
 
@@ -38,10 +39,8 @@ export const newInstallation = async (installationId: number, owner: string, rep
 
   } catch (err) {
 
-    const initRepoLoggableError: AppError.GithubAppLoggableError = {
-      errorName,
-      githubAppError: true,
-      loggable: true,
+    const initRepoLoggableError: AppError.LogFriendlyGithubAppError = {
+      name: errorName,
       isSevere: true,
       installationId,
       stack: AppError.getStack(),
@@ -54,7 +53,7 @@ export const newInstallation = async (installationId: number, owner: string, rep
 
 
 // Delete a repo and return the deleted repo.
-// @THROWS only `GithubAppLoggableError` upon failed deletion.
+// @THROWS only `AppError.LogFriendlyGithubAppError` upon failed deletion.
 export const deleteInstallation = async (installationId: number): Promise<Repo> => {
 
   try {
@@ -67,10 +66,8 @@ export const deleteInstallation = async (installationId: number): Promise<Repo> 
 
   } catch (err) {
 
-    const deleteRepoLoggableError: AppError.GithubAppLoggableError = {
-      errorName: "delete-repo-failure",
-      githubAppError: true,
-      loggable: true,
+    const deleteRepoLoggableError: AppError.LogFriendlyGithubAppError = {
+      name: "delete-repo-failure",
       isSevere: false,
       installationId,
       data: err,
@@ -84,7 +81,7 @@ export const deleteInstallation = async (installationId: number): Promise<Repo> 
 
 
 // Adds repos to an insallation.
-// @THROWS only `GithubAppLoggableError` upon failed insertion.
+// @THROWS only `AppError.LogFriendlyGithubAppError` upon failed insertion.
 export const addReposToInstallaton =
   async ( installationId: number
         , repoIds: number[]
@@ -108,10 +105,8 @@ export const addReposToInstallaton =
 
   } catch (err) {
 
-    const addReposLoggableError: AppError.GithubAppLoggableError = {
-      errorName,
-      githubAppError: true,
-      loggable: true,
+    const addReposLoggableError: AppError.LogFriendlyGithubAppError = {
+      name: errorName,
       isSevere: true,
       data: err,
       stack: AppError.getStack(),
@@ -125,7 +120,7 @@ export const addReposToInstallaton =
 
 
 // Remove `repoIds` from the given installation.
-// @THROWS only `GithubAppLoggableError` upon failed deletion.
+// @THROWS only `AppError.LogFriendlyGithubAppError` upon failed deletion.
 export const removeReposFromInstallation =
   async ( installationId: number
         , repoIds: number[]
@@ -149,10 +144,8 @@ export const removeReposFromInstallation =
 
   } catch (err) {
 
-    const removeReposLoggableError: AppError.GithubAppLoggableError = {
-      errorName,
-      githubAppError: true,
-      loggable: true,
+    const removeReposLoggableError: AppError.LogFriendlyGithubAppError = {
+      name: errorName,
       isSevere: false,
       data: err,
       installationId,

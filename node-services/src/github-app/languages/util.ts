@@ -3,7 +3,7 @@
 import { DefaultErrorStrategy } from 'antlr4ts/DefaultErrorStrategy';
 
 import * as TOG from "../../tag-owner-group";
-import * as AppError from "../error"
+import * as AppError from "../../app-error"
 import * as File from "../../file"
 import * as SH from "../../string-helpers"
 import * as Tag from "../tag"
@@ -79,8 +79,7 @@ export const matchSingleVdTagAnnotation =
   }
 
   if (matchVdTagAnnotationPrefix.length > 1) {
-    const multiPrefixErr: AppError.GithubAppParseTagError = {
-      githubAppError: true,
+    const multiPrefixErr: AppError.ParseTagError = {
       parseTagError: true,
       errorName: "multiple-vd-annotation-prefixes",
       clientExplanation: `You cannot have multiple @VD prefixes in the same comment. File: ${filePath}, line number: ${lineNumber}`
@@ -95,9 +94,8 @@ export const matchSingleVdTagAnnotation =
   const hasMatchedEndBlock =  matchEndBlock !== null
 
   if(!hasMatchedEndBlock && !hasMatchedTag) {
-    const prefixWithNoAnnotationErr: AppError.GithubAppParseTagError = {
+    const prefixWithNoAnnotationErr: AppError.ParseTagError = {
       errorName: "prefix-with-no-annotation-or-end-block",
-      githubAppError: true,
       parseTagError: true,
       clientExplanation: `You must have a VD tag annotation or end-block if you declare the @VD prefix. File: ${filePath}, line number: ${lineNumber}`
     }

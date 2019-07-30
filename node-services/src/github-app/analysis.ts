@@ -2,7 +2,7 @@
 
 import R from "ramda"
 
-import * as AppError from "./error"
+import * as AppError from "../app-error"
 import * as Diff from "./diff"
 import * as Tag from "./tag"
 import * as Review from "./review"
@@ -74,7 +74,7 @@ export const pipeline = async (
       // If we errored skipping a commit, we'll be unable to proceed because pending commits will have this commit.
       // This is fine for now, it'll be logged as a severe error and reviewed. In the meantime the PR will not perform
       // analysis because pending commits will be backed-up.
-      AppError.logErrors(clearPendingCommitOnAnalysisSkipErr, null);
+      AppError.logErrors(clearPendingCommitOnAnalysisSkipErr, "github-app", null);
       return;
     }
 
@@ -996,7 +996,7 @@ const getIntermediateCommit =
 // Else: `null`. This means the `analyzingCommitId` is no longer in the PR so it must have been rebased before the
 //       analysis got here. This is unlikely but possible.
 //
-// @THROWS only `GithubAppLoggableError` if it can't find the shortest path from the head commit to the pr BASE commit.
+// @THROWS only `AppError.LogFriendlyGithubAppError` if it can't find the shortest path from the head commit to the pr BASE commit.
 const getBaseAndLastAnalyzedCommit =
   ( installationId: number
   , pullRequestCommits: GH.PullRequestCommits
@@ -1018,10 +1018,8 @@ const getBaseAndLastAnalyzedCommit =
   );
 
   if (shortestPathToPrBaseCommit.resultType === "no-path") {
-    const calculateShortestPathLoggableError: AppError.GithubAppLoggableError = {
-      errorName: "calculate-shortest-path-failure",
-      githubAppError: true,
-      loggable: true,
+    const calculateShortestPathLoggableError: AppError.LogFriendlyGithubAppError = {
+      name: "calculate-shortest-path-failure",
       isSevere: false,
       installationId,
       stack: AppError.getStack(),
@@ -1072,7 +1070,7 @@ const recoverFromErrorInPipeline =
   const analyzingCommitId = pullRequestReview.pendingAnalysisForCommits[0].head;
 
   if (F.isJust(err)) {
-    await AppError.logErrors(err, null);
+    await AppError.logErrors(err, "github-app", null);
   }
 
   let newPullRequestReview: PullRequestReview.PullRequestReview;
@@ -1090,7 +1088,7 @@ const recoverFromErrorInPipeline =
 
   } catch (clearPendingCommitError) {
 
-    await AppError.logErrors(clearPendingCommitError, null);
+    await AppError.logErrors(clearPendingCommitError, "github-app", null);
 
     if (setStatusTo !== null) {
 
@@ -1107,7 +1105,7 @@ const recoverFromErrorInPipeline =
 
       } catch (setCommitStatusError) {
 
-        await AppError.logErrors(setCommitStatusError, null);
+        await AppError.logErrors(setCommitStatusError, "github-app", null);
       }
     }
 
@@ -1130,7 +1128,7 @@ const recoverFromErrorInPipeline =
 
     } catch (setCommitStatusError) {
 
-      await AppError.logErrors(setCommitStatusError, null);
+      await AppError.logErrors(setCommitStatusError, "github-app", null);
 
     }
   }

@@ -3,7 +3,7 @@
 import * as R from "ramda";
 
 import * as TOG from "../../tag-owner-group"
-import * as AppError from "../error"
+import * as AppError from "../../app-error"
 import * as File from "../../file"
 import * as Tag from "../tag"
 import * as LangUtil from "./util"
@@ -150,8 +150,7 @@ export const getReducedFileAstFromFileAst = (fileAst: FileAst, filePath: string)
     const commentNodes = fileAst.comments[commentLineNumber]
 
     if(commentNodes.length > 1) {
-      const multiCommentPerLineErr: AppError.GithubAppParseTagError = {
-        githubAppError: true,
+      const multiCommentPerLineErr: AppError.ParseTagError = {
         parseTagError: true,
         errorName: "multiple-comments-on-single-line",
         clientExplanation: `Viva Doc does not support having multiple comments on the same line. File: ${filePath}, line number: ${commentLineNumber}`
@@ -267,8 +266,7 @@ export const standardTagsFromReducedFileAst =
               if (currentCommentNode.data.dataType === "tag-end-block" ) {
 
                 if (currentCommentNode.data.seen) {
-                  const overusedEndBlockErr: AppError.GithubAppParseTagError = {
-                    githubAppError: true,
+                  const overusedEndBlockErr: AppError.ParseTagError = {
                     parseTagError: true,
                     errorName: "end-block-used-multiple-times",
                     clientExplanation: `You cannot have the same end-block used by multiple block tags. File: ${filePath}, line number: ${currentCommentNode.startLine}`
@@ -293,8 +291,7 @@ export const standardTagsFromReducedFileAst =
               }
             }
 
-            const noEndBlockErr: AppError.GithubAppParseTagError = {
-              githubAppError: true,
+            const noEndBlockErr: AppError.ParseTagError = {
               parseTagError: true,
               errorName: "no-end-block",
               clientExplanation: `Every block tag needs an end-block. File: ${filePath}, line number: ${reducedCommentNode.startLine}`

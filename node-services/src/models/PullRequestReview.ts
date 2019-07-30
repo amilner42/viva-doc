@@ -1,12 +1,11 @@
 import mongoose = require("mongoose")
 
 import * as R from "ramda";
-import * as AppError from "../github-app/error";
+import * as AppError from "../app-error";
 import * as F from "../functional";
 import * as UA from "../user-assessment";
 import * as TOG from "../tag-owner-group";
-
-import * as CommitReviewModel from "./CommitReview";
+import * as CommitReview from "./CommitReview";
 
 
 export interface PullRequestReview {
@@ -66,7 +65,7 @@ const PullRequestReviewSchema = new mongoose.Schema({
 const PullRequestReviewModel = mongoose.model("PullRequestReview", PullRequestReviewSchema);
 
 
-// @THROWS `GithubAppLoggableError` if upon failure to create new PRReview.
+// @THROWS `AppError.LogFriendlyGithubAppError` if upon failure to create new PRReview.
 export const newPullRequestReview =
   async ( installationId: number
         , repoId: number
@@ -110,11 +109,9 @@ export const newPullRequestReview =
 
   } catch (err) {
 
-    const newPRLoggableError: AppError.GithubAppLoggableError = {
-      errorName: "create-new-pull-request-failure",
+    const newPRLoggableError: AppError.LogFriendlyGithubAppError = {
+      name: "create-new-pull-request-failure",
       installationId,
-      githubAppError: true,
-      loggable: true,
       isSevere: true,
       stack: AppError.getStack(),
       data: {
@@ -137,7 +134,7 @@ export const newPullRequestReview =
 
 
 // Deletes all PullRequestReviews which have a repoId in `repoIds`.
-// @THROWS only `GithubAppLoggableError` upon failed deletion.
+// @THROWS only `AppError.LogFriendlyGithubAppError` upon failed deletion.
 export const deletePullRequestReviewsForRepos =
   async ( installationId: number
         , repoIds: number[]
@@ -155,10 +152,8 @@ export const deletePullRequestReviewsForRepos =
 
   } catch (err) {
 
-    const deletePullRequestReviewLoggableError: AppError.GithubAppLoggableError = {
-      errorName,
-      githubAppError: true,
-      loggable: true,
+    const deletePullRequestReviewLoggableError: AppError.LogFriendlyGithubAppError = {
+      name: errorName,
       isSevere: false,
       data: err,
       installationId,
@@ -174,7 +169,7 @@ export const deletePullRequestReviewsForRepos =
 // Handles updating the PullRequestReview for a call from the PR sync webhook.
 //
 // @RETURNS The previous (prior to update) and new pull request object.
-// @THROWS only `GithubAppLoggableError` upon failure.
+// @THROWS only `AppError.LogFriendlyGithubAppError` upon failure.
 export const updateOnPullRequestSync =
   async ( installationId: number
         , repoId: number
@@ -190,7 +185,7 @@ export const updateOnPullRequestSync =
           , headCommitRejectedTags
           , headCommitUserAssessments
           , headCommitTagsOwnerGroups } =
-      await CommitReviewModel.getPullRequestReviewHeadXXXDataFromPossiblyExistantCommitReview(
+      await CommitReview.getPullRequestReviewHeadXXXDataFromPossiblyExistantCommitReview(
         installationId,
         repoId,
         headCommitId
@@ -240,10 +235,8 @@ export const updateOnPullRequestSync =
 
   } catch (err) {
 
-    const updateHeadCommitOnPullRequestReviewLoggableError: AppError.GithubAppLoggableError = {
-      errorName: "update-pull-request-review-sync-failure",
-      githubAppError: true,
-      loggable: true,
+    const updateHeadCommitOnPullRequestReviewLoggableError: AppError.LogFriendlyGithubAppError = {
+      name: "update-pull-request-review-sync-failure",
       isSevere: false,
       data: err,
       installationId,
@@ -258,7 +251,7 @@ export const updateOnPullRequestSync =
 
 // Updates the PullRequestReview given that the analysis completed for a commit that is no longer the head commit.
 //
-// @THROWS only `GithubAppLoggableError` upon failure.
+// @THROWS only `AppError.LogFriendlyGithubAppError` upon failure.
 export const updateOnCompleteAnalysisForNonHeadCommit =
   async ( installationId: number
         , repoId: number
@@ -293,10 +286,8 @@ export const updateOnCompleteAnalysisForNonHeadCommit =
 
   } catch (err) {
 
-    const updatePullRequestLoggableError: AppError.GithubAppLoggableError = {
-      errorName: "update-non-head-fields-on-pr-failed",
-      githubAppError: true,
-      loggable: true,
+    const updatePullRequestLoggableError: AppError.LogFriendlyGithubAppError = {
+      name: "update-non-head-fields-on-pr-failed",
       installationId,
       isSevere: true,
       stack: AppError.getStack(),
@@ -318,7 +309,7 @@ export const updateOnCompleteAnalysisForNonHeadCommit =
 //
 // If it worked, returns "success", if it was no longer the head commit, returns "no-longer-head-commit".
 //
-// @THROWS `GithubAppLoggableError` if the mongo query failed to execute properly.
+// @THROWS `AppError.LogFriendlyGithubAppError` if the mongo query failed to execute properly.
 export const updateOnCompleteAnalysisForHeadCommit =
   async ( installationId: number
         , repoId: number
@@ -367,11 +358,9 @@ export const updateOnCompleteAnalysisForHeadCommit =
 
   } catch (err) {
 
-    const updatePRLoggableError: AppError.GithubAppLoggableError = {
-      errorName: "update-pr-head-commit-fields-failure",
+    const updatePRLoggableError: AppError.LogFriendlyGithubAppError = {
+      name: "update-pr-head-commit-fields-failure",
       installationId,
-      githubAppError: true,
-      loggable: true,
       isSevere: false,
       stack: AppError.getStack(),
       data: {
@@ -392,9 +381,9 @@ export const updateOnCompleteAnalysisForHeadCommit =
 // @THROWS
 //  if `andThrowError` is not null then it will always throw, either:
 //   - Just `andThrowError` if successfully cleared pending commit.
-//   - Array with [ `andThrowError`, `GithubAppLoggableError` from the failure ]
+//   - Array with [ `andThrowError`, `AppError.LogFriendlyGithubAppError` from the failure ]
 // else:
-//    will throw `GithubAppLoggableError` if it errors to clear the pending commit.
+//    will throw `AppError.LogFriendlyGithubAppError` if it errors to clear the pending commit.
 export const clearPendingCommitOnAnalysisFailure =
   async ( installationId: number
         , repoId: number
@@ -430,11 +419,9 @@ export const clearPendingCommitOnAnalysisFailure =
 
   } catch (err) {
 
-    const clearPendingAnalysisOnFailureLoggableError: AppError.GithubAppLoggableError = {
-      errorName: "clear-pending-analysis-on-analysis-failure-failure",
+    const clearPendingAnalysisOnFailureLoggableError: AppError.LogFriendlyGithubAppError = {
+      name: "clear-pending-analysis-on-analysis-failure-failure",
       installationId,
-      githubAppError: true,
-      loggable: true,
       isSevere: true,
       stack: AppError.getStack(),
       data: {
@@ -483,11 +470,9 @@ export const clearPendingCommitOnAnalysisSkip =
 
   } catch (err) {
 
-    const clearPendingCommitOnAnalysisSkipLoggableError: AppError.GithubAppLoggableError = {
-      errorName: "clear-pending-commit-on-analysis-skip-failure",
+    const clearPendingCommitOnAnalysisSkipLoggableError: AppError.LogFriendlyGithubAppError = {
+      name: "clear-pending-commit-on-analysis-skip-failure",
       installationId,
-      githubAppError: true,
-      loggable: true,
       isSevere: true,
       stack: AppError.getStack(),
       data: {

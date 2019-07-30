@@ -1,7 +1,7 @@
 import * as SH from "../../string-helpers"
 import * as AST from "./ast"
 import * as LangUtil from "./util"
-import * as AppError from "../error"
+import * as AppError from "../../app-error"
 
 import { ANTLRInputStream, CommonTokenStream } from 'antlr4ts'
 import { ParseTreeWalker } from "antlr4ts/tree/ParseTreeWalker"
@@ -24,10 +24,9 @@ export const createCommentParser = (LanguageLexer: any, LanguageParser: any) => 
 
     if((parser.errorHandler as LangUtil.ErrorHappenedStrategy).hasError) {
       // TODO make this better if we parse more than just comments, right now it can't even error.
-      const err: AppError.GithubAppParseTagError = {
+      const err: AppError.ParseTagError = {
         errorName: "parse-error",
         parseTagError: true,
-        githubAppError: true,
         clientExplanation: `There was an error parsing ${filePath}`
       }
 
