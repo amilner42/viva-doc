@@ -37,9 +37,15 @@ type alias Model =
         RemoteData.RemoteData (Core.HttpError GcrError.GetCommitReviewError) GcrResponse.CommitReviewResponse
     , displayFilter : CommitReview.ViewFilterOption
     , modalClosed : Bool
-    , submitDocReviewState :
-        RemoteData.RemoteData (Core.HttpError PuaError.PostUserAssessmentsError) PuaResponse.PostUserAssessmentsResponse
+    , submitDocReviewState : SubmitDocReviewState
     }
+
+
+type SubmitDocReviewState
+    = NotAsked
+    | Loading
+    | FullFailure (Core.HttpError PuaError.PostUserAssessmentsError)
+    | PartialFailure
 
 
 init : Session -> Int -> Int -> String -> ( Model, Cmd Msg )
@@ -53,7 +59,7 @@ init session repoId prNumber commitId =
             , commitReview = RemoteData.NotAsked
             , displayFilter = CommitReview.ViewAllTags
             , modalClosed = False
-            , submitDocReviewState = RemoteData.NotAsked
+            , submitDocReviewState = NotAsked
             }
     in
     case session of
@@ -124,6 +130,7 @@ view model =
                                             { username = Viewer.getUsername viewer
                                             , displayFilter = model.displayFilter
                                             , isCommitStale = model.commitId /= headCommitId
+                                            , submitDocReviewState = model.submitDocReviewState
                                             }
                                             commitReview
     }
@@ -133,6 +140,7 @@ renderCommitReview :
     { username : String
     , displayFilter : CommitReview.ViewFilterOption
     , isCommitStale : Bool
+    , submitDocReviewState : SubmitDocReviewState
     }
     -> CommitReview.CommitReview
     -> List (Html.Html Msg)
@@ -155,6 +163,7 @@ renderCommitReview config commitReview =
                 , unresolvedTagCount = tagCountBreakdown.unresolvedCount
                 , docReviewTagIds = docReviewTagIds
                 , displayFilter = config.displayFilter
+                , submitDocReviewState = config.submitDocReviewState
                 , username = config.username
                 }
 
@@ -176,7 +185,13 @@ renderCommitReview config commitReview =
 
         fileReviews =
             commitReview.fileReviews
-                |> List.map (renderFileReview config)
+                |> List.map
+                    (renderFileReview
+                        { username = config.username
+                        , displayFilter = config.displayFilter
+                        , isCommitStale = config.isCommitStale
+                        }
+                    )
     in
     if tagCountBreakdown.totalCount == 0 then
         [ div
@@ -205,6 +220,7 @@ type alias RenderStatusConfig =
     , docReviewTagIds : CommitReview.DocReviewTagIds
     , displayFilter : CommitReview.ViewFilterOption
     , username : String
+    , submitDocReviewState : SubmitDocReviewState
     }
 
 
@@ -216,6 +232,7 @@ renderStatus config =
                 { username = config.username
                 , displayFilter = config.displayFilter
                 , docReviewTagIds = config.docReviewTagIds
+                , submitDocReviewState = config.submitDocReviewState
                 }
     in
     div
@@ -289,32 +306,63 @@ type alias RenderSubmitReviewButtonConfig =
     { displayFilter : CommitReview.ViewFilterOption
     , docReviewTagIds : CommitReview.DocReviewTagIds
     , username : String
+    , submitDocReviewState : SubmitDocReviewState
     }
 
 
 renderSubmitReviewButton : RenderSubmitReviewButtonConfig -> Html Msg
 renderSubmitReviewButton config =
-    if CommitReview.hasTagsInDocReview config.docReviewTagIds then
-        div
-            [ class "section", style "margin-top" "-50px" ]
-            [ button
-                [ class "button is-success is-large is-outlined is-fullwidth"
-                , onClick <| SubmitDocReview config.username config.docReviewTagIds
-                ]
-                [ text <|
-                    "Submit "
-                        ++ Words.pluralizeWithNumericPrefix
-                            (CommitReview.markedForApprovalCount config.docReviewTagIds)
-                            "Approval"
-                        ++ " and "
-                        ++ Words.pluralizeWithNumericPrefix
-                            (CommitReview.markedForRejectionCount config.docReviewTagIds)
-                            "Rejection"
-                ]
-            ]
+    case config.submitDocReviewState of
+        NotAsked ->
+            if CommitReview.hasTagsInDocReview config.docReviewTagIds then
+                div
+                    [ class "section", style "margin-top" "-50px" ]
+                    [ button
+                        [ class "button is-success is-large is-outlined is-fullwidth"
+                        , onClick <| SubmitDocReview config.username config.docReviewTagIds
+                        ]
+                        [ text <|
+                            "Submit "
+                                ++ Words.pluralizeWithNumericPrefix
+                                    (CommitReview.markedForApprovalCount config.docReviewTagIds)
+                                    "Approval"
+                                ++ " and "
+                                ++ Words.pluralizeWithNumericPrefix
+                                    (CommitReview.markedForRejectionCount config.docReviewTagIds)
+                                    "Rejection"
+                        ]
+                    ]
 
-    else
-        div [ class "is-hidden" ] []
+            else
+                div [ class "is-hidden" ] []
+
+        Loading ->
+            div
+                [ class "section", style "margin-top" "-50px" ]
+                [ button
+                    [ class "button is-success is-large is-outlined is-fullwidth is-loading" ]
+                    []
+                ]
+
+        FullFailure _ ->
+            div
+                [ class "section", style "margin-top" "-50px" ]
+                [ button
+                    [ class "button is-danger is-large is-outlined is-fullwidth"
+                    , disabled True
+                    ]
+                    [ text "No tags were updated." ]
+                ]
+
+        PartialFailure ->
+            div
+                [ class "section", style "margin-top" "-50px" ]
+                [ button
+                    [ class "button is-danger is-large is-outlined is-fullwidth"
+                    , disabled True
+                    ]
+                    [ text "Some tags failed to update." ]
+                ]
 
 
 type alias RenderNoReviewsDisplayedTextConfig =
@@ -1069,7 +1117,7 @@ update msg model =
 
         SubmitDocReview username ({ markedForApprovalTagIds, markedForRejectionTagIds } as docReviewTagIds) ->
             ( { model
-                | submitDocReviewState = RemoteData.Loading
+                | submitDocReviewState = Loading
                 , commitReview =
                     model.commitReview
                         |> updateCompleteCommitReview
@@ -1090,9 +1138,12 @@ update msg model =
 
         CompletedSubmitDocReview username _ (Result.Ok response) ->
             ( { model
-                -- TODO If any of the responses failed set RemoteData to `RemoteData.Success` and render error
-                -- Right now we just internal error the tags and this is sub-par
-                | submitDocReviewState = RemoteData.NotAsked
+                | submitDocReviewState =
+                    if PuaResponse.allUserAssessmentsSucceeded response then
+                        NotAsked
+
+                    else
+                        PartialFailure
                 , commitReview =
                     model.commitReview
                         |> updateCompleteCommitReview
@@ -1157,7 +1208,7 @@ update msg model =
             ( case err of
                 Core.BadStatus _ (PuaError.StaleCommitError newHeadCommitId) ->
                     { model
-                        | submitDocReviewState = RemoteData.NotAsked
+                        | submitDocReviewState = NotAsked
                         , commitReview =
                             model.commitReview
                                 |> updateCompleteCommitReview updateCommitReviewDocTagIdsToNeutral
@@ -1168,7 +1219,7 @@ update msg model =
 
                 _ ->
                     { model
-                        | submitDocReviewState = RemoteData.Failure err
+                        | submitDocReviewState = FullFailure err
                         , commitReview =
                             model.commitReview |> updateCompleteCommitReview updateCommitReviewDocTagIdsToNeutral
                     }
