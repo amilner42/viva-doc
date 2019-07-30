@@ -1,6 +1,6 @@
-import * as Diff from "../../src/diff"
-import * as Review from "../../src/review"
-import * as Tag from "../../src/tag"
+import * as Diff from "../../../src/github-app/diff"
+import * as Review from "../../../src/github-app/review"
+import * as Tag from "../../../src/github-app/tag"
 
 type CalculateReviewsTestTable = [ string, [Tag.VdTag[], Tag.VdTag[], Diff.AlteredLine[]], Review.Review[] ][]
 
@@ -11,7 +11,7 @@ export const CALCULATE_REVIEWS_FROM_MODIFICATION_TESTS: CalculateReviewsTestTabl
       [
         {
           "tagType": "line",
-          "owner": "amilner42",
+          "ownerGroups": [ [ "amilner42" ] ],
           "startLine": 1,
           "endLine": 2,
           "tagAnnotationLine": 1,
@@ -24,7 +24,7 @@ export const CALCULATE_REVIEWS_FROM_MODIFICATION_TESTS: CalculateReviewsTestTabl
       [
         {
           "tagType": "line",
-          "owner": "amilner42",
+          "ownerGroups": [ [ "amilner42" ] ],
           "startLine": 1,
           "endLine": 2,
           "tagAnnotationLine": 1,
@@ -53,7 +53,7 @@ export const CALCULATE_REVIEWS_FROM_MODIFICATION_TESTS: CalculateReviewsTestTabl
         reviewType: "modified",
         tag: {
           "tagType": "line",
-          "owner": "amilner42",
+          "ownerGroups": [ [ "amilner42" ] ],
           "startLine": 1,
           "endLine": 2,
           "tagAnnotationLine": 1,
@@ -85,7 +85,7 @@ export const CALCULATE_REVIEWS_FROM_MODIFICATION_TESTS: CalculateReviewsTestTabl
       [
         {
           "tagType": "line",
-          "owner": "amilner42",
+          "ownerGroups": [ [ "amilner42" ] ],
           "startLine": 1,
           "endLine": 2,
           "tagAnnotationLine": 1,
@@ -98,7 +98,7 @@ export const CALCULATE_REVIEWS_FROM_MODIFICATION_TESTS: CalculateReviewsTestTabl
       [
         {
           "tagType": "line",
-          "owner": "amilner42",
+          "ownerGroups": [ [ "amilner42" ] ],
           "startLine": 2,
           "endLine": 3,
           "tagAnnotationLine": 2,
@@ -131,7 +131,7 @@ export const CALCULATE_REVIEWS_FROM_MODIFICATION_TESTS: CalculateReviewsTestTabl
       [
         {
           "tagType": "line",
-          "owner": "amilner42",
+          "ownerGroups": [ [ "amilner42" ] ],
           "startLine": 2,
           "endLine": 3,
           "tagAnnotationLine": 2,
@@ -144,7 +144,7 @@ export const CALCULATE_REVIEWS_FROM_MODIFICATION_TESTS: CalculateReviewsTestTabl
       [
         {
           "tagType": "line",
-          "owner": "amilner42",
+          "ownerGroups": [ [ "amilner42" ] ],
           "startLine": 1,
           "endLine": 2,
           "tagAnnotationLine": 1,

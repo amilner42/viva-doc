@@ -2,12 +2,12 @@
 
 import { DefaultErrorStrategy } from 'antlr4ts/DefaultErrorStrategy';
 
-import * as TOG from "../tag-owner-group";
+import * as TOG from "../../tag-owner-group";
 import * as AppError from "../error"
-import * as File from "../file"
-import * as SH from "../string-helpers"
+import * as File from "../../file"
+import * as SH from "../../string-helpers"
 import * as Tag from "../tag"
-import * as F from "../functional"
+import * as F from "../../functional"
 
 
 /** All VD information must have this prefix

@@ -1,5 +1,5 @@
 import * as TagData from "./tag.data"
-import * as Tag from "../../src/tag"
+import * as Tag from "../../../src/github-app/tag"
 
 // Currently just `Tags.getFileTags` is tested as that is the core functionality.
 describe.each(TagData.TESTS)(
@@ -8,10 +8,10 @@ describe.each(TagData.TESTS)(
     test.each(table)("%s", (name, language, content, expected) => {
       if (expected === null) {
         // Expects error
-        expect(() => { return Tag.getFileTags(language, content) }).toThrowError()
+        expect(() => { return Tag.getFileTags(language, content, "file-path") }).toThrowError()
       } else {
         // Expects result
-        expect(Tag.getFileTags(language, content)).toEqual(expected)
+        expect(Tag.getFileTags(language, content, "file-path")).toEqual(expected)
       }
     })
   }

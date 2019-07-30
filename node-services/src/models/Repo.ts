@@ -1,5 +1,5 @@
 import mongoose = require("mongoose")
-import * as AppError from "../error";
+import * as AppError from "../github-app/error";
 
 
 export interface Repo {

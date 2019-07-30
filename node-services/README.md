@@ -1,26 +1,20 @@
-# github-app
+# Node Services
 
-> A GitHub App built with [Probot](https://github.com/probot/probot) that A Probot app
+Currently there are two node services, one for the `github-app` and one for the `api`. They both are in typescript and share code with each other. Code specific to the github-app is in `src/github-app/` and code specific to the api is in
+`src/api/`.
 
 ## Setup
 
 ```sh
-# Install dependencies
+# Install dependencies for all node services.
 npm install
 
-# Run typescript
+# Build typescript for all services.
 npm run build
 
-# Run the bot
-npm start
+# Run the github app
+npm run github-app-start
+
+# Run the api
+npm run api-start
 ```
-
-## Contributing
-
-If you have suggestions for how github-app could be improved, or want to report a bug, open an issue! We'd love all and any contributions.
-
-For more, check out the [Contributing Guide](CONTRIBUTING.md).
-
-## License
-
-[ISC](LICENSE) © 2019 Arie Milner <amilner42@gmail.com>

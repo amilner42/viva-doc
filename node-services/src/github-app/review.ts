@@ -7,8 +7,8 @@ import * as Lang from "./languages/"
 import * as LangUtil from "./languages/util"
 import * as Diff from "./diff"
 import * as Tag from "./tag"
-import * as T from "./types"
-import * as TOG from "./tag-owner-group"
+import * as T from "../types"
+import * as TOG from "../tag-owner-group"
 
 
 /** EXTERNAL */

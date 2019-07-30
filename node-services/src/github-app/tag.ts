@@ -2,10 +2,10 @@
 
 import R from "ramda"
 
-import * as TOG from "./tag-owner-group"
-import * as File from "./file"
+import * as TOG from "../tag-owner-group"
+import * as File from "../file"
 import * as Diff from "./diff"
-import * as F from "./functional"
+import * as F from "../functional"
 import * as Lang from "./languages/index"
 
 /** EXTERNAL TYPES */

@@ -1,8 +1,8 @@
-import * as F from "./functional";
-import * as Log from "./log";
+import * as F from "../functional";
+import * as Log from "../log";
 
 import mongoose from "mongoose"
-import { LoggableError } from "./models/LoggableError";
+import { LoggableError } from "../models/LoggableError";
 const LoggableErrorModel = mongoose.model("LoggableError");
 
 

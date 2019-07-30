@@ -4,7 +4,7 @@ import R from "ramda"
 
 import * as AST from "./ast"
 import * as Tag from "../tag"
-import * as F from "../functional"
+import * as F from "../../functional"
 
 import * as c from "./c"
 import * as cplusplus from "./cplusplus"

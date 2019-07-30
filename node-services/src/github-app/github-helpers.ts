@@ -3,7 +3,7 @@
 import * as R from "ramda";
 
 import * as Probot from 'probot';
-import * as T from "./types";
+import * as T from "../types";
 import * as AppError from "./error";
 
 

@@ -1,8 +1,8 @@
 import mongoose = require("mongoose")
 
 import * as TOG from "../tag-owner-group";
-import { FileReviewWithMetadata } from "../review";
-import * as AppError from "../error";
+import { FileReviewWithMetadata } from "../github-app/review";
+import * as AppError from "../github-app/error";
 import * as F from "../functional";
 import * as UA from "../user-assessment";
 

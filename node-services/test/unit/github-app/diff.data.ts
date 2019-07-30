@@ -1,4 +1,4 @@
-import * as Diff from "../../src/diff"
+import * as Diff from "../../../src/github-app/diff"
 
 type DescribeTable = [ string, TestTable ][]
 

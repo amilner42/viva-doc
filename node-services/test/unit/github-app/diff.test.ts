@@ -1,4 +1,4 @@
-import * as Diff from "../../src/diff"
+import * as Diff from "../../../src/github-app/diff"
 import * as DiffData from "./diff.data"
 
 describe.each(DiffData.TESTS)(

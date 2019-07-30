@@ -6,11 +6,11 @@ import * as AppError from "./error"
 import * as Diff from "./diff"
 import * as Tag from "./tag"
 import * as Review from "./review"
-import * as F from "./functional"
-import * as UA from "./user-assessment"
+import * as F from "../functional"
+import * as UA from "../user-assessment"
 
-import * as PullRequestReview from "./models/PullRequestReview"
-import * as CommitReview from "./models/CommitReview"
+import * as PullRequestReview from "../models/PullRequestReview"
+import * as CommitReview from "../models/CommitReview"
 
 // Don't use this for anything but types, I've been passing functions into the pipeline for DI purposes.
 import * as GH from "./github-helpers";

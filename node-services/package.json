@@ -1,22 +1,21 @@
 {
-  "name": "viva-doc-github-app",
+  "name": "VivaDoc",
   "version": "0.0.1",
-  "description": "The app for handling viva-doc webhooks from github",
+  "description": "Documentation that lives.",
   "author": "Arie Milner <amilner42@gmail.com>",
   "license": "ISC",
   "repository": "https://github.com/amilner42/viva-doc",
   "keywords": [],
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "dev": "nodemon --exec \"npm start\"",
-    "start": "probot run ./lib/index.js",
     "lint": "standard **/*.ts --fix",
     "test": "jest",
     "test:watch": "jest --watch --notify --notifyMode=change --coverage",
-    "grammar:standard-comments": "cd src/languages/standard-comments/ && antlr4ts -visitor ./*.g4",
-    "forever-start": "forever start ./node_modules/probot/bin/probot-run.js",
     "forever-list": "forever list",
-    "forever-stop": "forever stop"
+    "forever-stop": "forever stop",
+    "github-app-start": "probot run ./lib/github-app/index.js",
+    "github-app-forever-start": "forever start ./node_modules/probot/bin/probot-run.js ./lib/github-app/index.js",
+    "github-app-grammar:standard-comments": "cd src/github-app/languages/standard-comments/ && antlr4ts -visitor ./*.g4"
   },
   "dependencies": {
     "@types/mongoose": "^5.5.0",

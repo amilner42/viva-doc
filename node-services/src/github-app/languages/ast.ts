@@ -2,9 +2,9 @@
 
 import * as R from "ramda";
 
-import * as TOG from "../tag-owner-group"
+import * as TOG from "../../tag-owner-group"
 import * as AppError from "../error"
-import * as File from "../file"
+import * as File from "../../file"
 import * as Tag from "../tag"
 import * as LangUtil from "./util"
 

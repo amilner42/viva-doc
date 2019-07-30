@@ -1,5 +1,5 @@
-import * as Lang from "../../src/languages"
-import * as Tag from "../../src/tag"
+import * as Lang from "../../../src/github-app/languages"
+import * as Tag from "../../../src/github-app/tag"
 
 type DescribeTable = [ string, TestTable ][]
 
@@ -68,7 +68,7 @@ const VALID_JAVASCRIPT_TESTS: TestTable = [
           "const a = 5;"
         ],
         "endLine": 2,
-        "owner": "amilner42",
+        "ownerGroups": [ [ "amilner42" ] ],
         "startLine": 1,
         "tagAnnotationLine": 1,
         "tagType": "line"
@@ -81,7 +81,7 @@ const VALID_JAVASCRIPT_TESTS: TestTable = [
           "  // @VD end-block"
         ],
         "endLine": 11,
-        "owner": "amilner42",
+        "ownerGroups": [ [ "amilner42" ] ],
         "startLine": 8,
         "tagAnnotationLine": 8,
         "tagType": "block"
@@ -101,7 +101,7 @@ const VALID_JAVASCRIPT_TESTS: TestTable = [
           "const a = 5;"
         ],
         "endLine": 4,
-        "owner": "amilner42",
+        "ownerGroups": [ [ "amilner42" ] ],
         "startLine": 1,
         "tagAnnotationLine": 2,
         "tagType": "line"
@@ -113,7 +113,7 @@ const VALID_JAVASCRIPT_TESTS: TestTable = [
           "export const func = () => {",
         ],
         "endLine": 8,
-        "owner": "amilner42",
+        "ownerGroups": [ [ "amilner42" ] ],
         "startLine": 6,
         "tagAnnotationLine": 6,
         "tagType": "line"
@@ -129,7 +129,7 @@ const VALID_JAVASCRIPT_TESTS: TestTable = [
           "   */"
         ],
         "endLine": 17,
-        "owner": "amilner42",
+        "ownerGroups": [ [ "amilner42" ] ],
         "startLine": 11,
         "tagAnnotationLine": 12,
         "tagType": "block"

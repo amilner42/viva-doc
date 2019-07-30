@@ -1,7 +1,7 @@
 import mongoose = require("mongoose")
 
 import * as R from "ramda";
-import * as AppError from "../error";
+import * as AppError from "../github-app/error";
 import * as F from "../functional";
 import * as UA from "../user-assessment";
 import * as TOG from "../tag-owner-group";

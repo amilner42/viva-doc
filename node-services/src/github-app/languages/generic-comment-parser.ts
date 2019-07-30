@@ -1,4 +1,4 @@
-import * as SH from "../string-helpers"
+import * as SH from "../../string-helpers"
 import * as AST from "./ast"
 import * as LangUtil from "./util"
 import * as AppError from "../error"

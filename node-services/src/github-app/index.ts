@@ -2,7 +2,7 @@
 
 // WARNING: Do not import internal modules that use mongoose here, import them below.
 import { config } from "./config";
-import * as UA from "./user-assessment";
+import * as UA from "../user-assessment";
 import * as Probot from 'probot' // eslint-disable-line no-unused-vars
 import R from "ramda"
 import mongoose = require("mongoose")
@@ -20,19 +20,19 @@ mongoose.connect(config.mongoDbUri, { useNewUrlParser: true }, (err) => {
 
 // NOTE: Order of these requires matters, LoggableError must be first.
 // @VD amilner42 block
-require("./models/LoggableError");
-require("./models/CommitReview");
-require("./models/PullRequestReview");
-require("./models/Repo");
+require("../models/LoggableError");
+require("../models/CommitReview");
+require("../models/PullRequestReview");
+require("../models/Repo");
 // @VD end-block
 
 // All imports to internal modules should be here so that all mongoose schemas have loaded first.
-import * as Repo from "./models/Repo";
-import * as CommitReview from "./models/CommitReview";
-import * as PullRequestReview from "./models/PullRequestReview";
+import * as Repo from "../models/Repo";
+import * as CommitReview from "../models/CommitReview";
+import * as PullRequestReview from "../models/PullRequestReview";
 import * as Analysis from "./analysis"
 import * as AppError from "./error"
-import * as PromisesExtra from "./promises-extra"
+import * as PromisesExtra from "../promises-extra"
 import * as GH from "./github-helpers";
 
 

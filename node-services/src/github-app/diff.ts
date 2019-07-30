@@ -3,8 +3,8 @@
 import R from "ramda"
 
 import * as Lang from "./languages/"
-import * as File from "./file"
-import * as F from "./functional"
+import * as File from "../file"
+import * as F from "../functional"
 import * as AppError from "./error"
 
 /** EXTERNAL TYPES */
