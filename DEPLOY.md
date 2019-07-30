@@ -37,7 +37,7 @@ ssh -i "viva-doc.pem" ec2-user@ec2-52-53-218-152.us-west-1.compute.amazonaws.com
 6. Install node 11.2.0 with nvm.
 7. Install git with yum.
 8. Clone repo.
-9. `cd` into both `api` and `github-app` and `npm install` to get the prod dependencies.
+9. `cd` into `node-services` and `npm install` to get the prod dependencies.
 10. Set env variables in the `~/.bashrc`, here is an example:
 
 ```bash
@@ -62,7 +62,7 @@ export NVM_DIR="/home/ec2-user/.nvm"
 
  - Don't forget to `source ~/.bashrc` to set env vars in the current terminal session.
 
-11. `npm run forever-start` in each.
+11. `npm run github-app-forever-start` and `npm run api-forever-start`
   - Starts background processes with `forever`.
 12. `npm run forever-list` to find logs / PID to stop instances.
 
