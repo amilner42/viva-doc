@@ -1,8 +1,10 @@
 import mongoose = require("mongoose")
 
-import { FileReviewWithMetadata, TagAndOwner } from "../review";
+import * as TOG from "../tag-owner-group";
+import { FileReviewWithMetadata } from "../review";
 import * as AppError from "../error";
 import * as F from "../functional";
+import * as UA from "../user-assessment";
 
 
 export interface CommitReview {
@@ -15,8 +17,8 @@ export interface CommitReview {
   fileReviews: FileReviewWithMetadata[],
   approvedTags: string[],
   rejectedTags: string[],
-  remainingOwnersToApproveDocs: string[],
-  tagsAndOwners: TagAndOwner[],
+  userAssessments: UA.UserAssessment[],
+  tagsOwnerGroups: TOG.TagOwnerGroups[],
 }
 
 const CommitReviewSchema = new mongoose.Schema({
@@ -29,8 +31,8 @@ const CommitReviewSchema = new mongoose.Schema({
   fileReviews: { type: mongoose.Schema.Types.Mixed, required: [true, "can't be blank"] },
   approvedTags: { type: [ String ], required: [true, "can't be blank"] },
   rejectedTags: { type: [ String ], required: [true, "can't be blank"] },
-  remainingOwnersToApproveDocs: { type: [ String ], required: [true, "can't be blank"] },
-  tagsAndOwners: { type: [ { owner: String, tagId: String } ], required: [true, "can't be blank"]},
+  userAssessments: { type: [ { _id: false, username: String, tagId: String, assessmentType: String } ], required: [true, "can't be blank"] },
+  tagsOwnerGroups: { type: [ { _id: false, tagId: String, groups: [ [ String ] ] } ], required: [true, "can't be blank"]},
 });
 
 
@@ -147,8 +149,8 @@ export const getPossiblyExistantCommitReview =
 interface PullRequestReviewHeadXXXFields {
   headCommitApprovedTags: string[] | null;
   headCommitRejectedTags: string[] | null;
-  headCommitRemainingOwnersToApproveDocs: string[] | null;
-  headCommitTagsAndOwners: TagAndOwner[] | null;
+  headCommitUserAssessments: UA.UserAssessment[] | null;
+  headCommitTagsOwnerGroups: TOG.TagOwnerGroups[] | null;
 }
 
 
@@ -168,16 +170,16 @@ export const getPullRequestReviewHeadXXXDataFromPossiblyExistantCommitReview =
     return {
       headCommitApprovedTags: null,
       headCommitRejectedTags: null,
-      headCommitRemainingOwnersToApproveDocs: null,
-      headCommitTagsAndOwners: null
+      headCommitUserAssessments: null,
+      headCommitTagsOwnerGroups: null
     };
   }
 
   return {
     headCommitApprovedTags: maybeCommitReview.approvedTags,
     headCommitRejectedTags: maybeCommitReview.rejectedTags,
-    headCommitRemainingOwnersToApproveDocs: maybeCommitReview.remainingOwnersToApproveDocs,
-    headCommitTagsAndOwners: maybeCommitReview.tagsAndOwners
+    headCommitUserAssessments: maybeCommitReview.userAssessments,
+    headCommitTagsOwnerGroups: maybeCommitReview.tagsOwnerGroups
   };
 }
 
@@ -226,7 +228,7 @@ export const updateCommitReview =
         , commitId: string
         , finalApprovedTags: string[]
         , finalRejectedTags: string[]
-        , finalRemainingOwnersToApproveDocs: string[]
+        , finalUserAssessments: UA.UserAssessment[]
         , errorName: string
         ) => {
 
@@ -237,7 +239,7 @@ export const updateCommitReview =
       {
         approvedTags: finalApprovedTags,
         rejectedTags: finalRejectedTags,
-        remainingOwnersToApproveDocs: finalRemainingOwnersToApproveDocs,
+        userAssessments: finalUserAssessments,
       }
     ).exec();
 

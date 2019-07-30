@@ -12,7 +12,12 @@ router.use(function(err, req, res, next) {
     return res.status(err.httpCode).send(err);
   }
 
-  console.log(`LOG IMPROPER ERROR: ${err}`);
+  console.log("Improper Error Has Occured.");
+
+  try {
+    console.log(`Error: ${err}`);
+    console.log(`Error Stack: ${JSON.stringify(err.getStack())}`);
+  } catch { }
 
   return res.status(500).send(errors.internalServerError);
 });

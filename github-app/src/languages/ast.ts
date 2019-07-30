@@ -2,6 +2,7 @@
 
 import * as R from "ramda";
 
+import * as TOG from "../tag-owner-group"
 import * as AppError from "../error"
 import * as File from "../file"
 import * as Tag from "../tag"
@@ -68,7 +69,7 @@ export interface ReducedCommentNode {
   startLine: number;
   endLine: number;
   data:
-    { dataType: "tag-declaration", owner: string, tagType: Tag.VdTagType, tagAnnotationLine: number } |
+    { dataType: "tag-declaration", ownerGroups: TOG.Group[], tagType: Tag.VdTagType, tagAnnotationLine: number } |
     { dataType: "tag-end-block", seen: boolean /** meta-data for whether it's been seen */ }
 }
 
@@ -176,14 +177,14 @@ export const getReducedFileAstFromFileAst = (fileAst: FileAst, filePath: string)
         continue
 
       case "case-3":
-        const { owner, tagType, tagAnnotationLineOffset } = match.value
+        const { ownerGroups, tagType, tagAnnotationLineOffset } = match.value
         reducedFileAst.comments[commentNode.endLine] = {
           startLine: commentNode.startLine,
           endLine: commentNode.endLine,
           data: {
             dataType: "tag-declaration",
             tagType,
-            owner,
+            ownerGroups,
             tagAnnotationLine: commentNode.startLine + tagAnnotationLineOffset
           }
         }
@@ -225,7 +226,7 @@ export const standardTagsFromReducedFileAst =
           case "file":
             vdTags.push({
               tagType: "file",
-              owner: reducedCommentNode.data.owner,
+              ownerGroups: reducedCommentNode.data.ownerGroups,
               tagAnnotationLine: reducedCommentNode.data.tagAnnotationLine,
               content: File.splitFileContentIntoLines(fileContent),
               startLine: 1,
@@ -239,7 +240,7 @@ export const standardTagsFromReducedFileAst =
 
             vdTags.push({
               tagType: "line",
-              owner: reducedCommentNode.data.owner,
+              ownerGroups: reducedCommentNode.data.ownerGroups,
               startLine,
               endLine,
               tagAnnotationLine: reducedCommentNode.data.tagAnnotationLine,
@@ -284,7 +285,7 @@ export const standardTagsFromReducedFileAst =
                   tagType: "block",
                   startLine,
                   endLine,
-                  owner: reducedCommentNode.data.owner,
+                  ownerGroups: reducedCommentNode.data.ownerGroups,
                   tagAnnotationLine: reducedCommentNode.data.tagAnnotationLine,
                   content: LangUtil.getContentByLineNumbers(fileContent, startLine, endLine)
                 })

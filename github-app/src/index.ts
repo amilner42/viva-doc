@@ -2,6 +2,7 @@
 
 // WARNING: Do not import internal modules that use mongoose here, import them below.
 import { config } from "./config";
+import * as UA from "./user-assessment";
 import * as Probot from 'probot' // eslint-disable-line no-unused-vars
 import R from "ramda"
 import mongoose = require("mongoose")
@@ -240,7 +241,7 @@ const analyzeOldPullRequest =
         previousPullRequestReviewObject.headCommitId,
         previousPullRequestReviewObject.headCommitApprovedTags as string[],
         previousPullRequestReviewObject.headCommitRejectedTags as string[],
-        previousPullRequestReviewObject.headCommitRemainingOwnersToApproveDocs as string[],
+        previousPullRequestReviewObject.headCommitUserAssessments as UA.UserAssessment[],
         "update-commit-review-failure"
       );
 

@@ -2,31 +2,30 @@ module Page.CommitReview exposing (Model, Msg, init, subscriptions, toSession, u
 
 import Api.Api as Api
 import Api.Core as Core
-import Api.Errors.CommitReviewAction as CraError
 import Api.Errors.GetCommitReview as GcrError
+import Api.Errors.PostUserAssessments as PuaError
 import Api.Responses.GetCommitReview as GcrResponse
+import Api.Responses.PostUserAssessments as PuaResponse
 import CodeEditor
 import CommitReview
-import Html exposing (Html, a, button, div, dl, dt, hr, i, li, ol, p, progress, section, span, table, tbody, td, text, th, thead, tr)
-import Html.Attributes exposing (class, classList, disabled, style)
+import Html exposing (Html, a, button, dd, div, dl, dt, hr, i, li, ol, p, progress, section, span, table, tbody, td, text, th, thead, tr)
+import Html.Attributes exposing (class, classList, disabled, max, style, value)
 import Html.Events exposing (onClick)
 import Language
+import OwnerGroup as OG
 import Ports
+import Progress
 import RemoteData
 import Route
 import Session exposing (Session)
 import Set
+import UserAssessment as UA
 import Viewer
+import Words
 
 
 
 -- MODEL
-
-
-type ApproveDocsState err
-    = NotRequesting
-    | RequestingDocApproval
-    | RequestForDocApprovalErrored err
 
 
 type alias Model =
@@ -34,14 +33,19 @@ type alias Model =
     , repoId : Int
     , prNumber : Int
     , commitId : String
-    , commitReview : RemoteData.RemoteData (Core.HttpError GcrError.GetCommitReviewError) GcrResponse.CommitReviewResponse
-    , displayOnlyUsersTags : Maybe String
-    , displayOnlyTagsNeedingApproval : Bool
+    , commitReview :
+        RemoteData.RemoteData (Core.HttpError GcrError.GetCommitReviewError) GcrResponse.CommitReviewResponse
+    , displayFilter : CommitReview.ViewFilterOption
     , modalClosed : Bool
-
-    -- TODO actual error type
-    , approveDocsState : ApproveDocsState ()
+    , submitDocReviewState : SubmitDocReviewState
     }
+
+
+type SubmitDocReviewState
+    = NotAsked
+    | Loading
+    | FullFailure (Core.HttpError PuaError.PostUserAssessmentsError)
+    | PartialFailure
 
 
 init : Session -> Int -> Int -> String -> ( Model, Cmd Msg )
@@ -53,14 +57,12 @@ init session repoId prNumber commitId =
             , prNumber = prNumber
             , commitId = commitId
             , commitReview = RemoteData.NotAsked
-            , displayOnlyUsersTags = Nothing
-            , displayOnlyTagsNeedingApproval = False
+            , displayFilter = CommitReview.ViewAllTags
             , modalClosed = False
-            , approveDocsState = NotRequesting
+            , submitDocReviewState = NotAsked
             }
     in
     case session of
-        -- TODO
         Session.Guest _ ->
             ( model, Cmd.none )
 
@@ -126,10 +128,9 @@ view model =
                                     GcrResponse.Complete commitReview ->
                                         renderCommitReview
                                             { username = Viewer.getUsername viewer
-                                            , approveDocsState = model.approveDocsState
-                                            , displayOnlyUsersTags = model.displayOnlyUsersTags
-                                            , displayOnlyTagsNeedingApproval = model.displayOnlyTagsNeedingApproval
+                                            , displayFilter = model.displayFilter
                                             , isCommitStale = model.commitId /= headCommitId
+                                            , submitDocReviewState = model.submitDocReviewState
                                             }
                                             commitReview
     }
@@ -137,191 +138,279 @@ view model =
 
 renderCommitReview :
     { username : String
-    , approveDocsState : ApproveDocsState err
-    , displayOnlyUsersTags : Maybe String
-    , displayOnlyTagsNeedingApproval : Bool
+    , displayFilter : CommitReview.ViewFilterOption
     , isCommitStale : Bool
+    , submitDocReviewState : SubmitDocReviewState
     }
     -> CommitReview.CommitReview
     -> List (Html.Html Msg)
 renderCommitReview config commitReview =
     let
-        totalReviews =
-            CommitReview.countTotalReviewsAndTags commitReview.fileReviews
+        tagCountBreakdown =
+            CommitReview.getTagCountBreakdownForFiles commitReview.fileReviews
 
-        displayingReviews =
+        displayingReviewsCount =
             CommitReview.countVisibleReviewsAndTags commitReview.fileReviews
-    in
-    renderSummaryHeader config.username config.approveDocsState config.isCommitStale commitReview
-        :: renderCommitReviewHeader
-            config.username
-            config.displayOnlyUsersTags
-            config.displayOnlyTagsNeedingApproval
-            displayingReviews
-            totalReviews
-            commitReview
-        :: List.map
-            (renderFileReview
-                config.username
-                commitReview.remainingOwnersToApproveDocs
-                config.approveDocsState
-                config.isCommitStale
-            )
-            commitReview.fileReviews
 
+        docReviewTagIds =
+            CommitReview.getTagIdsInDocReview commitReview
 
-renderSummaryHeader : String -> ApproveDocsState err -> Bool -> CommitReview.CommitReview -> Html.Html Msg
-renderSummaryHeader username approveDocsState isCommitStale commitReview =
-    let
-        ownerTagStatuses : List CommitReview.OwnerTagStatus
-        ownerTagStatuses =
-            CommitReview.getOwnerTagStatuses commitReview
+        status =
+            renderStatus
+                { totalTagCount = tagCountBreakdown.totalCount
+                , approvedTagCount = tagCountBreakdown.approvedCount
+                , rejectedTagCount = tagCountBreakdown.rejectedCount
+                , unresolvedTagCount = tagCountBreakdown.unresolvedCount
+                , docReviewTagIds = docReviewTagIds
+                , displayFilter = config.displayFilter
+                , submitDocReviewState = config.submitDocReviewState
+                , username = config.username
+                }
 
-        totalConfirmationsRequired =
-            List.length ownerTagStatuses
+        commitReviewHeader =
+            renderCommitReviewHeader
+                { username = config.username
+                , displayFilter = config.displayFilter
+                , displayingReviewsCount = displayingReviewsCount
+                , totalReviewsCount = tagCountBreakdown.totalCount
+                }
 
-        remainingConfirmationsRequired =
-            Set.size commitReview.remainingOwnersToApproveDocs
+        noReviewsDisplayedText =
+            if displayingReviewsCount == 0 then
+                renderNoReviewsDisplayedText
+                    { displayFilter = config.displayFilter, docReviewTagIds = docReviewTagIds }
 
-        currentConfirmations =
-            totalConfirmationsRequired - remainingConfirmationsRequired
-
-        totalTags =
-            List.foldl (\ownerTagStatus acc -> acc + ownerTagStatus.totalTags) 0 ownerTagStatuses
-
-        totalNeutralTags =
-            List.foldl
-                (\ownerTagStatus acc -> acc + ownerTagStatus.approvedTags)
-                0
-                ownerTagStatuses
-
-        statusSubtitle =
-            String.fromInt currentConfirmations
-                ++ " out of "
-                ++ String.fromInt totalConfirmationsRequired
-                ++ " owners have approved their documentation"
-
-        maybeCurrentUserTagStatus : Maybe CommitReview.OwnerTagStatus
-        maybeCurrentUserTagStatus =
-            List.filter (.username >> (==) username) ownerTagStatuses |> List.head
-    in
-    div
-        [ class "tile is-vertical" ]
-        [ div
-            [ class "tile" ]
-            [ div
-                []
-                [ span
-                    [ class "has-text-black-ter is-size-3 title"
-                    , style "padding-right" "15px"
-                    ]
-                    [ text "Status" ]
-                , span
-                    [ class "has-text-grey is-size-6" ]
-                    [ text <| statusSubtitle ]
-                ]
-            ]
-        , div
-            [ class "tile section"
-            ]
-            [ table
-                [ class "table is-striped is-bordered is-fullwidth is-narrow" ]
-                [ thead
-                    []
-                    [ tr
-                        []
-                        [ th [] [ text "Owner" ]
-                        , th [] [ text "Total Tags" ]
-                        , th [] [ text "Tags Approved" ]
-                        , th [] [ text "Tags Rejected" ]
-                        , th [] [ text "Unresolved Tags" ]
-                        , th [] [ text "Docs Approved" ]
-                        ]
-                    ]
-                , tbody [] <|
-                    List.map
-                        (\tagOwnerStatus ->
-                            tr
-                                []
-                                [ td [] [ text tagOwnerStatus.username ]
-                                , td [] [ text <| String.fromInt tagOwnerStatus.totalTags ]
-                                , td [] [ text <| String.fromInt tagOwnerStatus.approvedTags ]
-                                , td [] [ text <| String.fromInt tagOwnerStatus.rejectedTags ]
-                                , td [] [ text <| String.fromInt tagOwnerStatus.neutralTags ]
-                                , td []
-                                    [ text <|
-                                        if tagOwnerStatus.approvedDocs then
-                                            "Yes"
-
-                                        else
-                                            "No"
-                                    ]
-                                ]
-                        )
-                        ownerTagStatuses
-                ]
-            ]
-        , case maybeCurrentUserTagStatus of
-            Nothing ->
+            else
                 div [ class "is-hidden" ] []
 
-            Just currentUserTagStatus ->
-                if currentUserTagStatus.approvedDocs then
-                    div [ class "is-hidden" ] []
+        fileReviews =
+            commitReview.fileReviews
+                |> List.map
+                    (renderFileReview
+                        { username = config.username
+                        , displayFilter = config.displayFilter
+                        , isCommitStale = config.isCommitStale
+                        }
+                    )
+    in
+    if tagCountBreakdown.totalCount == 0 then
+        [ div
+            [ class "title has-text-centered" ]
+            [ text "No documentation needs review" ]
+        , div
+            [ class "subtitle has-text-centered" ]
+            [ text "Let's call it a day and grab a beer..." ]
+        ]
 
-                else
-                    div
-                        [ class "tile section"
-                        , style "margin-top" "-80px"
-                        ]
-                        [ if currentUserTagStatus.approvedTags == currentUserTagStatus.totalTags then
-                            button
-                                [ class "button is-fullwidth is-success"
-                                , classList
-                                    [ ( "is-loading"
-                                      , case approveDocsState of
-                                            RequestingDocApproval ->
-                                                True
+    else
+        -- NOTE We always render the file reviews and hide them with "is-hidden" because of the nature of elm's VDOM
+        -- not being aware of the code editors. This prevents us from calling to the port every time as they stay
+        -- rendered but hidden.
+        status
+            :: commitReviewHeader
+            :: noReviewsDisplayedText
+            :: fileReviews
 
-                                            _ ->
-                                                False
-                                      )
-                                    ]
-                                , disabled <|
-                                    isCommitStale
-                                        || (case approveDocsState of
-                                                RequestForDocApprovalErrored _ ->
-                                                    True
 
-                                                _ ->
-                                                    False
-                                           )
-                                , style "height" "52px"
-                                , onClick <| ApproveDocs username
-                                ]
-                                [ text <|
-                                    case approveDocsState of
-                                        -- TODO handle error better
-                                        RequestForDocApprovalErrored err ->
-                                            "Internal Error"
+type alias RenderStatusConfig =
+    { totalTagCount : Int
+    , approvedTagCount : Int
+    , rejectedTagCount : Int
+    , unresolvedTagCount : Int
+    , docReviewTagIds : CommitReview.DocReviewTagIds
+    , displayFilter : CommitReview.ViewFilterOption
+    , username : String
+    , submitDocReviewState : SubmitDocReviewState
+    }
 
-                                        _ ->
-                                            "approve all your documentation"
-                                ]
 
-                          else
-                            button
-                                [ class "button is-fullwidth is-success"
-                                , style "height" "52px"
-                                , disabled True
-                                ]
-                                [ text "approving documentation is disabled until all your tags approved" ]
-                        ]
+renderStatus : RenderStatusConfig -> Html Msg
+renderStatus config =
+    let
+        submitReviewButton =
+            renderSubmitReviewButton
+                { username = config.username
+                , displayFilter = config.displayFilter
+                , docReviewTagIds = config.docReviewTagIds
+                , submitDocReviewState = config.submitDocReviewState
+                }
+    in
+    div
+        []
+        [ div
+            [ class "title" ]
+            [ text "Status Summary" ]
+        , Progress.progress
+            { height = "30px"
+            , bars =
+                [ { color = Progress.Success
+                  , widthPercent = toFloat config.approvedTagCount / toFloat config.totalTagCount * 100
+                  , text = Just "approved"
+                  }
+                , { color = Progress.Danger
+                  , widthPercent = toFloat config.rejectedTagCount / toFloat config.totalTagCount * 100
+                  , text = Just "rejected"
+                  }
+                ]
+            }
+        , div
+            [ class "section"
+            , style "padding-top" "10px"
+            ]
+            [ div
+                []
+                [ text <|
+                    Words.singularAndPlural
+                        { count = config.totalTagCount
+                        , singular = "There is 1 tag."
+                        , pluralPrefix = "There are a total of "
+                        , pluralSuffix = " tags."
+                        }
+                ]
+            , div
+                []
+                [ text <|
+                    Words.singularAndPlural
+                        { count = config.approvedTagCount
+                        , singular = "1 tag has been approved."
+                        , pluralPrefix = ""
+                        , pluralSuffix = " tags have been approved."
+                        }
+                ]
+            , div
+                []
+                [ text <|
+                    Words.singularAndPlural
+                        { count = config.rejectedTagCount
+                        , singular = "1 tag has been rejected."
+                        , pluralPrefix = ""
+                        , pluralSuffix = " tags have been rejected."
+                        }
+                ]
+            , div
+                []
+                [ text <|
+                    Words.singularAndPlural
+                        { count = config.unresolvedTagCount
+                        , singular = "1 tag remains unresolved."
+                        , pluralPrefix = ""
+                        , pluralSuffix = " tags remain unresolved."
+                        }
+                ]
+            ]
+        , submitReviewButton
         ]
 
 
-renderCommitReviewHeader : String -> Maybe String -> Bool -> Int -> Int -> CommitReview.CommitReview -> Html.Html Msg
-renderCommitReviewHeader username displayOnlyUsersTags displayOnlyTagsNeedingApproval displayingReviews totalReviews commitReview =
+type alias RenderSubmitReviewButtonConfig =
+    { displayFilter : CommitReview.ViewFilterOption
+    , docReviewTagIds : CommitReview.DocReviewTagIds
+    , username : String
+    , submitDocReviewState : SubmitDocReviewState
+    }
+
+
+renderSubmitReviewButton : RenderSubmitReviewButtonConfig -> Html Msg
+renderSubmitReviewButton config =
+    case config.submitDocReviewState of
+        NotAsked ->
+            if CommitReview.hasTagsInDocReview config.docReviewTagIds then
+                div
+                    [ class "section", style "margin-top" "-50px" ]
+                    [ button
+                        [ class "button is-success is-large is-outlined is-fullwidth"
+                        , onClick <| SubmitDocReview config.username config.docReviewTagIds
+                        ]
+                        [ text <|
+                            "Submit "
+                                ++ Words.pluralizeWithNumericPrefix
+                                    (CommitReview.markedForApprovalCount config.docReviewTagIds)
+                                    "Approval"
+                                ++ " and "
+                                ++ Words.pluralizeWithNumericPrefix
+                                    (CommitReview.markedForRejectionCount config.docReviewTagIds)
+                                    "Rejection"
+                        ]
+                    ]
+
+            else
+                div [ class "is-hidden" ] []
+
+        Loading ->
+            div
+                [ class "section", style "margin-top" "-50px" ]
+                [ button
+                    [ class "button is-success is-large is-outlined is-fullwidth is-loading" ]
+                    []
+                ]
+
+        FullFailure _ ->
+            div
+                [ class "section", style "margin-top" "-50px" ]
+                [ button
+                    [ class "button is-danger is-large is-outlined is-fullwidth"
+                    , disabled True
+                    ]
+                    [ text "No tags were updated." ]
+                ]
+
+        PartialFailure ->
+            div
+                [ class "section", style "margin-top" "-50px" ]
+                [ button
+                    [ class "button is-danger is-large is-outlined is-fullwidth"
+                    , disabled True
+                    ]
+                    [ text "Some tags failed to update." ]
+                ]
+
+
+type alias RenderNoReviewsDisplayedTextConfig =
+    { displayFilter : CommitReview.ViewFilterOption
+    , docReviewTagIds : CommitReview.DocReviewTagIds
+    }
+
+
+renderNoReviewsDisplayedText : RenderNoReviewsDisplayedTextConfig -> Html Msg
+renderNoReviewsDisplayedText config =
+    div
+        [ class "section has-text-centered" ]
+        (case config.displayFilter of
+            -- Impossible case, if no tags require review we don't call `noDisplayedReviewsText`
+            CommitReview.ViewAllTags ->
+                []
+
+            CommitReview.ViewTagsThatRequireUserAssessment username ->
+                if CommitReview.hasTagsInDocReview config.docReviewTagIds then
+                    [ div
+                        [ class "subtitle has-text-centered" ]
+                        [ text "You have assessed all documentation under your responsibility" ]
+                    ]
+
+                else
+                    [ div
+                        [ class "subtitle has-text-centered" ]
+                        [ text "nothing requires your approval" ]
+                    ]
+
+            CommitReview.ViewTagsInCurrentDocReview ->
+                [ div
+                    [ class "subtitle has-text-centered" ]
+                    [ text "you have no assessments to submit" ]
+                ]
+        )
+
+
+type alias RenderCommitReviewHeaderConfig =
+    { username : String
+    , displayFilter : CommitReview.ViewFilterOption
+    , displayingReviewsCount : Int
+    , totalReviewsCount : Int
+    }
+
+
+renderCommitReviewHeader : RenderCommitReviewHeaderConfig -> Html.Html Msg
+renderCommitReviewHeader config =
     div
         [ class "level is-mobile"
         , style "margin-bottom" "0px"
@@ -336,131 +425,137 @@ renderCommitReviewHeader username displayOnlyUsersTags displayOnlyTagsNeedingApp
                         [ class "has-text-black-ter is-size-3 title"
                         , style "padding-right" "15px"
                         ]
-                        [ text "Reviews" ]
+                        [ text "Documentation Review" ]
                     , span
                         [ class "has-text-grey is-size-6" ]
                         [ text <|
-                            if displayingReviews == totalReviews then
-                                "displaying all " ++ String.fromInt totalReviews ++ " reviews"
-
-                            else
-                                "displaying "
-                                    ++ String.fromInt displayingReviews
-                                    ++ " of "
-                                    ++ String.fromInt totalReviews
-                                    ++ " reviews"
+                            "displaying "
+                                ++ String.fromInt config.displayingReviewsCount
+                                ++ " of "
+                                ++ String.fromInt config.totalReviewsCount
+                                ++ " tags"
                         ]
                     ]
                 ]
             ]
         , div [ class "buttons level-right" ]
             [ button
-                [ class "button"
-                , onClick <|
-                    SetDisplayOnlyUsersTags
-                        (case displayOnlyUsersTags of
-                            Nothing ->
-                                Just username
-
-                            Just _ ->
-                                Nothing
-                        )
-                        username
+                [ class "button is-rounded"
+                , onClick <| SetDisplayFilter CommitReview.ViewAllTags
                 ]
                 [ span [ class "icon is-small" ]
                     [ i
                         [ class "material-icons" ]
                         [ text <|
-                            case displayOnlyUsersTags of
-                                Nothing ->
-                                    "check_box_outline_blank"
+                            case config.displayFilter of
+                                CommitReview.ViewAllTags ->
+                                    "radio_button_checked"
 
-                                Just _ ->
-                                    "check_box"
+                                _ ->
+                                    "radio_button_unchecked"
                         ]
                     ]
-                , div [] [ text "Your Tags" ]
+                , div [] [ text "All" ]
                 ]
             , button
-                [ class "button"
-                , onClick <| SetDisplayOnlyTagsNeedingApproval (not displayOnlyTagsNeedingApproval)
+                [ class "button is-rounded"
+                , onClick <| SetDisplayFilter <| CommitReview.ViewTagsThatRequireUserAssessment config.username
                 ]
                 [ span
                     [ class "icon is-small" ]
                     [ i
                         [ class "material-icons" ]
                         [ text <|
-                            if displayOnlyTagsNeedingApproval then
-                                "check_box"
+                            case config.displayFilter of
+                                CommitReview.ViewTagsThatRequireUserAssessment _ ->
+                                    "radio_button_checked"
 
-                            else
-                                "check_box_outline_blank"
+                                _ ->
+                                    "radio_button_unchecked"
                         ]
                     ]
-                , div [] [ text "Requires Approval" ]
+                , div [] [ text "Requires Your Assessment" ]
+                ]
+            , button
+                [ class "button is-rounded"
+                , onClick <| SetDisplayFilter CommitReview.ViewTagsInCurrentDocReview
+                ]
+                [ span
+                    [ class "icon is-small" ]
+                    [ i
+                        [ class "material-icons" ]
+                        [ text <|
+                            case config.displayFilter of
+                                CommitReview.ViewTagsInCurrentDocReview ->
+                                    "radio_button_checked"
+
+                                _ ->
+                                    "radio_button_unchecked"
+                        ]
+                    ]
+                , div [] [ text "Ready for Submission" ]
                 ]
             ]
         ]
 
 
-renderFileReview : String -> Set.Set String -> ApproveDocsState err -> Bool -> CommitReview.FileReview -> Html.Html Msg
-renderFileReview username remainingOwnersToApproveDocs approveDocsState isCommitStale fileReview =
+type alias RenderFileReviewConfig =
+    { username : String
+    , isCommitStale : Bool
+    , displayFilter : CommitReview.ViewFilterOption
+    }
+
+
+renderFileReview : RenderFileReviewConfig -> CommitReview.FileReview -> Html.Html Msg
+renderFileReview config fileReview =
     div [ classList [ ( "section", True ), ( "is-hidden", fileReview.isHidden ) ] ] <|
-        [ renderFileReviewHeader fileReview
+        [ renderFileReviewHeader fileReview.currentFilePath fileReview.fileReviewType
         , case fileReview.fileReviewType of
             CommitReview.NewFileReview tags ->
                 renderTags
-                    username
+                    config.username
                     "This tag has been added to a new file"
-                    remainingOwnersToApproveDocs
-                    approveDocsState
-                    isCommitStale
+                    config.isCommitStale
                     fileReview.currentLanguage
                     tags
 
             CommitReview.DeletedFileReview tags ->
                 renderTags
-                    username
+                    config.username
                     "This tag is being removed inside a deleted file"
-                    remainingOwnersToApproveDocs
-                    approveDocsState
-                    isCommitStale
+                    config.isCommitStale
                     fileReview.currentLanguage
                     tags
 
             CommitReview.ModifiedFileReview reviews ->
                 renderReviews
-                    username
-                    remainingOwnersToApproveDocs
-                    approveDocsState
-                    isCommitStale
+                    config.username
+                    config.isCommitStale
                     fileReview.currentLanguage
                     reviews
 
             CommitReview.RenamedFileReview _ _ reviews ->
                 renderReviews
-                    username
-                    remainingOwnersToApproveDocs
-                    approveDocsState
-                    isCommitStale
+                    config.username
+                    config.isCommitStale
                     fileReview.currentLanguage
                     reviews
         ]
 
 
-renderFileReviewHeader : CommitReview.FileReview -> Html.Html Msg
-renderFileReviewHeader fileReview =
+renderFileReviewHeader : String -> CommitReview.FileReviewType -> Html.Html Msg
+renderFileReviewHeader currentFilePath fileReviewType =
     div
         [ style "padding-bottom" "15px" ]
         [ span
             [ class "has-text-black-ter is-size-3"
             , style "padding-right" "10px"
             ]
-            [ text fileReview.currentFilePath ]
+            [ text currentFilePath ]
         , span
             [ class "has-text-grey is-size-6" ]
             [ text <|
-                case fileReview.fileReviewType of
+                case fileReviewType of
                     CommitReview.NewFileReview _ ->
                         "new file"
 
@@ -479,20 +574,16 @@ renderFileReviewHeader fileReview =
 renderTags :
     String
     -> String
-    -> Set.Set String
-    -> ApproveDocsState err
     -> Bool
     -> Language.Language
     -> List CommitReview.Tag
     -> Html.Html Msg
-renderTags username description remainingOwnersToApproveDocs approveDocsState isCommitStale language tags =
+renderTags username description isCommitStale language tags =
     div [ class "tile is-ancestor is-vertical" ] <|
         List.map
             (renderTagOrReview
                 { username = username
                 , description = description
-                , remainingOwnersToApproveDocs = remainingOwnersToApproveDocs
-                , approveDocsState = approveDocsState
                 , isCommitStale = isCommitStale
                 , maybeReview = Nothing
                 , language = language
@@ -503,13 +594,11 @@ renderTags username description remainingOwnersToApproveDocs approveDocsState is
 
 renderReviews :
     String
-    -> Set.Set String
-    -> ApproveDocsState err
     -> Bool
     -> Language.Language
     -> List CommitReview.Review
     -> Html.Html Msg
-renderReviews username remainingOwnersToApproveDocs approveDocsState isCommitStale language reviews =
+renderReviews username isCommitStale language reviews =
     div [ class "tile is-ancestor is-vertical" ] <|
         List.map
             (\review ->
@@ -525,8 +614,6 @@ renderReviews username remainingOwnersToApproveDocs approveDocsState isCommitSta
 
                             CommitReview.ReviewModifiedTag _ ->
                                 "This tag has been modified"
-                    , remainingOwnersToApproveDocs = remainingOwnersToApproveDocs
-                    , approveDocsState = approveDocsState
                     , isCommitStale = isCommitStale
                     , maybeReview = Just review
                     , language = language
@@ -539,8 +626,6 @@ renderReviews username remainingOwnersToApproveDocs approveDocsState isCommitSta
 renderTagOrReview :
     { username : String
     , description : String
-    , approveDocsState : ApproveDocsState err
-    , remainingOwnersToApproveDocs : Set.Set String
     , isCommitStale : Bool
     , maybeReview : Maybe CommitReview.Review
     , language : Language.Language
@@ -548,6 +633,12 @@ renderTagOrReview :
     -> CommitReview.Tag
     -> Html.Html Msg
 renderTagOrReview config tag =
+    let
+        ownerGroups =
+            renderOwnerGroupsForTag
+                tag.ownerGroups
+                tag.userAssessments
+    in
     div [ classList [ ( "tile is-parent", True ), ( "is-hidden", tag.isHidden ) ] ]
         [ div
             [ class "tile is-8 is-child has-code-editor" ]
@@ -564,8 +655,7 @@ renderTagOrReview config tag =
                     ]
                     [ div
                         [ class "content is-small" ]
-                        [ dl
-                            []
+                        [ dl [] <|
                             [ dt
                                 []
                                 [ div [ class "level" ]
@@ -577,128 +667,75 @@ renderTagOrReview config tag =
                                                 [ class "level-right has-text-grey-light" ]
                                                 [ text "Unresolved" ]
 
-                                        CommitReview.Approved ->
+                                        CommitReview.InDocReview assessmentType ->
                                             div
                                                 [ class "level-right has-text-grey-light" ]
-                                                [ text "Approved" ]
+                                                [ text <| "You " ++ UA.prettyPrintAssessmentType assessmentType ++ " this tag" ]
 
-                                        CommitReview.Rejected ->
+                                        CommitReview.InDocReviewBeingSubmitted assessmentType ->
                                             div
                                                 [ class "level-right has-text-grey-light" ]
-                                                [ text "Rejected" ]
+                                                [ text <| "Requesting " ++ UA.prettyPrintAssessmentType assessmentType ++ "..." ]
 
-                                        CommitReview.RequestingApproval ->
+                                        CommitReview.NonNeutral assessmentType ->
                                             div
-                                                [ class "level-right has-text-grey-light" ]
-                                                [ text "Requesting approval..." ]
-
-                                        CommitReview.RequestingRejection ->
-                                            div
-                                                [ class "level-right has-text-grey-light" ]
-                                                [ text "Requesting rejection..." ]
-
-                                        CommitReview.RequestingRemoveApproval ->
-                                            div
-                                                [ class "level-right has-text-grey-light" ]
-                                                [ text "Removing approval..." ]
-
-                                        CommitReview.RequestingRemoveRejection ->
-                                            div
-                                                [ class "level-right has-text-grey-light" ]
-                                                [ text "Removing rejection..." ]
+                                                [ classList
+                                                    [ ( "level-right", True )
+                                                    , ( "has-text-success", UA.isApproved assessmentType )
+                                                    , ( "has-text-danger", UA.isRejected assessmentType )
+                                                    ]
+                                                ]
+                                                [ text <| UA.prettyPrintAssessmentTypeWithCapital assessmentType ]
 
                                         CommitReview.RequestFailed err ->
                                             div [ class "is-hidden" ] []
                                     ]
                                 ]
-                            , dt [] [ text <| "Owner: " ++ tag.owner ]
                             ]
-                        , p [] [ text config.description ]
+                                ++ ownerGroups
+                        , p [ style "margin-top" "20px" ] [ text config.description ]
                         ]
                     , div [ class "buttons" ] <|
                         (if
-                            (config.username /= tag.owner)
-                                || (not <| Set.member config.username config.remainingOwnersToApproveDocs)
+                            (not <| OG.isUserInAnyGroup config.username tag.ownerGroups)
+                                || List.any (UA.isForUser config.username) tag.userAssessments
                          then
                             []
 
                          else
-                            let
-                                requestingDocApproval =
-                                    case config.approveDocsState of
-                                        RequestingDocApproval ->
-                                            True
-
-                                        _ ->
-                                            False
-                            in
                             case tag.approvedState of
                                 CommitReview.Neutral ->
                                     [ button
                                         [ class "button is-success is-fullwidth has-text-white"
-                                        , onClick <| ApproveTags <| Set.singleton tag.tagId
-                                        , disabled <| requestingDocApproval || config.isCommitStale
+                                        , onClick <| AddToDocReview UA.Approved tag.tagId
+                                        , disabled <| config.isCommitStale
                                         ]
-                                        [ text "Approve" ]
+                                        [ text "Docs look good" ]
                                     , button
                                         [ class "button is-danger is-fullwidth has-text-white"
-                                        , onClick <| RejectTags <| Set.singleton tag.tagId
-                                        , disabled <| requestingDocApproval || config.isCommitStale
+                                        , onClick <| AddToDocReview UA.Rejected tag.tagId
+                                        , disabled <| config.isCommitStale
                                         ]
-                                        [ text "Reject" ]
+                                        [ text "Docs require fix" ]
                                     ]
 
-                                CommitReview.Approved ->
+                                CommitReview.InDocReview assessmentType ->
                                     [ button
-                                        [ class "button is-success is-fullwidth is-outlined"
-                                        , disabled <| requestingDocApproval || config.isCommitStale
-                                        , onClick <| RemoveApprovalOnTag tag.tagId
+                                        [ class "button is-fullwidth is-outlined"
+                                        , onClick <| RemoveFromDocReview tag.tagId
+                                        , disabled <| config.isCommitStale
                                         ]
-                                        [ text "Undo Approval" ]
+                                        [ text "Remove from Doc Review" ]
                                     ]
 
-                                CommitReview.Rejected ->
+                                CommitReview.InDocReviewBeingSubmitted assessmentType ->
                                     [ button
-                                        [ class "button is-fullwidth is-danger is-outlined"
-                                        , disabled <| requestingDocApproval || config.isCommitStale
-                                        , onClick <| RemoveRejectionOnTag tag.tagId
-                                        ]
-                                        [ text "Undo Rejection" ]
-                                    ]
-
-                                CommitReview.RequestingApproval ->
-                                    [ button
-                                        [ class "button is-success is-fullwidth is-loading" ]
-                                        []
-                                    , button
-                                        [ class "button is-danger is-fullwidth  has-text-white"
-                                        , disabled True
-                                        ]
-                                        [ text "Reject" ]
-                                    ]
-
-                                CommitReview.RequestingRejection ->
-                                    [ button
-                                        [ class "button is-success is-fullwidth"
-                                        , disabled True
-                                        ]
-                                        [ text "Approve" ]
-                                    , button
-                                        [ class "button is-danger is-fullwidth is-loading" ]
+                                        [ class "button is-fullwidth is-outlined is-loading" ]
                                         []
                                     ]
 
-                                CommitReview.RequestingRemoveApproval ->
-                                    [ button
-                                        [ class "button is-success is-fullwidth is-outlined is-loading" ]
-                                        []
-                                    ]
-
-                                CommitReview.RequestingRemoveRejection ->
-                                    [ button
-                                        [ class "button is-danger is-fullwidth is-outlined is-loading" ]
-                                        []
-                                    ]
+                                CommitReview.NonNeutral assessmentType ->
+                                    []
 
                                 -- TODO handle error better?
                                 CommitReview.RequestFailed err ->
@@ -742,6 +779,81 @@ renderTagOrReview config tag =
                 ]
             ]
         ]
+
+
+renderOwnerGroupsForTag : List OG.OwnerGroup -> List UA.UserAssessment -> List (Html msg)
+renderOwnerGroupsForTag ownerGroups userAssessments =
+    let
+        renderGroup group =
+            let
+                isApprovedGroup =
+                    List.any
+                        (\owner ->
+                            List.any
+                                (UA.isAll [ .assessmentType >> UA.isApproved, UA.isForUser owner ])
+                                userAssessments
+                        )
+                        group
+
+                isRejectedGroup =
+                    List.any
+                        (\owner ->
+                            List.any
+                                (UA.isAll [ .assessmentType >> UA.isRejected, UA.isForUser owner ])
+                                userAssessments
+                        )
+                        group
+            in
+            dd
+                [ class "level"
+                , style "margin" "5px 0 5px 10px"
+                ]
+                [ div [ class "level-left" ] <|
+                    [ span [ class "icon is-small" ]
+                        [ i
+                            [ classList
+                                [ ( "material-icons", True )
+                                , ( "has-text-light", not isApprovedGroup && not isRejectedGroup )
+                                , ( "has-text-success", isApprovedGroup )
+                                , ( "has-text-danger", isRejectedGroup )
+                                ]
+                            ]
+                            [ text <|
+                                case ( isRejectedGroup, isApprovedGroup ) of
+                                    ( True, False ) ->
+                                        "indeterminate_check_box"
+
+                                    ( True, True ) ->
+                                        "indeterminate_check_box"
+
+                                    ( False, True ) ->
+                                        "check_box"
+
+                                    ( False, False ) ->
+                                        "check_box_outline_blank"
+                            ]
+                        ]
+                    , span [ style "white-space" "pre" ] [ text " " ]
+                    ]
+                        ++ List.map renderOwner group
+                ]
+
+        renderOwner owner =
+            span
+                [ style "white-space" "pre"
+                , classList
+                    [ ( "has-text-success"
+                      , List.any (UA.isAll [ UA.isForUser owner, .assessmentType >> UA.isApproved ]) userAssessments
+                      )
+                    , ( "has-text-danger"
+                      , List.any (UA.isAll [ UA.isForUser owner, .assessmentType >> UA.isRejected ]) userAssessments
+                      )
+                    ]
+                ]
+                [ text <| "  " ++ owner ]
+    in
+    [ dt [] [ text <| "Owner Groups" ] ]
+        ++ List.map renderGroup ownerGroups
 
 
 renderHeadUpdatedModal : GcrResponse.CommitReviewResponseType -> String -> Route.Route -> List (Html.Html Msg)
@@ -886,66 +998,20 @@ renderGetCommitReviewErrorModal httpError =
 
 type Msg
     = CompletedGetCommitReview (Result.Result (Core.HttpError GcrError.GetCommitReviewError) GcrResponse.CommitReviewResponse)
-    | SetDisplayOnlyUsersTags (Maybe String) String
-    | SetDisplayOnlyTagsNeedingApproval Bool
+    | SetDisplayFilter CommitReview.ViewFilterOption
     | SetShowAlteredLines Language.Language CommitReview.Review
-    | ApproveTags (Set.Set String)
-    | CompletedApproveTags (Set.Set String) (Result.Result (Core.HttpError CraError.CommitReviewActionError) ())
-    | RemoveApprovalOnTag String
-    | CompletedRemoveApprovalOnTag String (Result.Result (Core.HttpError CraError.CommitReviewActionError) ())
-    | RejectTags (Set.Set String)
-    | CompletedRejectTags (Set.Set String) (Result.Result (Core.HttpError CraError.CommitReviewActionError) ())
-    | RemoveRejectionOnTag String
-    | CompletedRemoveRejectionOnTag String (Result.Result (Core.HttpError CraError.CommitReviewActionError) ())
-    | ApproveDocs String
-    | CompletedApproveDocs String (Result.Result (Core.HttpError CraError.CommitReviewActionError) ())
     | SetModalClosed Bool GcrResponse.CommitReviewResponseType
+    | AddToDocReview UA.AssessmentType String
+    | RemoveFromDocReview String
+    | SubmitDocReview String CommitReview.DocReviewTagIds
+    | CompletedSubmitDocReview String CommitReview.DocReviewTagIds (Result.Result (Core.HttpError PuaError.PostUserAssessmentsError) PuaResponse.PostUserAssessmentsResponse)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     let
-        updateCompleteCommitReview modelToUpdate updater =
-            { modelToUpdate
-                | commitReview =
-                    model.commitReview
-                        |> RemoteData.map
-                            (GcrResponse.mapComplete updater)
-            }
-
-        handleCommitReviewActionErrorOnTag tagIds err =
-            ( case err of
-                Core.BadStatus _ (CraError.StaleCommitError newHeadCommitId) ->
-                    { model
-                        | commitReview =
-                            model.commitReview
-                                |> RemoteData.map (\x -> { x | headCommitId = newHeadCommitId })
-                                |> RemoteData.map
-                                    (GcrResponse.mapComplete
-                                        (CommitReview.updateTags
-                                            (\tag ->
-                                                if Set.member tag.tagId tagIds then
-                                                    { tag | approvedState = CommitReview.Neutral }
-
-                                                else
-                                                    tag
-                                            )
-                                        )
-                                    )
-                    }
-
-                _ ->
-                    updateCompleteCommitReview model <|
-                        CommitReview.updateTags
-                            (\tag ->
-                                if Set.member tag.tagId tagIds then
-                                    { tag | approvedState = CommitReview.RequestFailed () }
-
-                                else
-                                    tag
-                            )
-            , Cmd.none
-            )
+        updateCompleteCommitReview updater modelCommitReview =
+            modelCommitReview |> (RemoteData.map << GcrResponse.mapComplete) updater
     in
     case msg of
         CompletedGetCommitReview (Result.Ok response) ->
@@ -966,25 +1032,14 @@ update msg model =
         CompletedGetCommitReview (Result.Err err) ->
             ( { model | commitReview = RemoteData.Failure err }, Cmd.none )
 
-        SetDisplayOnlyUsersTags displayOnlyUsersTags username ->
-            ( updateCompleteCommitReview
-                { model | displayOnlyUsersTags = displayOnlyUsersTags }
-                (CommitReview.updateCommitReviewForSearch
-                    { filterForUser = displayOnlyUsersTags
-                    , filterApprovedTags = model.displayOnlyTagsNeedingApproval
-                    }
-                )
-            , Cmd.none
-            )
-
-        SetDisplayOnlyTagsNeedingApproval displayOnlyTagsNeedingApproval ->
-            ( updateCompleteCommitReview
-                { model | displayOnlyTagsNeedingApproval = displayOnlyTagsNeedingApproval }
-                (CommitReview.updateCommitReviewForSearch
-                    { filterForUser = model.displayOnlyUsersTags
-                    , filterApprovedTags = displayOnlyTagsNeedingApproval
-                    }
-                )
+        SetDisplayFilter viewFilterOption ->
+            ( { model
+                | displayFilter = viewFilterOption
+                , commitReview =
+                    model.commitReview
+                        |> updateCompleteCommitReview
+                            (CommitReview.updateCommitReviewForDisplayFilter viewFilterOption)
+              }
             , Cmd.none
             )
 
@@ -1004,194 +1059,23 @@ update msg model =
                                     CommitReview.ReviewDeletedTag currentFileStartLineNumber
                     }
             in
-            ( updateCompleteCommitReview model
-                (CommitReview.updateReviews
-                    (\review ->
-                        if review.tag.tagId == updatedReview.tag.tagId then
-                            updatedReview
+            ( { model
+                | commitReview =
+                    model.commitReview
+                        |> updateCompleteCommitReview
+                            (CommitReview.updateReviews
+                                (\review ->
+                                    if review.tag.tagId == updatedReview.tag.tagId then
+                                        updatedReview
 
-                        else
-                            review
-                    )
-                )
+                                    else
+                                        review
+                                )
+                            )
+              }
             , Ports.rerenderCodeEditor <|
                 CommitReview.renderConfigForReviewOrTag language (CommitReview.AReview updatedReview)
             )
-
-        ApproveTags tags ->
-            ( updateCompleteCommitReview model
-                (CommitReview.updateTags
-                    (\tag ->
-                        if Set.member tag.tagId tags then
-                            { tag | approvedState = CommitReview.RequestingApproval }
-
-                        else
-                            tag
-                    )
-                )
-            , Api.postApproveTags model.repoId model.prNumber model.commitId tags (CompletedApproveTags tags)
-            )
-
-        CompletedApproveTags approvedTags (Ok ()) ->
-            ( updateCompleteCommitReview model <|
-                CommitReview.updateTags
-                    (\tag ->
-                        if Set.member tag.tagId approvedTags then
-                            { tag | approvedState = CommitReview.Approved }
-
-                        else
-                            tag
-                    )
-                    >> CommitReview.updateCommitReviewForSearch
-                        { filterForUser = model.displayOnlyUsersTags
-                        , filterApprovedTags = model.displayOnlyTagsNeedingApproval
-                        }
-            , Cmd.none
-            )
-
-        CompletedApproveTags attemptedApprovedTags (Result.Err err) ->
-            handleCommitReviewActionErrorOnTag attemptedApprovedTags err
-
-        RemoveApprovalOnTag tagId ->
-            ( updateCompleteCommitReview model <|
-                CommitReview.updateTags
-                    (\tag ->
-                        if tag.tagId == tagId then
-                            { tag | approvedState = CommitReview.RequestingRemoveApproval }
-
-                        else
-                            tag
-                    )
-            , Api.deleteApprovedTag model.repoId model.prNumber model.commitId tagId (CompletedRemoveApprovalOnTag tagId)
-            )
-
-        CompletedRemoveApprovalOnTag tagId (Result.Ok ()) ->
-            ( updateCompleteCommitReview model <|
-                CommitReview.updateTags
-                    (\tag ->
-                        if tag.tagId == tagId then
-                            { tag | approvedState = CommitReview.Neutral }
-
-                        else
-                            tag
-                    )
-                    >> CommitReview.updateCommitReviewForSearch
-                        { filterForUser = model.displayOnlyUsersTags
-                        , filterApprovedTags = model.displayOnlyTagsNeedingApproval
-                        }
-            , Cmd.none
-            )
-
-        CompletedRemoveApprovalOnTag tagId (Result.Err err) ->
-            handleCommitReviewActionErrorOnTag (Set.singleton tagId) err
-
-        RejectTags tags ->
-            ( updateCompleteCommitReview model <|
-                CommitReview.updateTags
-                    (\tag ->
-                        if Set.member tag.tagId tags then
-                            { tag | approvedState = CommitReview.RequestingRejection }
-
-                        else
-                            tag
-                    )
-            , Api.postRejectTags
-                model.repoId
-                model.prNumber
-                model.commitId
-                tags
-                (CompletedRejectTags tags)
-            )
-
-        CompletedRejectTags tags (Ok ()) ->
-            ( updateCompleteCommitReview model <|
-                CommitReview.updateTags
-                    (\tag ->
-                        if Set.member tag.tagId tags then
-                            { tag | approvedState = CommitReview.Rejected }
-
-                        else
-                            tag
-                    )
-                    >> CommitReview.updateCommitReviewForSearch
-                        { filterForUser = model.displayOnlyUsersTags
-                        , filterApprovedTags = model.displayOnlyTagsNeedingApproval
-                        }
-            , Cmd.none
-            )
-
-        CompletedRejectTags attemptedRejectTags (Result.Err err) ->
-            handleCommitReviewActionErrorOnTag attemptedRejectTags err
-
-        RemoveRejectionOnTag tagId ->
-            ( updateCompleteCommitReview model <|
-                CommitReview.updateTags
-                    (\tag ->
-                        if tag.tagId == tagId then
-                            { tag | approvedState = CommitReview.RequestingRemoveRejection }
-
-                        else
-                            tag
-                    )
-            , Api.deleteRejectedTag
-                model.repoId
-                model.prNumber
-                model.commitId
-                tagId
-                (CompletedRemoveRejectionOnTag tagId)
-            )
-
-        CompletedRemoveRejectionOnTag tagId (Result.Ok ()) ->
-            ( updateCompleteCommitReview model <|
-                CommitReview.updateTags
-                    (\tag ->
-                        if tag.tagId == tagId then
-                            { tag | approvedState = CommitReview.Neutral }
-
-                        else
-                            tag
-                    )
-                    >> CommitReview.updateCommitReviewForSearch
-                        { filterForUser = model.displayOnlyUsersTags
-                        , filterApprovedTags = model.displayOnlyTagsNeedingApproval
-                        }
-            , Cmd.none
-            )
-
-        CompletedRemoveRejectionOnTag tagId (Result.Err err) ->
-            handleCommitReviewActionErrorOnTag (Set.singleton tagId) err
-
-        ApproveDocs username ->
-            ( { model | approveDocsState = RequestingDocApproval }
-            , Api.postApproveDocs model.repoId model.prNumber model.commitId <| CompletedApproveDocs username
-            )
-
-        CompletedApproveDocs username (Ok _) ->
-            ( updateCompleteCommitReview model <|
-                \commitReview ->
-                    { commitReview
-                        | remainingOwnersToApproveDocs =
-                            Set.remove username commitReview.remainingOwnersToApproveDocs
-                    }
-            , Cmd.none
-            )
-
-        -- TODO handle error
-        CompletedApproveDocs username (Result.Err err) ->
-            case err of
-                Core.BadStatus _ (CraError.StaleCommitError newHeadCommitId) ->
-                    ( { model
-                        | commitReview =
-                            model.commitReview
-                                |> RemoteData.map
-                                    (\x -> { x | headCommitId = newHeadCommitId })
-                        , approveDocsState = NotRequesting
-                      }
-                    , Cmd.none
-                    )
-
-                _ ->
-                    ( { model | approveDocsState = RequestForDocApprovalErrored () }, Cmd.none )
 
         SetModalClosed modalClosed gcrResponseType ->
             ( { model | modalClosed = modalClosed }
@@ -1201,6 +1085,145 @@ update msg model =
 
                 _ ->
                     Cmd.none
+            )
+
+        AddToDocReview assessmentType tagId ->
+            ( { model
+                | commitReview =
+                    model.commitReview
+                        |> updateCompleteCommitReview
+                            (CommitReview.updateTagApprovalState
+                                { tagId = tagId, approvalState = CommitReview.InDocReview assessmentType }
+                            )
+                        |> updateCompleteCommitReview
+                            (CommitReview.updateCommitReviewForDisplayFilter model.displayFilter)
+              }
+            , Cmd.none
+            )
+
+        RemoveFromDocReview tagId ->
+            ( { model
+                | commitReview =
+                    model.commitReview
+                        |> updateCompleteCommitReview
+                            (CommitReview.updateTagApprovalState
+                                { tagId = tagId, approvalState = CommitReview.Neutral }
+                            )
+                        |> updateCompleteCommitReview
+                            (CommitReview.updateCommitReviewForDisplayFilter model.displayFilter)
+              }
+            , Cmd.none
+            )
+
+        SubmitDocReview username ({ markedForApprovalTagIds, markedForRejectionTagIds } as docReviewTagIds) ->
+            ( { model
+                | submitDocReviewState = Loading
+                , commitReview =
+                    model.commitReview
+                        |> updateCompleteCommitReview
+                            (CommitReview.updateApprovalStatesForTags <|
+                                CommitReview.docReviewTagIdsToTagAndApprovalState
+                                    docReviewTagIds
+                                    CommitReview.InDocReviewBeingSubmitted
+                            )
+              }
+            , Api.postUserAssessments
+                model.repoId
+                model.prNumber
+                model.commitId
+                markedForApprovalTagIds
+                markedForRejectionTagIds
+                (CompletedSubmitDocReview username docReviewTagIds)
+            )
+
+        CompletedSubmitDocReview username _ (Result.Ok response) ->
+            ( { model
+                | submitDocReviewState =
+                    if PuaResponse.allUserAssessmentsSucceeded response then
+                        NotAsked
+
+                    else
+                        PartialFailure
+                , commitReview =
+                    model.commitReview
+                        |> updateCompleteCommitReview
+                            (CommitReview.updateTags
+                                (\tag ->
+                                    case PuaResponse.getResponseForTagId tag.tagId response of
+                                        Nothing ->
+                                            tag
+
+                                        Just { responseType } ->
+                                            case responseType of
+                                                PuaResponse.ApprovalSuccess isApproved ->
+                                                    { tag
+                                                        | userAssessments =
+                                                            { tagId = tag.tagId
+                                                            , username = username
+                                                            , assessmentType = UA.Approved
+                                                            }
+                                                                :: tag.userAssessments
+                                                        , approvedState =
+                                                            if isApproved then
+                                                                CommitReview.NonNeutral UA.Approved
+
+                                                            else
+                                                                CommitReview.Neutral
+                                                    }
+
+                                                PuaResponse.RejectionSuccess ->
+                                                    { tag
+                                                        | userAssessments =
+                                                            { tagId = tag.tagId
+                                                            , username = username
+                                                            , assessmentType = UA.Rejected
+                                                            }
+                                                                :: tag.userAssessments
+                                                        , approvedState = CommitReview.NonNeutral UA.Rejected
+                                                    }
+
+                                                PuaResponse.ApprovalFailure ->
+                                                    { tag | approvedState = CommitReview.RequestFailed () }
+
+                                                PuaResponse.RejectionFailure ->
+                                                    { tag | approvedState = CommitReview.RequestFailed () }
+                                )
+                            )
+                        |> updateCompleteCommitReview
+                            (CommitReview.updateCommitReviewForDisplayFilter model.displayFilter)
+              }
+            , Cmd.none
+            )
+
+        CompletedSubmitDocReview _ docReviewTagIds (Result.Err err) ->
+            let
+                neutralTagAndApprovalStates =
+                    CommitReview.docReviewTagIdsToTagAndApprovalState
+                        docReviewTagIds
+                        (always CommitReview.Neutral)
+
+                updateCommitReviewDocTagIdsToNeutral =
+                    CommitReview.updateApprovalStatesForTags neutralTagAndApprovalStates
+            in
+            ( case err of
+                Core.BadStatus _ (PuaError.StaleCommitError newHeadCommitId) ->
+                    { model
+                        | submitDocReviewState = NotAsked
+                        , commitReview =
+                            model.commitReview
+                                |> updateCompleteCommitReview updateCommitReviewDocTagIdsToNeutral
+                                |> updateCompleteCommitReview
+                                    (CommitReview.updateCommitReviewForDisplayFilter model.displayFilter)
+                                |> RemoteData.map (\crr -> { crr | headCommitId = newHeadCommitId })
+                    }
+
+                _ ->
+                    { model
+                        | submitDocReviewState = FullFailure err
+                        , commitReview =
+                            model.commitReview |> updateCompleteCommitReview updateCommitReviewDocTagIdsToNeutral
+                    }
+            , Cmd.none
             )
 
 

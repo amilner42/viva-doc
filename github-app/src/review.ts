@@ -8,6 +8,7 @@ import * as LangUtil from "./languages/util"
 import * as Diff from "./diff"
 import * as Tag from "./tag"
 import * as T from "./types"
+import * as TOG from "./tag-owner-group"
 
 
 /** EXTERNAL */
@@ -121,10 +122,6 @@ export type ReviewModifiedTag = BaseReview & {
   reviewType: "modified";
 }
 
-export interface TagAndOwner {
-  owner: string,
-  tagId: string
-}
 
 // Get reviews from all the parsed information
 export const getReviews = (diffWCAT: Tag.FileDiffWithCodeAndTags): FileReview => {
@@ -217,28 +214,18 @@ export const initFileReviewMetadata = (fileReview: FileReview): FileReviewWithMe
   }
 }
 
-export const getAllOwners = (fileReviews: FileReview[]): string[] => {
 
-  return R.reduce<FileReview, string[]>((allTags, fileReview) => {
-    return R.reduce<Tag.VdTag, string[]>((fileReviewTags, tag) => {
+export const getTagsOwnerGroups =
+  (fileReviewsWithMetadata: FileReviewWithMetadata[]): TOG.TagOwnerGroups[] => {
 
-      if (R.contains(tag.owner, fileReviewTags)) { return fileReviewTags; }
+  return R.reduce<FileReviewWithMetadata, TOG.TagOwnerGroups[]>((allTagsOwnerGroups, fileReview) => {
+    return R.reduce<TagWithMetadata, TOG.TagOwnerGroups[]>((fileReviewTagsOwnerGroups, tag) => {
 
-      return fileReviewTags.concat([ tag.owner ]);
+      return fileReviewTagsOwnerGroups.concat(
+        [ { groups: tag.ownerGroups, tagId: tag.tagId.toString() } ]
+      );
 
-    }, allTags, getTags(fileReview));
-  }, [], fileReviews);
-}
-
-export const getListOfTagsAndOwners =
-  (fileReviewsWithMetadata: FileReviewWithMetadata[]): TagAndOwner[] => {
-
-  return R.reduce<FileReviewWithMetadata, TagAndOwner[]>((allTagAndOwners, fileReview) => {
-    return R.reduce<TagWithMetadata, TagAndOwner[]>((fileReviewTagAndOwners, tag) => {
-
-      return fileReviewTagAndOwners.concat([ { owner: tag.owner, tagId: tag.tagId.toString() } ]);
-
-    }, allTagAndOwners, getTagsWithMetadata(fileReview));
+    }, allTagsOwnerGroups, getTagsWithMetadata(fileReview));
   }, [], fileReviewsWithMetadata);
 }
 

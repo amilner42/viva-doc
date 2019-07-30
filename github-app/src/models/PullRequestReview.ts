@@ -1,10 +1,10 @@
 import mongoose = require("mongoose")
 
 import * as R from "ramda";
-import { TagAndOwner } from "../review";
 import * as AppError from "../error";
 import * as F from "../functional";
-import * as Review from "../review";
+import * as UA from "../user-assessment";
+import * as TOG from "../tag-owner-group";
 
 import * as CommitReviewModel from "./CommitReview";
 
@@ -21,8 +21,8 @@ export interface PullRequestReview {
   headCommitId: string,
   headCommitApprovedTags: string[] | null,
   headCommitRejectedTags: string[] | null,
-  headCommitRemainingOwnersToApproveDocs: string[] | null,
-  headCommitTagsAndOwners: TagAndOwner[] | null,
+  headCommitUserAssessments: UA.UserAssessment[] | null,
+  headCommitTagsOwnerGroups: TOG.TagOwnerGroups[] | null,
   pendingAnalysisForCommits: { head: string, base: string }[],
   analyzedCommitsWithSuccessStatus: string[],
   analyzedCommits: string[],
@@ -54,9 +54,9 @@ const PullRequestReviewSchema = new mongoose.Schema({
   headCommitId: { type: String, required: [true, "can't be blank"], index: true },
   headCommitApprovedTags: { type: [ String ] },
   headCommitRejectedTags: { type: [String ] },
-  headCommitRemainingOwnersToApproveDocs: { type: [ String ] },
-  headCommitTagsAndOwners: { type: [ { owner: String, tagId: String }]},
-  pendingAnalysisForCommits: { type: [ { head: String, base: String } ], required: [ true, "can't be blank"] },
+  headCommitUserAssessments: { type: [ { _id: false, username: String, tagId: String, assessmentType: String } ] },
+  headCommitTagsOwnerGroups: { type: [ { _id: false, tagId: String, groups: [ [ String ] ] } ] },
+  pendingAnalysisForCommits: { type: [ { _id: false, head: String, base: String } ], required: [ true, "can't be blank"] },
   analyzedCommitsWithSuccessStatus: { type: [ String ], required: [ true, "can't be blank" ] },
   analyzedCommits: { type: [ String ], required: [ true, "can't be blank"] },
   commitReviewErrors: { type:  [ mongoose.Schema.Types.Mixed ], required: [true, "can't be blank"] }
@@ -94,8 +94,8 @@ export const newPullRequestReview =
       headCommitId,
       headCommitApprovedTags: null,
       headCommitRejectedTags: null,
-      headCommitRemainingOwnersToApproveDocs: null,
-      headCommitTagsAndOwners: null,
+      headCommitUserAssessments: null,
+      headCommitTagsOwnerGroups: null,
       pendingAnalysisForCommits: [ { head: headCommitId, base: baseCommitId } ],
       analyzedCommitsWithSuccessStatus: [],
       analyzedCommits: [],
@@ -188,8 +188,8 @@ export const updateOnPullRequestSync =
     // In case of rebase we may need to fetch old commit review fields if theyve already been calculated.
     const { headCommitApprovedTags
           , headCommitRejectedTags
-          , headCommitRemainingOwnersToApproveDocs
-          , headCommitTagsAndOwners } =
+          , headCommitUserAssessments
+          , headCommitTagsOwnerGroups } =
       await CommitReviewModel.getPullRequestReviewHeadXXXDataFromPossiblyExistantCommitReview(
         installationId,
         repoId,
@@ -204,8 +204,8 @@ export const updateOnPullRequestSync =
         baseCommitId: baseCommitId,
         headCommitApprovedTags,
         headCommitRejectedTags,
-        headCommitRemainingOwnersToApproveDocs,
-        headCommitTagsAndOwners,
+        headCommitUserAssessments,
+        headCommitTagsOwnerGroups,
       },
       {
         new: false
@@ -231,8 +231,8 @@ export const updateOnPullRequestSync =
         ),
         headCommitApprovedTags,
         headCommitRejectedTags,
-        headCommitRemainingOwnersToApproveDocs,
-        headCommitTagsAndOwners
+        headCommitUserAssessments,
+        headCommitTagsOwnerGroups
       }
     }
 
@@ -326,13 +326,14 @@ export const updateOnCompleteAnalysisForHeadCommit =
         , headCommitId: string
         , headCommitApprovedTags: string[]
         , headCommitRejectedTags: string[]
-        , headCommitRemainingOwnersToApproveDocs: string[]
-        , headCommitTagsAndOwners: Review.TagAndOwner[]
+        , headCommitUserAssessments: UA.UserAssessment[]
+        , headCommitTagsOwnerGroups: TOG.TagOwnerGroups[]
         ): Promise<"success" | "no-longer-head-commit"> => {
 
   try {
 
-    const currentCommitIsSuccess = headCommitRemainingOwnersToApproveDocs.length === 0;
+    const totalNumberOfTags = headCommitTagsOwnerGroups.length;
+    const currentCommitIsSuccess = headCommitApprovedTags.length === totalNumberOfTags;
 
     const mongoPushObject =
       currentCommitIsSuccess
@@ -348,8 +349,8 @@ export const updateOnCompleteAnalysisForHeadCommit =
       {
         headCommitApprovedTags,
         headCommitRejectedTags,
-        headCommitRemainingOwnersToApproveDocs,
-        headCommitTagsAndOwners,
+        headCommitUserAssessments,
+        headCommitTagsOwnerGroups,
         $pull: { pendingAnalysisForCommits: { head: headCommitId } },
         $push: mongoPushObject
       }

@@ -2,6 +2,7 @@
 
 import R from "ramda"
 
+import * as TOG from "./tag-owner-group"
 import * as File from "./file"
 import * as Diff from "./diff"
 import * as F from "./functional"
@@ -71,7 +72,7 @@ export type VdTagType = "file" | "block" | "line"
 // @VD amilner42 block
 export interface BaseTag {
   tagType: VdTagType;
-  owner: string;
+  ownerGroups: TOG.Group[];
   tagAnnotationLine: number;
   content: string[];
   startLine: number;
