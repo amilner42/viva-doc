@@ -8,6 +8,7 @@ import * as config from './config';
 const VIVA_DOC_STATUS_NAME = "continuous-documentation/viva-doc"
 
 
+// TODO cert location should be a config variable, not direct.
 const app = createApp({
   id: 23724,
   cert: fs.readFileSync('vivadoc.2019-01-30.private-key.pem')
