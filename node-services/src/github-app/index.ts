@@ -12,7 +12,7 @@ MongoHelpers.connectMongoose(mongoose, config.mongoDbUri);
 require("../models/loader");
 
 // All imports to internal modules that require the mongoose models should be after `require("../models/loader");`
-import * as Repo from "../models/Repo";
+import * as Installation from "../models/Installation";
 import * as CommitReview from "../models/CommitReview";
 import * as PullRequestReview from "../models/PullRequestReview";
 import * as Analysis from "./analysis"
@@ -37,7 +37,7 @@ export = (app: Probot.Application) => {
 
       const repoIds = R.map(({ repoId }) => repoId, repoIdsAndNames);
 
-      await Repo.newInstallation(installationId, owner, repoIds, "init-repo-failure");
+      await Installation.newInstallation(installationId, owner, repoIds, "init-repo-failure");
 
       await analyzeAlreadyOpenPrsForRepos(installationId, context, owner, repoIdsAndNames);
 
@@ -51,17 +51,17 @@ export = (app: Probot.Application) => {
       const payload = context.payload
       const installationId = (payload.installation as any).id
 
-      const deletedRepo: Repo.Repo = await Repo.deleteInstallation(installationId);
+      const deletedInstallation: Installation.Installation = await Installation.deleteInstallation(installationId);
 
       await CommitReview.deleteCommitReviewsForRepos(
         installationId,
-        deletedRepo.repoIds,
+        deletedInstallation.repoIds,
         "delete-repo-delete-commit-reviews-failure"
       );
 
       await PullRequestReview.deletePullRequestReviewsForRepos(
         installationId,
-        deletedRepo.repoIds,
+        deletedInstallation.repoIds,
         "delete-repo-delete-pull-request-reviews-failure"
       );
 
@@ -82,7 +82,7 @@ export = (app: Probot.Application) => {
 
       const repoIds = R.map(({ repoId }) => repoId, repoIdsAndNames);
 
-      await Repo.addReposToInstallaton(installationId, repoIds, "add-repos-failure");
+      await Installation.addReposToInstallation(installationId, repoIds, "add-repos-failure");
 
       await analyzeAlreadyOpenPrsForRepos(installationId, context, owner, repoIdsAndNames);
 
@@ -99,7 +99,7 @@ export = (app: Probot.Application) => {
         return repoToRemove.id
       }, payload.repositories_removed);
 
-      await Repo.removeReposFromInstallation(installationId, reposToRemove, "remove-repos-failure");
+      await Installation.removeReposFromInstallation(installationId, reposToRemove, "remove-repos-failure");
 
       await CommitReview.deleteCommitReviewsForRepos(
         installationId,

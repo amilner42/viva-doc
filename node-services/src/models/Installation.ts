@@ -3,43 +3,43 @@ import mongoose = require("mongoose")
 import * as AppError from "../app-error";
 
 
-export interface Repo {
+export interface Installation {
   installationId: number;
   owner: string;
   repoIds: number[];
 }
 
 
-const RepoSchema = new mongoose.Schema({
+const InstallationSchema = new mongoose.Schema({
   installationId: { type: Number, required: [true, "can't be blank"], index: true },
   owner: { type: String, required: [true, "can't be blank"] },
   repoIds: { type: [ Number ], required: [true, "can't be blank"], index: true }
 });
 
 
-const RepoModel = mongoose.model("Repo", RepoSchema);
+const InstallationModel = mongoose.model("Installation", InstallationSchema);
 
 
 /* DB HELPER FUNCTIONS */
 
 
-// Initialize a new repo.
+// Initialize a new installation.
 // @THROWS only `AppError.LogFriendlyGithubAppError` upon failed creation.
 export const newInstallation = async (installationId: number, owner: string, repoIds: number[], errorName: string) => {
   try {
 
-    const repoObject: Repo = {
+    const installationObject: Installation = {
       installationId,
       owner,
       repoIds
     };
-    const repo = new RepoModel(repoObject);
+    const installation = new InstallationModel(installationObject);
 
-    await repo.save();
+    await installation.save();
 
   } catch (err) {
 
-    const initRepoLoggableError: AppError.LogFriendlyGithubAppError = {
+    const initInstallationError: AppError.LogFriendlyGithubAppError = {
       name: errorName,
       isSevere: true,
       installationId,
@@ -47,26 +47,26 @@ export const newInstallation = async (installationId: number, owner: string, rep
       data: err
     }
 
-    throw initRepoLoggableError;
+    throw initInstallationError;
   }
 }
 
 
-// Delete a repo and return the deleted repo.
+// Delete an installation and return it.
 // @THROWS only `AppError.LogFriendlyGithubAppError` upon failed deletion.
-export const deleteInstallation = async (installationId: number): Promise<Repo> => {
+export const deleteInstallation = async (installationId: number): Promise<Installation> => {
 
   try {
 
-    const deleteRepoResult = await RepoModel.findOneAndDelete({ installationId }).exec();
+    const deletedInstallation = await InstallationModel.findOneAndDelete({ installationId }).exec();
 
-    if (deleteRepoResult === null) throw "not-found";
+    if (deletedInstallation === null) throw "not-found";
 
-    return deleteRepoResult.toObject();
+    return deletedInstallation.toObject();
 
   } catch (err) {
 
-    const deleteRepoLoggableError: AppError.LogFriendlyGithubAppError = {
+    const deleteInstallationError: AppError.LogFriendlyGithubAppError = {
       name: "delete-repo-failure",
       isSevere: false,
       installationId,
@@ -74,7 +74,7 @@ export const deleteInstallation = async (installationId: number): Promise<Repo> 
       stack: AppError.getStack()
     };
 
-    throw deleteRepoLoggableError;
+    throw deleteInstallationError;
   }
 
 }
@@ -82,7 +82,7 @@ export const deleteInstallation = async (installationId: number): Promise<Repo> 
 
 // Adds repos to an insallation.
 // @THROWS only `AppError.LogFriendlyGithubAppError` upon failed insertion.
-export const addReposToInstallaton =
+export const addReposToInstallation =
   async ( installationId: number
         , repoIds: number[]
         , errorName: string
@@ -90,16 +90,20 @@ export const addReposToInstallaton =
 
   try {
 
-    const repoUpdateResult = await RepoModel.update(
+    const installationUpdateResult = await InstallationModel.update(
       { installationId },
       { $addToSet: { "repoIds": { $each: repoIds } }}
     ).exec();
 
-    if (repoUpdateResult.ok !== 1 || repoUpdateResult.n !== 1 || repoUpdateResult.nModified !== 1) {
+    if ( installationUpdateResult.ok !== 1
+          || installationUpdateResult.n !== 1
+          || installationUpdateResult.nModified !== 1
+    ) {
+
       throw { updateQueryFailure: true
-            , ok: repoUpdateResult.ok
-            , n: repoUpdateResult.n
-            , nModified: repoUpdateResult.nModified
+            , ok: installationUpdateResult.ok
+            , n: installationUpdateResult.n
+            , nModified: installationUpdateResult.nModified
             }
     }
 
@@ -129,16 +133,20 @@ export const removeReposFromInstallation =
 
   try {
 
-    const repoUpdateResult = await RepoModel.update(
+    const installationUpdateResult = await InstallationModel.update(
       { installationId },
       { $pull: { "repoIds": { $in: repoIds } } }
     ).exec();
 
-    if (repoUpdateResult.ok !== 1 || repoUpdateResult.n !== 1 || repoUpdateResult.nModified !== 1) {
+    if ( installationUpdateResult.ok !== 1
+          || installationUpdateResult.n !== 1
+          || installationUpdateResult.nModified !== 1
+    ) {
+
       throw { updateQueryFailed: true
-            , ok: repoUpdateResult.ok
-            , n: repoUpdateResult.n
-            , nModified: repoUpdateResult.nModified
+            , ok: installationUpdateResult.ok
+            , n: installationUpdateResult.n
+            , nModified: installationUpdateResult.nModified
             }
     }
 
