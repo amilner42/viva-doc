@@ -2,7 +2,7 @@ import * as R from "ramda";
 import Express from "express";
 
 import * as Verify from "../verify";
-import * as Errors from "../errors";
+import * as ClientErrors from "../../client-errors";
 import * as GithubApp from "../../github-app";
 import * as MongoHelpers from "../../../mongo-helpers";
 import * as UA from "../../../user-assessment";
@@ -22,7 +22,7 @@ expressRouter.get('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId'
   try {
 
     const { pullRequestNumber, commitId } = req.params;
-    const repoId = Verify.isInt(req.params.repoId, Errors.invalidUrlParams("Repo ID must be a number."));
+    const repoId = Verify.isInt(req.params.repoId, ClientErrors.invalidUrlParams("Repo ID must be a number."));
 
     const user = Verify.getLoggedInUser(req);
     await Verify.hasAccessToRepo(user, repoId);
@@ -80,12 +80,12 @@ expressRouter.post('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/
   try {
 
     const { pullRequestNumber, commitId } = req.params;
-    const repoId = Verify.isInt(req.params.repoId, Errors.invalidUrlParams("Repo ID must be a number."));
+    const repoId = Verify.isInt(req.params.repoId, ClientErrors.invalidUrlParams("Repo ID must be a number."));
     const tagIdsToApprove = Verify.isArrayOfString(
-      req.body.approveTags, Errors.invalidRequestBodyType(`Field 'approveTags' must contain an array of string.`)
+      req.body.approveTags, ClientErrors.invalidRequestBodyType(`Field 'approveTags' must contain an array of string.`)
     );
     const tagIdsToReject = Verify.isArrayOfString(
-      req.body.rejectTags, Errors.invalidRequestBodyType(`Field 'rejectTags' must contain an array of string.`)
+      req.body.rejectTags, ClientErrors.invalidRequestBodyType(`Field 'rejectTags' must contain an array of string.`)
     );
     const allTagIds = [ ...tagIdsToReject, ...tagIdsToApprove ];
 
@@ -200,7 +200,7 @@ interface AddUserRejectionAssessmentSuccess {
 interface AddUserRejectionAssessmentFailure {
   status: "rejection-failure";
   tagId: string;
-  error: any;
+  error: ClientErrors.ClientError<any>;
 }
 
 interface AddUserApprovalAssessmentSuccess {
@@ -212,7 +212,7 @@ interface AddUserApprovalAssessmentSuccess {
 interface AddUserApprovalAssessmentFailure {
   tagId: string;
   status: "approval-failure";
-  error: any;
+  error: ClientErrors.ClientError<any>;
 }
 
 
@@ -252,7 +252,7 @@ const addRejectionUserAssessment =
           || !MongoHelpers.updateMatchedOneResult(addRejectionUpdateResult)
           || !MongoHelpers.updateModifiedOneResult(addRejectionUpdateResult)
     ) {
-      return { tagId, status: "rejection-failure", error: { httpCode: 500, ...Errors.internalServerError } }
+      return { tagId, status: "rejection-failure", error: ClientErrors.internalServerError }
     }
 
     return { tagId, status: "rejection-success" };
@@ -260,7 +260,7 @@ const addRejectionUserAssessment =
   } catch (updateErr) {
 
     // TODO log error
-    return { tagId, status: "rejection-failure", error: { httpCode: 500, ...Errors.internalServerError } }
+    return { tagId, status: "rejection-failure", error: ClientErrors.internalServerError }
   }
 }
 
@@ -427,7 +427,7 @@ const addApprovalUserAssessment =
           || !MongoHelpers.updateMatchedOneResult(addApprovalOnLastTagUpdateResult)
           || !MongoHelpers.updateModifiedOneResult(addApprovalOnLastTagUpdateResult)
     ) {
-      return { tagId, status: "approval-failure", error: { httpCode: 500, ...Errors.internalServerError } };
+      return { tagId, status: "approval-failure", error: ClientErrors.internalServerError };
     }
 
     return { tagId, status: "approval-success", tagApproved: true };
@@ -440,7 +440,7 @@ const addApprovalUserAssessment =
       console.log(JSON.stringify(updateErr));
     } catch { }
 
-    return { tagId, status: "approval-failure", error: { httpCode: 500, ...Errors.internalServerError } };
+    return { tagId, status: "approval-failure", error: ClientErrors.internalServerError };
   }
 }
 

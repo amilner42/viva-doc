@@ -14,7 +14,7 @@ import * as Repo from "../../models/Repo";
 import * as CommitReview from "../../models/CommitReview";
 import * as User from "../../models/User";
 import * as GithubApi from "../github-api";
-import * as Errors from "./errors";
+import * as ClientErrors from "../client-errors";
 
 
 // EXTERNAL
@@ -22,9 +22,8 @@ import * as Errors from "./errors";
 
 // TODO move
 export const getLoggedInUser = (req: Express.Request): User.User => {
-  if (!req.user) {
-    throw { httpCode: 401, ...Errors.notLoggedInError };
-  }
+
+  if (!req.user) { throw ClientErrors.notLoggedInError; }
 
   return req.user;
 }
@@ -35,9 +34,7 @@ export const hasAccessToRepo = async (user: User.User, repoId: number): Promise<
   const basicUserData = await GithubApi.getBasicUserData(user.username, user.accessToken);
   const hasAccessToRepo = GithubApi.hasAccessToRepo(basicUserData.repos, repoId);
 
-  if (!hasAccessToRepo) {
-    throw { httpCode: 401, ...Errors.noAccessToRepoError };
-  }
+  if (!hasAccessToRepo) { throw ClientErrors.noAccessToRepoError; }
 }
 
 
@@ -50,7 +47,7 @@ export const getPullRequestReviewObject =
   const pullRequestReview = await PullRequestReviewModel.findOne({ repoId, pullRequestNumber }).exec();
 
   if (pullRequestReview === null) {
-    throw { httpCode: 404, ...Errors.noPullRequestReview };
+    throw ClientErrors.noPullRequestReview;
   }
 
   return pullRequestReview.toObject();
@@ -67,7 +64,7 @@ export const getCommitReviewObject =
   const commitReview = await CommitReviewModel.findOne({ repoId, pullRequestNumber, commitId }).exec();
 
   if (commitReview === null) {
-    throw { httpCode: 404, ...Errors.noCommitReview };
+    throw ClientErrors.noCommitReview;
   }
 
   return commitReview.toObject();
@@ -80,7 +77,7 @@ export const getRepoObject = async (repoId: number): Promise<Repo.Repo> => {
   const repo = await RepoModel.findOne({ repoIds: repoId }).exec();
 
   if (repo === null) {
-    throw { httpCode: 404, ...Errors.noRepo }
+    throw ClientErrors.noRepo;
   }
 
   return repo.toObject();
@@ -90,7 +87,7 @@ export const getRepoObject = async (repoId: number): Promise<Repo.Repo> => {
 export const isHeadCommit = (pullRequestReviewObject: PullRequestReview.PullRequestReview, commitId: string): void => {
 
   if (pullRequestReviewObject.headCommitId !== commitId) {
-    throw { httpCode: 423, ...Errors.noUpdatingNonHeadCommit(pullRequestReviewObject.headCommitId) };
+    throw ClientErrors.noUpdatingNonHeadCommit(pullRequestReviewObject.headCommitId);
   }
 }
 
@@ -98,12 +95,12 @@ export const isHeadCommit = (pullRequestReviewObject: PullRequestReview.PullRequ
 export const isLoadedHeadCommit = (pullRequestReviewObject: PullRequestReview.PullRequestReview, commitId: string): void => {
 
   if (pullRequestReviewObject.headCommitId !== commitId) {
-    throw { httpCode: 423, ...Errors.noUpdatingNonHeadCommit(pullRequestReviewObject.headCommitId) };
+    throw ClientErrors.noUpdatingNonHeadCommit(pullRequestReviewObject.headCommitId);
   }
 
   if ( pullRequestReviewObject.pendingAnalysisForCommits[0] &&
        pullRequestReviewObject.pendingAnalysisForCommits[0].head === commitId ) {
-    throw { httpCode: 423, ...Errors.commitStillLoading }
+    throw ClientErrors.commitStillLoading;
   }
 }
 
@@ -115,13 +112,13 @@ export const ownsTags = (tagsOwnerGroups: TOG.TagOwnerGroups[], tagIds: string[]
     const tagOwnerGroups = R.find(R.propEq("tagId", tagId), tagsOwnerGroups);
 
     if (tagOwnerGroups === undefined) {
-      throw { httpCode: 403, ...Errors.noModifyingTagsThatDontExist };
+      throw ClientErrors.noModifyingTagsThatDontExist;
     }
 
     const userInTagOwnerGroups = R.any(R.contains<string>(username), tagOwnerGroups.groups);
 
     if (!userInTagOwnerGroups) {
-      throw { httpCode: 403, ...Errors.noModifyingTagsYouDontOwn };
+      throw ClientErrors.noModifyingTagsYouDontOwn;
     }
   }
 
@@ -131,30 +128,25 @@ export const ownsTags = (tagsOwnerGroups: TOG.TagOwnerGroups[], tagIds: string[]
 export const assessmentsAreForDifferentTags = (tagIds: string[]): void => {
 
   if (R.uniq(tagIds).length !== tagIds.length) {
-    throw { httpCode: 400, ...Errors.userAssmentsMustBeToUniqueTags };
+    throw ClientErrors.userAssmentsMustBeToUniqueTags;
   }
 }
 
 
-export const isArrayOfString = (val: any, err: any): string[] => {
+export const isArrayOfString = (val: any, err: ClientErrors.ClientError<any>): string[] => {
 
-  const errWithHttpCode = { httpCode: 400,  ...err };
-
-  if (!Array.isArray(val)) { throw errWithHttpCode; }
-  if (!R.all((elem) => typeof elem === "string", val)) { throw errWithHttpCode; }
+  if (!Array.isArray(val)) { throw err; }
+  if (!R.all((elem) => typeof elem === "string", val)) { throw err; }
 
   return val;
 }
 
 
-export const isInt = (val: any, err: any): number => {
+export const isInt = (val: any, err: ClientErrors.ClientError<any>): number => {
 
-  const errWithHttpCode = { httpCode: 400, ...err };
   const valAsInt = parseInt(val, 10);
 
-  if (isNaN(valAsInt)) {
-    throw errWithHttpCode;
-  }
+  if (isNaN(valAsInt)) { throw err; }
 
   return valAsInt;
 }

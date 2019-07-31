@@ -1,6 +1,6 @@
 import Express from "express";
 import Passport from "passport";
-import * as Errors from "../errors";
+import * as ClientErrors from "../../client-errors";
 import * as GithubApi from"../../github-api";
 
 
@@ -20,7 +20,7 @@ expressRouter.get('/user',
 async function(req, res, next){
     const user = req.user;
 
-    if(!user) { return res.status(401).send(Errors.notLoggedInError); }
+    if(!user) { return next(ClientErrors.notLoggedInError); }
 
     const basicUserData = await GithubApi.getBasicUserData(user.username, user.accessToken);
     return res.json(basicUserData);
@@ -34,7 +34,7 @@ function(req, res, next) {
 
     return req.session.destroy(function(err) {
 
-        if (err) { return res.status(500).send(Errors.internalServerError); }
+        if (err) { return next(ClientErrors.internalServerError); }
 
         return res.json({});
     });

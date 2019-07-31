@@ -18,7 +18,7 @@ const MongoStore = require('connect-mongo')(expressSession);
 import ApiRoutes from "./routes";
 import * as config from "./config";
 import * as AppError from "../app-error";
-import * as Errors from "./routes/errors";
+import * as ClientErrors from "./client-errors";
 const isProduction = config.isProduction;
 
 
@@ -64,7 +64,7 @@ app.use(function(req, res, next) {
 
 const handleErrors: ErrorRequestHandler = async (err, req, res, next) => {
   await AppError.logErrors(err, "api", null);
-  return res.status(500).json(Errors.internalServerError);
+  return res.status(500).json(ClientErrors.internalServerError);
 }
 
 // production error handler

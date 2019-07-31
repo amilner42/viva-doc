@@ -1,6 +1,6 @@
 import Express from "express";
 
-import * as Errors from "../errors";
+import * as ClientErrors from "../../client-errors";
 import UserRoutes from "./users";
 import ReviewRoutes from "./reviews";
 
@@ -25,7 +25,7 @@ expressRouter.use(function(err: any, req: any, res: any, next: any) {
     console.log(`Error Stack: ${JSON.stringify(err.getStack())}`);
   } catch { }
 
-  return res.status(500).send(Errors.internalServerError);
+  return res.status(500).send(ClientErrors.internalServerError);
 });
 
 
