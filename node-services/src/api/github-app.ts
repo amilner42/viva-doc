@@ -1,10 +1,12 @@
-// Module for gstithub app helpers
+// Module for github app helpers
+
+const createApp = require('github-app'); // no types
+import fs from 'fs';
+import * as config from './config';
+
 
 const VIVA_DOC_STATUS_NAME = "continuous-documentation/viva-doc"
 
-const createApp = require('github-app');
-const fs = require('fs');
-const config = require('./config');
 
 const app = createApp({
   id: 23724,
@@ -12,7 +14,13 @@ const app = createApp({
 });
 
 
-const putSuccessStatusOnCommit = async (installationId, owner, repoName, repoId, prNumber, commitId) => {
+export const putSuccessStatusOnCommit =
+  async ( installationId: number
+        , owner: string
+        , repoName: string
+        , repoId: number
+        , prNumber: number
+        , commitId: string ): Promise<void> => {
 
   const github = await app.asInstallation(installationId);
 
@@ -25,9 +33,4 @@ const putSuccessStatusOnCommit = async (installationId, owner, repoName, repoId,
     description: "All tags have been approved",
     target_url: `${config.webClientOrigin}/review/repo/${repoId}/pr/${prNumber}/commit/${commitId}`
   });
-}
-
-
-module.exports = {
-  putSuccessStatusOnCommit
 }

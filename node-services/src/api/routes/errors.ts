@@ -1,8 +1,12 @@
-// Module for defining error messages.
+// Module for defining api error messages.
 
 
 // TODO add http code to error objects...
-const createErrorObject = (errorCode, message, optional) => {
+const createErrorObject =
+  ( errorCode: number
+  , message: string
+  , optional?: object
+  ) : { message: string, errorCode: number } => {
 
   const baseError = { message, errorCode };
 
@@ -14,61 +18,44 @@ const createErrorObject = (errorCode, message, optional) => {
 }
 
 
-const notLoggedInError =
+export const notLoggedInError =
   createErrorObject(1, "You must be logged in to access this endpoint...");
 
-const noAccessToRepoError =
+export const noAccessToRepoError =
   createErrorObject(2, "You do not have access to this repo...");
 
-const noModifyingTagsYouDontOwn =
+export const noModifyingTagsYouDontOwn =
   createErrorObject(3, "You can not perform this operation on tags that you don't own...");
 
-const noPullRequestReview =
+export const noPullRequestReview =
   createErrorObject(7, "Unable to find a review for that pull request...");
 
-const noCommitReview =
+export const noCommitReview =
   createErrorObject(8, "Unable to find a review for that commit...");
 
-const noRepo =
+export const noRepo =
   createErrorObject(9, "Unable to find that repo...");
 
-const noUpdatingNonHeadCommit = (newHeadCommitId) => {
+export const noUpdatingNonHeadCommit = (newHeadCommitId: string) => {
   return createErrorObject(10, "You can only update the head commit...", { newHeadCommitId });
 }
 
-const internalServerError =
+export const internalServerError =
   createErrorObject(11, "There was an unknown internal server error...");
 
-const commitStillLoading =
+export const commitStillLoading =
   createErrorObject(18, "The analysis for the commit is still being calculated");
 
-const invalidRequestBodyType = (errMssg) => {
+export const invalidRequestBodyType = (errMssg: string) => {
   return createErrorObject(19, errMssg)
 }
 
-const invalidUrlParams = (errMssg) => {
+export const invalidUrlParams = (errMssg: string) => {
   return createErrorObject(20, errMssg);
 }
 
-const noModifyingTagsThatDontExist =
+export const noModifyingTagsThatDontExist =
   createErrorObject(21, "You cannot modify tags that don't exist");
 
-const userAssmentsMustBeToUniqueTags =
+export const userAssmentsMustBeToUniqueTags =
   createErrorObject(22, "User assessments must all point to different tags");
-
-
-module.exports = {
-  notLoggedInError,
-  noAccessToRepoError,
-  internalServerError,
-  noModifyingTagsYouDontOwn,
-  noPullRequestReview,
-  noCommitReview,
-  noRepo,
-  noUpdatingNonHeadCommit,
-  commitStillLoading,
-  invalidRequestBodyType,
-  invalidUrlParams,
-  noModifyingTagsThatDontExist,
-  userAssmentsMustBeToUniqueTags
-}

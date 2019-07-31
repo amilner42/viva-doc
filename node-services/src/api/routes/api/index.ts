@@ -1,12 +1,18 @@
-const router = require('express').Router();
-const errors = require('../errors');
+import Express from "express";
 
-router.use('/', require('./users'));
-router.use('/', require('./reviews'));
+import * as Errors from "../errors";
+import UserRoutes from "./users";
+import ReviewRoutes from "./reviews";
 
 
+const expressRouter = Express.Router();
+expressRouter.use('/', UserRoutes);
+expressRouter.use('/', ReviewRoutes);
+
+
+// TODO check type does this even work??
 // Handle sending errors to the client
-router.use(function(err, req, res, next) {
+expressRouter.use(function(err: any, req: any, res: any, next: any) {
 
   if (isProperlyFormedError(err)) {
     return res.status(err.httpCode).send(err);
@@ -19,16 +25,16 @@ router.use(function(err, req, res, next) {
     console.log(`Error Stack: ${JSON.stringify(err.getStack())}`);
   } catch { }
 
-  return res.status(500).send(errors.internalServerError);
+  return res.status(500).send(Errors.internalServerError);
 });
 
 
 // 3 fields required to be a properly formed error. Other optional fields allowed.
-const isProperlyFormedError = (err) => {
+const isProperlyFormedError = (err: any): boolean => {
   return (typeof err.httpCode === "number")
           && (typeof err.message === "string")
           && (typeof err.errorCode === "number");
 }
 
 
-module.exports = router;
+export = expressRouter;

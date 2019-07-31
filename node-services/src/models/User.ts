@@ -1,7 +1,16 @@
-const mongoose = require('mongoose');
+import mongoose = require('mongoose');
 const uniqueValidator = require('mongoose-unique-validator');
 const findOrCreate = require('mongoose-find-or-create');
-const config = require('../config');
+
+
+export interface User {
+  githubId: string;
+  username: string;
+  displayName: string;
+  profileUrl: string;
+  accessToken: string;
+}
+
 
 const UserSchema = new mongoose.Schema({
   githubId: {type: String, unique: true, required: [true, "can't be blank"], index: true},
@@ -11,8 +20,9 @@ const UserSchema = new mongoose.Schema({
   accessToken: {type: String, unique: false, required: [true, "can't be blank"]}
 }, {timestamps: true});
 
-// Plugins
+
 UserSchema.plugin(uniqueValidator, {message: 'is already taken.'});
 UserSchema.plugin(findOrCreate);
+
 
 mongoose.model('User', UserSchema);

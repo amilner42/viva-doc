@@ -1,13 +1,15 @@
-const passport = require('passport');
-const GitHubStrategy = require('passport-github').Strategy;
+import Passport from "passport";
+import * as PassportGithub from "passport-github";
+import * as Config from "./index";
+
 const mongoose = require('mongoose');
 const UserModel = mongoose.model('User');
-const config = require('../config');
 
-passport.use(new GitHubStrategy({
-    clientID: config.githubClientId,
-    clientSecret: config.githubClientSecret,
-    callbackURL: config.githubCallbackUrl
+
+Passport.use(new PassportGithub.Strategy({
+    clientID: Config.githubClientId,
+    clientSecret: Config.githubClientSecret,
+    callbackURL: Config.githubCallbackUrl
   },
   function(accessToken, refreshToken, profile, done) {
     UserModel.findOrCreate(
@@ -19,20 +21,22 @@ passport.use(new GitHubStrategy({
         profileUrl: profile.profileUrl,
         accessToken: accessToken
       },
-      function (err, user) {
+      function (err: any, user: any) {
         return done(err, user);
       });
     }
 ));
 
+
 // Serialize by id
-passport.serializeUser(function(user, done) {
+Passport.serializeUser(function(user: any, done) {
   done(null, user._id);
 });
 
+
 // Deserialize by id
-passport.deserializeUser(function(id, done) {
+Passport.deserializeUser(function(id: any, done: (err: any, user?: any) => void) {
   UserModel.findById(id)
-  .then((usr) => done(null, usr))
-  .catch((err) => done(err));
+  .then((usr: any) => done(null, usr))
+  .catch((err: any) => done(err));
 });

@@ -6,8 +6,11 @@ import * as R from "ramda";
 export interface UserAssessment  {
   username: string;
   tagId: string;
-  assessmentType: "approved" | "rejected";
+  assessmentType: AssessmentType;
 }
+
+
+export type AssessmentType = "approved" | "rejected";
 
 
 export const getUserAssessmentsForTagId = (userAssessments: UserAssessment[], tagId: string): UserAssessment[] => {

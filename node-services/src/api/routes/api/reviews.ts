@@ -1,30 +1,36 @@
-const R = require("ramda")
+import * as R from "ramda";
+import Express from "express";
 
-const router = require('express').Router();
+import * as Verify from "../verify";
+import * as Errors from "../errors";
+import * as GithubApp from "../../github-app";
+import * as MongoHelpers from "../../../mongo-helpers";
+import * as UA from "../../../user-assessment";
+import * as TOG from "../../../tag-owner-group";
 
-const verify = require("../verify");
-const errors = require("../errors");
-const githubApp = require("../../github-app");
-const mongoHelpers = require("../../mongo-helpers");
 
 const mongoose = require('mongoose');
 const PullRequestReviewModel = mongoose.model('PullRequestReview');
 
 
-router.get('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId'
+const expressRouter = Express.Router();
+
+
+expressRouter.get('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId'
 , async function (req, res, next) {
 
   try {
 
     const { pullRequestNumber, commitId } = req.params;
-    const repoId = verify.isInt(req.params.repoId, errors.invalidUrlParams("Repo ID must be a number."));
+    const repoId = Verify.isInt(req.params.repoId, Errors.invalidUrlParams("Repo ID must be a number."));
 
-    const user = verify.getLoggedInUser(req);
-    await verify.hasAccessToRepo(user, repoId);
+    const user = Verify.getLoggedInUser(req);
+    await Verify.hasAccessToRepo(user, repoId);
 
-    const pullRequestReviewObject = await verify.getPullRequestReviewObject(repoId, pullRequestNumber);
+    const pullRequestReviewObject = await Verify.getPullRequestReviewObject(repoId, pullRequestNumber);
 
-    const pendingHeadCommitIds = R.map(R.prop("head"), pullRequestReviewObject.pendingAnalysisForCommits);
+    const pendingHeadCommitIds =
+      R.map((pendingCommit) => pendingCommit.head, pullRequestReviewObject.pendingAnalysisForCommits);
 
     if (R.contains(commitId, pendingHeadCommitIds)) {
       return res.json(
@@ -47,12 +53,13 @@ router.get('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId'
       );
     }
 
-    const commitReviewObject = await verify.getCommitReviewObject(repoId, pullRequestNumber, commitId);
+    const commitReviewObject = await Verify.getCommitReviewObject(repoId, pullRequestNumber, commitId);
 
     if (pullRequestReviewObject.headCommitId === commitId) {
-      commitReviewObject.approvedTags = pullRequestReviewObject.headCommitApprovedTags;
-      commitReviewObject.rejectedTags = pullRequestReviewObject.headCommitRejectedTags;
-      commitReviewObject.userAssessments = pullRequestReviewObject.headCommitUserAssessments;
+      // Casting here because we know it's not undefined given it is not still pending analysis.
+      commitReviewObject.approvedTags = pullRequestReviewObject.headCommitApprovedTags as string[];
+      commitReviewObject.rejectedTags = pullRequestReviewObject.headCommitRejectedTags as string[];
+      commitReviewObject.userAssessments = pullRequestReviewObject.headCommitUserAssessments as UA.UserAssessment[];
     }
 
     return res.json({
@@ -62,51 +69,51 @@ router.get('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId'
     });
 
   } catch (err) {
-    next(err);
+    return next(err);
   }
 });
 
 
-router.post('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/userassessments'
+expressRouter.post('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/userassessments'
 , async function (req, res, next) {
 
   try {
 
     const { pullRequestNumber, commitId } = req.params;
-    const repoId = verify.isInt(req.params.repoId, errors.invalidUrlParams("Repo ID must be a number."));
-    const tagIdsToApprove = verify.isArrayOfString(
-      req.body.approveTags, errors.invalidRequestBodyType(`Field 'approveTags' must contain an array of string.`)
+    const repoId = Verify.isInt(req.params.repoId, Errors.invalidUrlParams("Repo ID must be a number."));
+    const tagIdsToApprove = Verify.isArrayOfString(
+      req.body.approveTags, Errors.invalidRequestBodyType(`Field 'approveTags' must contain an array of string.`)
     );
-    const tagIdsToReject = verify.isArrayOfString(
-      req.body.rejectTags, errors.invalidRequestBodyType(`Field 'rejectTags' must contain an array of string.`)
+    const tagIdsToReject = Verify.isArrayOfString(
+      req.body.rejectTags, Errors.invalidRequestBodyType(`Field 'rejectTags' must contain an array of string.`)
     );
     const allTagIds = [ ...tagIdsToReject, ...tagIdsToApprove ];
 
-    const user = verify.getLoggedInUser(req);
+    const user = Verify.getLoggedInUser(req);
     const username = user.username;
-    await verify.hasAccessToRepo(user, repoId);
+    await Verify.hasAccessToRepo(user, repoId);
 
     const newUserApprovalAssessments = createAssessments("approved", username, tagIdsToApprove);
     const newUserRejectionAssessments = createAssessments("rejected", username, tagIdsToReject);
     const newUserAssessments = [ ...newUserApprovalAssessments, ...newUserRejectionAssessments ];
 
-    const pullRequestReviewObject = await verify.getPullRequestReviewObject(repoId, pullRequestNumber);
+    const pullRequestReviewObject = await Verify.getPullRequestReviewObject(repoId, pullRequestNumber);
 
-    verify.isLoadedHeadCommit(pullRequestReviewObject, commitId);
-    verify.ownsTags(pullRequestReviewObject.headCommitTagsOwnerGroups, allTagIds, username);
-    verify.assessmentsAreForDifferentTags(allTagIds);
+    Verify.isLoadedHeadCommit(pullRequestReviewObject, commitId);
+    Verify.ownsTags(pullRequestReviewObject.headCommitTagsOwnerGroups as TOG.TagOwnerGroups[], allTagIds, username);
+    Verify.assessmentsAreForDifferentTags(allTagIds);
 
     const addUserAssessmentsResults = await addUserAssessments(
       repoId,
       pullRequestNumber,
       commitId,
       newUserAssessments,
-      pullRequestReviewObject.headCommitTagsOwnerGroups
+      pullRequestReviewObject.headCommitTagsOwnerGroups as TOG.TagOwnerGroups[]
     );
 
     if ( allTagsApproved(
-          pullRequestReviewObject.headCommitTagsOwnerGroups.length,
-          pullRequestReviewObject.headCommitApprovedTags.length,
+          (pullRequestReviewObject.headCommitTagsOwnerGroups as TOG.TagOwnerGroups[]).length,
+          (pullRequestReviewObject.headCommitApprovedTags as string[]).length,
           addUserAssessmentsResults
          )
     ) {
@@ -114,8 +121,8 @@ router.post('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/userass
       // TODO wrap in try-catch and handle error
       const repoName = pullRequestReviewObject.repoName;
 
-      const repoObject = await verify.getRepoObject(repoId);
-      await githubApp.putSuccessStatusOnCommit(
+      const repoObject = await Verify.getRepoObject(repoId);
+      await GithubApp.putSuccessStatusOnCommit(
         repoObject.installationId,
         repoObject.owner,
         repoName,
@@ -129,33 +136,47 @@ router.post('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/userass
     return res.json(addUserAssessmentsResults);
 
   } catch (err) {
-    next(err);
+    return next(err);
   }
 
 });
 
 
-module.exports = router;
+export = expressRouter;
 
 
 // INTERNAL
 
 
 // TODO Move
-const createAssessments = (assessmentType, username, tagIds) => {
+const createAssessments =
+  ( assessmentType: UA.AssessmentType
+  , username: string
+  , tagIds: string[]
+  ): UA.UserAssessment[] => {
+
   return tagIds.map(createAssessment(assessmentType, username));
 }
 
 
 // TODO Move
-const createAssessment = R.curry((assessmentType, username, tagId) => {
+const createAssessment = R.curry(
+  ( assessmentType: UA.AssessmentType
+  , username: string
+  , tagId: string
+  ): UA.UserAssessment => {
+
   return { tagId, assessmentType, username };
 });
 
 
 // TODO Move
 // TODO DOC
-const allTagsApproved = (totalTags, initialApprovedTags, addUserAssessmentsResults) => {
+const allTagsApproved =
+  ( totalTags: number
+  , initialApprovedTags: number
+  , addUserAssessmentsResults: any[]
+  ) => {
 
   const numberOfNewApprovedTags = R.filter((addUserAssessmentResult) => {
     return addUserAssessmentResult.status === "approval-success" && addUserAssessmentResult.tagApproved;
@@ -165,12 +186,48 @@ const allTagsApproved = (totalTags, initialApprovedTags, addUserAssessmentsResul
 }
 
 
+type AddUserAssessmentResult = AddUserRejectionAssessmentResult | AddUserApprovalAssessmentResult;
+
+type AddUserRejectionAssessmentResult = AddUserRejectionAssessmentSuccess | AddUserRejectionAssessmentFailure;
+
+type AddUserApprovalAssessmentResult = AddUserApprovalAssessmentSuccess | AddUserApprovalAssessmentFailure;
+
+interface AddUserRejectionAssessmentSuccess {
+  status: "rejection-success";
+  tagId: string;
+}
+
+interface AddUserRejectionAssessmentFailure {
+  status: "rejection-failure";
+  tagId: string;
+  error: any;
+}
+
+interface AddUserApprovalAssessmentSuccess {
+  tagId: string;
+  status: "approval-success";
+  tagApproved: boolean;
+}
+
+interface AddUserApprovalAssessmentFailure {
+  tagId: string;
+  status: "approval-failure";
+  error: any;
+}
+
+
 // TODO Move
 // TODO DOC
-const addRejectionUserAssessment = async (repoId, pullRequestNumber, commitId, userAssessment) => {
-  try {
+const addRejectionUserAssessment =
+  async ( repoId: number
+        , pullRequestNumber: number
+        , commitId: string
+        , userAssessment: UA.UserAssessment
+        ): Promise<AddUserRejectionAssessmentResult> => {
 
-    const tagId = userAssessment.tagId;
+  const tagId = userAssessment.tagId;
+
+  try {
 
     const addRejectionUpdateResult = await PullRequestReviewModel.update(
       {
@@ -191,11 +248,11 @@ const addRejectionUserAssessment = async (repoId, pullRequestNumber, commitId, u
 
     // TODO log error if needed.
     // TODO make these errors better (priority: for the head commit updating / tag already being approved/rejected)
-    if ( !mongoHelpers.updateOk(addRejectionUpdateResult)
-          || !mongoHelpers.updateMatchedOneResult(addRejectionUpdateResult)
-          || !mongoHelpers.updateModifiedOneResult(addRejectionUpdateResult)
+    if ( !MongoHelpers.updateOk(addRejectionUpdateResult)
+          || !MongoHelpers.updateMatchedOneResult(addRejectionUpdateResult)
+          || !MongoHelpers.updateModifiedOneResult(addRejectionUpdateResult)
     ) {
-      return { tagId, status: "approval-failure", error: { httpCode: 500, ...errors.internalServerError } }
+      return { tagId, status: "rejection-failure", error: { httpCode: 500, ...Errors.internalServerError } }
     }
 
     return { tagId, status: "rejection-success" };
@@ -203,17 +260,25 @@ const addRejectionUserAssessment = async (repoId, pullRequestNumber, commitId, u
   } catch (updateErr) {
 
     // TODO log error
-    return { tagId, status: "approval-failure", error: { httpCode: 500, ...errors.internalServerError } }
+    return { tagId, status: "rejection-failure", error: { httpCode: 500, ...Errors.internalServerError } }
   }
 }
 
 
 // TODO Move
 // TODO DOC
-const addApprovalUserAssessment = async (repoId, pullRequestNumber, commitId, userAssessment, tagsOwnerGroups) => {
+const addApprovalUserAssessment =
+  async ( repoId: number
+        , pullRequestNumber: number
+        , commitId: string
+        , userAssessment: UA.UserAssessment
+        , tagsOwnerGroups: TOG.TagOwnerGroups[]
+        ) : Promise<AddUserApprovalAssessmentResult> => {
 
   const { username, tagId } = userAssessment;
-  const tagOwnerGroups = R.find(R.propEq("tagId", tagId), tagsOwnerGroups);
+  // Casting because we know it will be found, we've already checked before this function.
+  const tagOwnerGroups =
+    R.find((tagOwnerGroup => tagOwnerGroup.tagId === tagId), tagsOwnerGroups) as TOG.TagOwnerGroups;
 
   // In the case that the user approval may or may not cause the tag to be approved we do two updates. We do this
   // because we want everything to be atomic, so we try multiple atomic operations to cover all cases.
@@ -231,7 +296,7 @@ const addApprovalUserAssessment = async (repoId, pullRequestNumber, commitId, us
     return !R.contains(username, owners);
   }, tagOwnerGroups.groups);
 
-  const createMongoQueryFilterForUpdate = (andAdditionalQueryFilter) => {
+  const createMongoQueryFilterForUpdate = (andAdditionalQueryFilter: object) => {
 
     const baseFilter = {
       repoId,
@@ -241,10 +306,6 @@ const addApprovalUserAssessment = async (repoId, pullRequestNumber, commitId, us
       headCommitRejectedTags: { $nin: [ userAssessment.tagId ] },
       headCommitUserAssessments: { $nin: [ userAssessment ] }
     };
-
-    if (andAdditionalQueryFilter === null) {
-      return baseFilter;
-    }
 
     return {
       ...baseFilter,
@@ -279,9 +340,9 @@ const addApprovalUserAssessment = async (repoId, pullRequestNumber, commitId, us
         }
       ).exec();
 
-      if ( !mongoHelpers.updateOk(addAssessmentUpdateResult)
-            || !mongoHelpers.updateMatchedOneResult(addAssessmentUpdateResult)
-            || !mongoHelpers.updateModifiedOneResult(addAssessmentUpdateResult)
+      if ( !MongoHelpers.updateOk(addAssessmentUpdateResult)
+            || !MongoHelpers.updateMatchedOneResult(addAssessmentUpdateResult)
+            || !MongoHelpers.updateModifiedOneResult(addAssessmentUpdateResult)
       ) {
         throw "value-meaningless error to move to next atomic update";
       }
@@ -328,9 +389,9 @@ const addApprovalUserAssessment = async (repoId, pullRequestNumber, commitId, us
       }
     ).exec();
 
-    if ( !mongoHelpers.updateOk(addApprovalUpdateResult)
-          || !mongoHelpers.updateMatchedOneResult(addApprovalUpdateResult)
-          || !mongoHelpers.updateModifiedOneResult(addApprovalUpdateResult)
+    if ( !MongoHelpers.updateOk(addApprovalUpdateResult)
+          || !MongoHelpers.updateMatchedOneResult(addApprovalUpdateResult)
+          || !MongoHelpers.updateModifiedOneResult(addApprovalUpdateResult)
     ) {
       throw "value-meaningless error to move to next atomic update";
     }
@@ -362,11 +423,11 @@ const addApprovalUserAssessment = async (repoId, pullRequestNumber, commitId, us
 
     // TODO log error if needed.
     // TODO make these errors better (priority: for the head commit updating / tag already being approved/rejected)
-    if ( !mongoHelpers.updateOk(addApprovalOnLastTagUpdateResult)
-          || !mongoHelpers.updateMatchedOneResult(addApprovalOnLastTagUpdateResult)
-          || !mongoHelpers.updateModifiedOneResult(addApprovalOnLastTagUpdateResult)
+    if ( !MongoHelpers.updateOk(addApprovalOnLastTagUpdateResult)
+          || !MongoHelpers.updateMatchedOneResult(addApprovalOnLastTagUpdateResult)
+          || !MongoHelpers.updateModifiedOneResult(addApprovalOnLastTagUpdateResult)
     ) {
-      return { tagId, status: "approval-failure", error: { httpCode: 500, ...errors.internalServerError } };
+      return { tagId, status: "approval-failure", error: { httpCode: 500, ...Errors.internalServerError } };
     }
 
     return { tagId, status: "approval-success", tagApproved: true };
@@ -379,14 +440,20 @@ const addApprovalUserAssessment = async (repoId, pullRequestNumber, commitId, us
       console.log(JSON.stringify(updateErr));
     } catch { }
 
-    return { tagId, status: "approval-failure", error: { httpCode: 500, ...errors.internalServerError } };
+    return { tagId, status: "approval-failure", error: { httpCode: 500, ...Errors.internalServerError } };
   }
 }
 
 
 // TODO Move
 // TODO DOC
-const addUserAssessment = async (repoId, pullRequestNumber, commitId, userAssessment, tagsOwnerGroups) => {
+const addUserAssessment =
+  async ( repoId: number
+        , pullRequestNumber: number
+        , commitId: string
+        , userAssessment: UA.UserAssessment
+        , tagsOwnerGroups: TOG.TagOwnerGroups[]
+        ) : Promise<AddUserAssessmentResult>  => {
 
   if (userAssessment.assessmentType === "rejected") {
     return await addRejectionUserAssessment(repoId, pullRequestNumber, commitId, userAssessment);
@@ -399,7 +466,13 @@ const addUserAssessment = async (repoId, pullRequestNumber, commitId, userAssess
 // TODO Move
 // TODO DOC
 // @REQUIRED tagsOwnerGroups has been checked to contain that tag for that user.
-const addUserAssessments = async (repoId, pullRequestNumber, commitId, userAssessments, tagsOwnerGroups) => {
+const addUserAssessments =
+  async ( repoId: number
+        , pullRequestNumber: number
+        , commitId: string
+        , userAssessments: UA.UserAssessment[]
+        , tagsOwnerGroups: TOG.TagOwnerGroups[]
+        ): Promise<AddUserAssessmentResult[]> => {
   return Promise.all(userAssessments.map((userAssessment) => {
     return addUserAssessment(repoId, pullRequestNumber, commitId, userAssessment, tagsOwnerGroups);
   }));
