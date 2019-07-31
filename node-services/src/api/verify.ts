@@ -8,13 +8,13 @@ const CommitReviewModel = mongoose.model('CommitReview');
 const PullRequestReviewModel = mongoose.model('PullRequestReview');
 const RepoModel = mongoose.model('Repo');
 
-import * as TOG from "../../tag-owner-group";
-import * as PullRequestReview from "../../models/PullRequestReview";
-import * as Repo from "../../models/Repo";
-import * as CommitReview from "../../models/CommitReview";
-import * as User from "../../models/User";
-import * as GithubApi from "../github-api";
-import * as ClientErrors from "../client-errors";
+import * as TOG from "../tag-owner-group";
+import * as PullRequestReview from "../models/PullRequestReview";
+import * as Repo from "../models/Repo";
+import * as CommitReview from "../models/CommitReview";
+import * as User from "../models/User";
+import * as GithubApi from "./github-api";
+import * as ClientErrors from "./client-errors";
 
 
 // EXTERNAL

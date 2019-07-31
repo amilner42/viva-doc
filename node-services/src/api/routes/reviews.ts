@@ -2,11 +2,11 @@ import * as R from "ramda";
 import Express from "express";
 
 import * as Verify from "../verify";
-import * as ClientErrors from "../../client-errors";
-import * as GithubApp from "../../github-app";
-import * as MongoHelpers from "../../../mongo-helpers";
-import * as UA from "../../../user-assessment";
-import * as TOG from "../../../tag-owner-group";
+import * as ClientErrors from "../client-errors";
+import * as GithubApp from "../github-app";
+import * as MongoHelpers from "../../mongo-helpers";
+import * as UA from "../../user-assessment";
+import * as TOG from "../../tag-owner-group";
 
 
 const mongoose = require('mongoose');

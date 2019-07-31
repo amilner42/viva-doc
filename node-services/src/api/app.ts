@@ -57,17 +57,21 @@ app.use(ApiRoutes);
 
 /// catch 404 and forward to error handler
 app.use(function(req, res, next) {
-  next({ errorCode: 404, message: "not found" });
+  return next(ClientErrors.invalidRoute(req.route));
 });
 
-/// error handler
-
 const handleErrors: ErrorRequestHandler = async (err, req, res, next) => {
-  await AppError.logErrors(err, "api", null);
+
+  const maybeClientError = ClientErrors.extractClientError(err);
+
+  if (maybeClientError !== null) {
+    return res.status(maybeClientError.httpCode).json(maybeClientError);
+  }
+
+  AppError.logErrors(err, "api", null);
   return res.status(500).json(ClientErrors.internalServerError);
 }
 
-// production error handler
 app.use(handleErrors);
 
 // finally, let's start our server...

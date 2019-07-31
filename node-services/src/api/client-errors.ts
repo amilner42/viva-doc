@@ -9,6 +9,18 @@ export interface ClientError<T> {
 }
 
 
+export const extractClientError = (err: any): null | ClientError<any> => {
+  if ( (typeof (err as ClientError<any>).httpCode === "number")
+          && (typeof (err as ClientError<any>).message === "string")
+          && (typeof (err as ClientError<any>).errorCode === "number")
+  ) {
+    return err;
+  }
+
+  return null;
+}
+
+
 const createClientError =
   <T> ( errorCode: number
       , httpCode: number
@@ -65,3 +77,7 @@ export const noModifyingTagsThatDontExist =
 
 export const userAssmentsMustBeToUniqueTags =
   createClientError(13, 400, "User assessments must all point to different tags");
+
+export const invalidRoute = (routeData: any) => {
+  return createClientError(14, 404, `That route does not exist.`, routeData);
+}

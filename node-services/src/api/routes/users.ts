@@ -1,7 +1,7 @@
 import Express from "express";
 import Passport from "passport";
-import * as ClientErrors from "../../client-errors";
-import * as GithubApi from"../../github-api";
+import * as ClientErrors from "../client-errors";
+import * as GithubApi from"../github-api";
 
 
 const expressRouter = Express.Router();
