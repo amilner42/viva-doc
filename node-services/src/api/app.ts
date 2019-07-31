@@ -4,12 +4,17 @@ import bodyParser from "body-parser";
 import cors from "cors";
 import passport from "passport";
 const errorhandler = require("errorhandler");
+
+import * as config from "./config";
+
 const mongoose = require("mongoose");
+import * as MongoHelpers from "../mongo-helpers";
 require("../models/loader");
+MongoHelpers.connectMongoose(mongoose, config.mongoDbUri);
+
 const MongoStore = require('connect-mongo')(expressSession);
 
 import ApiRoutes from "./routes";
-import * as config from "./config";
 import * as AppError from "../app-error";
 import * as ClientErrors from "./client-errors";
 const isProduction = config.isProduction;
@@ -35,8 +40,6 @@ app.use(require('method-override')());
 
 app.use(passport.initialize());
 app.use(passport.session());
-
-mongoose.connect(config.mongoDbUri);
 
 // Set debug settings for dev mode.
 if (!isProduction) {

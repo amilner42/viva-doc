@@ -5,22 +5,13 @@ import { config } from "./config";
 import * as UA from "../user-assessment";
 import * as Probot from 'probot' // eslint-disable-line no-unused-vars
 import R from "ramda"
+
 import mongoose = require("mongoose")
-
-
-mongoose.connect(config.mongoDbUri, { useNewUrlParser: true }, (err) => {
-  if (err) {
-   console.log(err.message);
-   console.log(err);
-  }
-  else {
-    console.log('Connected to MongoDb');
-  }
-})
-
+import * as MongoHelpers from "../mongo-helpers";
+MongoHelpers.connectMongoose(mongoose, config.mongoDbUri);
 require("../models/loader");
 
-// All imports to internal modules should be here so that all mongoose schemas have loaded first.
+// All imports to internal modules that require the mongoose models should be after `require("../models/loader");`
 import * as Repo from "../models/Repo";
 import * as CommitReview from "../models/CommitReview";
 import * as PullRequestReview from "../models/PullRequestReview";

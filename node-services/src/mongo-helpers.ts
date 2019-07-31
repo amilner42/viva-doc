@@ -10,6 +10,16 @@ interface MongoUpdateResult {
 }
 
 
+export const connectMongoose = (mongoose: any, mongoDbUri: string) => {
+
+  mongoose.connect(mongoDbUri, { useNewUrlParser: true }, (err: any) => {
+    if (err) { throw err; }
+    console.log('Connected to MongoDb');
+  });
+
+};
+
+
 export const updateOk = (updateResult: MongoUpdateResult) => {
   return updateResult.ok === 1;
 }
