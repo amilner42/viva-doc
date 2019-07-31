@@ -21,8 +21,8 @@ decodeCommitStaleError =
     Decode.field "errorCode" Decode.int
         |> Decode.andThen
             (\errorCode ->
-                if errorCode == 10 then
-                    Decode.field "newHeadCommitId" Decode.string
+                if errorCode == 7 then
+                    Decode.field "data" Decode.string
 
                 else
                     Decode.fail "wrong error code"
