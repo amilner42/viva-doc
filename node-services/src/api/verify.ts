@@ -6,11 +6,11 @@ import Express from "express";
 const mongoose = require('mongoose');
 const CommitReviewModel = mongoose.model('CommitReview');
 const PullRequestReviewModel = mongoose.model('PullRequestReview');
-const RepoModel = mongoose.model('Repo');
+const InstallationModel = mongoose.model('Installation');
 
 import * as TOG from "../tag-owner-group";
 import * as PullRequestReview from "../models/PullRequestReview";
-import * as Repo from "../models/Repo";
+import * as Installation from "../models/Installation";
 import * as CommitReview from "../models/CommitReview";
 import * as User from "../models/User";
 import * as GithubApi from "./github-api";
@@ -72,15 +72,15 @@ export const getCommitReviewObject =
 
 
 // TODO move
-export const getRepoObject = async (repoId: number): Promise<Repo.Repo> => {
+export const getInstallationObject = async (repoId: number): Promise<Installation.Installation> => {
 
-  const repo = await RepoModel.findOne({ repoIds: repoId }).exec();
+  const installation = await InstallationModel.findOne({ repoIds: repoId }).exec();
 
-  if (repo === null) {
+  if (installation === null) {
     throw ClientErrors.noRepo;
   }
 
-  return repo.toObject();
+  return installation.toObject();
 }
 
 

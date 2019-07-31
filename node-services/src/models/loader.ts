@@ -5,6 +5,6 @@
 require("./LogError");
 require("./CommitReview");
 require("./PullRequestReview");
-require("./Repo");
+require("./Installation");
 require("./User");
 // @VD end-block

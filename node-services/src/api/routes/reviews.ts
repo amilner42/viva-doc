@@ -121,10 +121,10 @@ expressRouter.post('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/
       // TODO wrap in try-catch and handle error
       const repoName = pullRequestReviewObject.repoName;
 
-      const repoObject = await Verify.getRepoObject(repoId);
+      const installationObject = await Verify.getInstallationObject(repoId);
       await GithubApp.putSuccessStatusOnCommit(
-        repoObject.installationId,
-        repoObject.owner,
+        installationObject.installationId,
+        installationObject.owner,
         repoName,
         repoId,
         pullRequestNumber,
