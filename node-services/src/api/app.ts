@@ -5,14 +5,7 @@ import cors from "cors";
 import passport from "passport";
 const errorhandler = require("errorhandler");
 const mongoose = require("mongoose");
-// NOTE: We have to load these and order of these requires matters, LogError must be first.
-// @VD amilner42 block
-require("../models/LogError");
-require("../models/CommitReview");
-require("../models/PullRequestReview");
-require("../models/Repo");
-require("../models/User");
-// @VD end-block
+require("../models/loader");
 const MongoStore = require('connect-mongo')(expressSession);
 
 import ApiRoutes from "./routes";
