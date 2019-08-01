@@ -33,7 +33,6 @@ export const pipeline = async (
 
   if (pullRequestReview.pendingAnalysisForCommits.length === 0) { return }
   const analyzingCommitId = pullRequestReview.pendingAnalysisForCommits[0];
-  const prBaseCommitIdForAnalyzingCommit = await getMostRecentCommonAncestor(analyzingCommitId);
 
   // Helper for recovering from an error while analyzing a commit.
   const recoverFromError =
@@ -130,6 +129,8 @@ export const pipeline = async (
   let maybeBaseAndLastAnalyzedCommit: ReturnType<typeof getBaseAndLastAnalyzedCommit>;
 
   try {
+
+    const prBaseCommitIdForAnalyzingCommit = await getMostRecentCommonAncestor(analyzingCommitId);
 
     maybeBaseAndLastAnalyzedCommit = getBaseAndLastAnalyzedCommit(
       installationId,

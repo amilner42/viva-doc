@@ -256,7 +256,8 @@ export const listPullRequestCommits =
 }
 
 
-export const getMostCommonAncestor = R.curry(
+// @THROWS only `AppError.LogFriendlyGithubAppError` upon failure to find the common ancestor.
+export const getMostRecentCommonAncestor = R.curry(
   async ( installationId: number
         , context: Probot.Context
         , owner: string
@@ -321,10 +322,25 @@ export const getMostCommonAncestor = R.curry(
 
     }
 
-    throw "todo error"
+    throw "Ran out of commits and was unable to find a common ancestor.";
 
   } catch (err) {
-    throw err;
+
+    const cannotFindAncestorLoggableError: AppError.LogFriendlyGithubAppError = {
+      installationId,
+      name: "cannot-find-ancestor",
+      isSevere: false,
+      stack: AppError.getStack(),
+      data: {
+        err,
+        owner,
+        repoName,
+        branchNameOrCommitId1,
+        branchNameOrCommitId2
+      }
+    };
+
+    throw cannotFindAncestorLoggableError;
   }
 
 });

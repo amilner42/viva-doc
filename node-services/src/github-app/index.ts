@@ -251,7 +251,7 @@ const analyzeOldPullRequest =
     GH.retrieveDiff(installationId, context, owner, repoName),
     GH.retrieveFile(installationId, context, owner, repoName),
     GH.setCommitStatus(installationId, context, owner, repoName),
-    GH.getMostCommonAncestor(installationId, context, owner, repoName, newPullRequestReviewObject.baseBranchName)
+    GH.getMostRecentCommonAncestor(installationId, context, owner, repoName, newPullRequestReviewObject.baseBranchName)
   );
 
 }
@@ -292,7 +292,7 @@ const analyzeNewPullRequest =
     GH.retrieveDiff(installationId, context, owner, repoName),
     GH.retrieveFile(installationId, context, owner, repoName),
     GH.setCommitStatus(installationId, context, owner, repoName),
-    GH.getMostCommonAncestor(installationId, context, owner, repoName, baseBranchName)
+    GH.getMostRecentCommonAncestor(installationId, context, owner, repoName, baseBranchName)
   );
 
 }
