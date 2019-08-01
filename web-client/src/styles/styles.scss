@@ -1,5 +1,14 @@
 /** Global SCSS */
 
+/** Color Scheme */
+
+$vd-base-dark: #0B0C10;
+$vd-base-medium: #1F2833;
+$vd-base-light: #C5C6C7;
+$vd-spark-bright: #66FCF1;
+$vd-spark-dark: #45A29E;
+
+
 .has-code-editor {
     overflow: auto;
     height: 500px;
@@ -23,8 +32,41 @@
     }
 }
 
+.is-vd-hero-title {
+    // font-size: 110px !important;
+    color: $vd-spark-bright !important;
+}
+
+.is-vd-box-link {
+    border-radius: 1px !important;
+    background-color: $vd-base-dark !important;
+    border: 0.5px $vd-spark-bright solid !important;
+    color: white !important;
+}
+
+.has-text-vd-base-light {
+    color: $vd-base-light !important;
+}
+
+.has-text-vd-base-medium {
+    color: $vd-base-medium;
+}
+
+.has-text-spark-bright {
+    color: $vd-spark-bright !important;
+}
+
+.has-text-spark-dark {
+    color: $vd-spark-dark !important;
+}
+
 
 /** External CSS */
+
+// Bulma variables
+$primary: $vd-base-dark;
+$link: $vd-spark-dark;
+$family-primary: 'Raleway', sans-serif;
 
 @import "~bulma/sass/utilities/_all.sass";
 @import "~bulma/sass/base/_all.sass";
@@ -46,3 +88,4 @@
 @import "~bulma/sass/grid/tiles.sass";
 
 @import "~bulma/sass/layout/section.sass";
+@import "~bulma/sass/layout/hero.sass";

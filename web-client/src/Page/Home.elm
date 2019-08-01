@@ -33,34 +33,41 @@ view : Model -> { title : String, content : Html Msg }
 view model =
     { title = "Home"
     , content =
-        section
-            [ class "section is-medium" ]
-            [ div
-                [ class "container" ]
-                [ div
-                    [ class "columns is-centered" ]
-                    [ div
-                        [ class "column is-half" ]
-                        (case model.session of
-                            Session.Guest _ ->
-                                [ h1
-                                    [ class "title has-text-centered" ]
-                                    [ text "Landing Page" ]
-                                ]
+        case model.session of
+            Session.LoggedIn _ viewer ->
+                renderLoggedInHomePage { viewer = viewer }
 
-                            Session.LoggedIn _ viewer ->
-                                [ h1
-                                    [ class "title has-text-centered" ]
-                                    [ text <| Viewer.getUsername viewer ]
-                                ]
-                                    ++ List.map
-                                        (\repo -> p [] [ text <| Core.getRepoFullName repo ])
-                                        (Viewer.getRepos viewer)
-                        )
+            Session.Guest _ ->
+                renderLandingPage
+    }
+
+
+renderLoggedInHomePage : { viewer : Viewer.Viewer } -> Html Msg
+renderLoggedInHomePage config =
+    section
+        [ class "section is-medium" ]
+        [ div
+            [ class "container" ]
+            [ div
+                [ class "columns is-centered" ]
+                [ div [ class "column is-half" ] <|
+                    [ h1
+                        [ class "title has-text-centered" ]
+                        [ text <| Viewer.getUsername config.viewer ]
                     ]
+                        ++ List.map
+                            (\repo -> p [] [ text <| Core.getRepoFullName repo ])
+                            (Viewer.getRepos config.viewer)
                 ]
             ]
-    }
+        ]
+
+
+renderLandingPage : Html Msg
+renderLandingPage =
+    div
+        []
+        [ text "TODO" ]
 
 
 

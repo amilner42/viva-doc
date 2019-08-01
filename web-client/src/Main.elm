@@ -84,18 +84,25 @@ init flags url navKey =
 view : Model -> Document Msg
 view model =
     let
-        viewPage toMsg pageView =
+        viewer =
+            Session.getViewer (toSession model)
+
+        viewPageWithNavbar { showHomeButton, showLandingPageHero } toMsg pageView =
             let
                 { title, body } =
-                    Page.view
-                        { mobileNavbarOpen = model.mobileNavbarOpen
-                        , toggleMobileNavbar = ToggledMobileNavbar
-                        , logout = Logout
-                        , loginWithGithub = OnClickLoginWithGithub
-                        , isLoggingIn = model.isLoggingIn
-                        , isLoggingOut = model.isLoggingOut
+                    Page.viewWithHeader
+                        { showLandingPageHero = showLandingPageHero
+                        , renderNavbarConfig =
+                            { mobileNavbarOpen = model.mobileNavbarOpen
+                            , toggleMobileNavbar = ToggledMobileNavbar
+                            , logout = Logout
+                            , loginWithGithub = OnClickLoginWithGithub
+                            , isLoggingIn = model.isLoggingIn
+                            , isLoggingOut = model.isLoggingOut
+                            , showHomeButton = showHomeButton
+                            }
                         }
-                        (Session.getViewer (toSession model))
+                        viewer
                         pageView
                         toMsg
             in
@@ -105,19 +112,40 @@ view model =
     in
     case model.pageModel of
         Redirect _ ->
-            viewPage (\_ -> Ignored) Blank.view
+            viewPageWithNavbar
+                { showHomeButton = False, showLandingPageHero = False }
+                (\_ -> Ignored)
+                Blank.view
 
         NotFound _ ->
-            viewPage (\_ -> Ignored) NotFound.view
+            viewPageWithNavbar
+                { showHomeButton = True, showLandingPageHero = False }
+                (\_ -> Ignored)
+                NotFound.view
 
         Home homeModel ->
-            viewPage GotHomeMsg (Home.view homeModel)
+            viewPageWithNavbar
+                (case viewer of
+                    Nothing ->
+                        { showHomeButton = False, showLandingPageHero = True }
+
+                    Just _ ->
+                        { showHomeButton = True, showLandingPageHero = False }
+                )
+                GotHomeMsg
+                (Home.view homeModel)
 
         OAuthRedirect oauthRedirect ->
-            viewPage GotOAuthRedirectMsg (OAuthRedirect.view oauthRedirect)
+            viewPageWithNavbar
+                { showHomeButton = False, showLandingPageHero = False }
+                GotOAuthRedirectMsg
+                (OAuthRedirect.view oauthRedirect)
 
         CommitReview commitReviewModel ->
-            viewPage GotCommitReviewMsg (CommitReview.view commitReviewModel)
+            viewPageWithNavbar
+                { showHomeButton = True, showLandingPageHero = False }
+                GotCommitReviewMsg
+                (CommitReview.view commitReviewModel)
 
 
 
