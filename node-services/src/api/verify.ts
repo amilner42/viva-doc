@@ -98,8 +98,7 @@ export const isLoadedHeadCommit = (pullRequestReviewObject: PullRequestReview.Pu
     throw ClientErrors.noUpdatingNonHeadCommit(pullRequestReviewObject.headCommitId);
   }
 
-  if ( pullRequestReviewObject.pendingAnalysisForCommits[0] &&
-       pullRequestReviewObject.pendingAnalysisForCommits[0].head === commitId ) {
+  if ( pullRequestReviewObject.pendingAnalysisForCommits[0] === commitId ) {
     throw ClientErrors.commitStillLoading;
   }
 }

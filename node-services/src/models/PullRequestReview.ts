@@ -14,7 +14,6 @@ export interface PullRequestReview {
   repoFullName: string,
   branchName: string,
   baseBranchName: string,
-  baseCommitId: string,
   pullRequestId: number,
   pullRequestNumber: number,
   headCommitId: string,
@@ -22,7 +21,7 @@ export interface PullRequestReview {
   headCommitRejectedTags: string[] | null,
   headCommitUserAssessments: UA.UserAssessment[] | null,
   headCommitTagsOwnerGroups: TOG.TagOwnerGroups[] | null,
-  pendingAnalysisForCommits: { head: string, base: string }[],
+  pendingAnalysisForCommits: string[],
   analyzedCommitsWithSuccessStatus: string[],
   analyzedCommits: string[],
   commitReviewErrors: CommitReviewError[]
@@ -47,7 +46,6 @@ const PullRequestReviewSchema = new mongoose.Schema({
   repoFullName: { type: String, required: [true, "can't be blank"] },
   branchName: { type: String, required: [true, "can't be blank"] },
   baseBranchName: { type: String, required: [true, "can't be blank"] },
-  baseCommitId: { type: String, required: [true, "can't be blank"] },
   pullRequestId: { type: Number, required: [true, "can't be blank" ] },
   pullRequestNumber: { type: Number, required: [true, "can't be blank"], index: true },
   headCommitId: { type: String, required: [true, "can't be blank"], index: true },
@@ -55,7 +53,7 @@ const PullRequestReviewSchema = new mongoose.Schema({
   headCommitRejectedTags: { type: [String ] },
   headCommitUserAssessments: { type: [ { _id: false, username: String, tagId: String, assessmentType: String } ] },
   headCommitTagsOwnerGroups: { type: [ { _id: false, tagId: String, groups: [ [ String ] ] } ] },
-  pendingAnalysisForCommits: { type: [ { _id: false, head: String, base: String } ], required: [ true, "can't be blank"] },
+  pendingAnalysisForCommits: { type: [ String ], required: [ true, "can't be blank"] },
   analyzedCommitsWithSuccessStatus: { type: [ String ], required: [ true, "can't be blank" ] },
   analyzedCommits: { type: [ String ], required: [ true, "can't be blank"] },
   commitReviewErrors: { type:  [ mongoose.Schema.Types.Mixed ], required: [true, "can't be blank"] }
@@ -76,7 +74,6 @@ export const newPullRequestReview =
         , pullRequestId: number
         , pullRequestNumber: number
         , headCommitId: string
-        , baseCommitId: string
       ): Promise<PullRequestReview> => {
 
   try {
@@ -87,7 +84,6 @@ export const newPullRequestReview =
       repoFullName,
       branchName,
       baseBranchName,
-      baseCommitId,
       pullRequestId,
       pullRequestNumber,
       headCommitId,
@@ -95,7 +91,7 @@ export const newPullRequestReview =
       headCommitRejectedTags: null,
       headCommitUserAssessments: null,
       headCommitTagsOwnerGroups: null,
-      pendingAnalysisForCommits: [ { head: headCommitId, base: baseCommitId } ],
+      pendingAnalysisForCommits: [ headCommitId ],
       analyzedCommitsWithSuccessStatus: [],
       analyzedCommits: [],
       commitReviewErrors: [],
@@ -175,7 +171,6 @@ export const updateOnPullRequestSync =
         , repoId: number
         , pullRequestNumber: number
         , headCommitId: string
-        , baseCommitId: string
       ): Promise<{ previousPullRequestReviewObject: PullRequestReview, newPullRequestReviewObject: PullRequestReview }> => {
 
   try {
@@ -194,9 +189,8 @@ export const updateOnPullRequestSync =
     const pullRequestReview = await PullRequestReviewModel.findOneAndUpdate(
       { repoId, pullRequestNumber },
       {
-        $push: { "pendingAnalysisForCommits": { head: headCommitId, base: baseCommitId } },
+        $push: { "pendingAnalysisForCommits": headCommitId },
         headCommitId: headCommitId,
-        baseCommitId: baseCommitId,
         headCommitApprovedTags,
         headCommitRejectedTags,
         headCommitUserAssessments,
@@ -220,10 +214,7 @@ export const updateOnPullRequestSync =
       ...previousPullRequestReviewObject,
       ...{
         headCommitId,
-        baseCommitId,
-        pendingAnalysisForCommits: previousPullRequestReviewObject.pendingAnalysisForCommits.concat(
-          { head: headCommitId, base: baseCommitId }
-        ),
+        pendingAnalysisForCommits: previousPullRequestReviewObject.pendingAnalysisForCommits.concat(headCommitId),
         headCommitApprovedTags,
         headCommitRejectedTags,
         headCommitUserAssessments,
@@ -270,7 +261,7 @@ export const updateOnCompleteAnalysisForNonHeadCommit =
     const updatedPullRequestReview = await PullRequestReviewModel.findOneAndUpdate(
       { repoId, pullRequestNumber },
       {
-        $pull: { pendingAnalysisForCommits: { head: analyzedCommitId } },
+        $pull: { pendingAnalysisForCommits: analyzedCommitId },
         $push: mongoPushObject
       },
       {
@@ -342,7 +333,7 @@ export const updateOnCompleteAnalysisForHeadCommit =
         headCommitRejectedTags,
         headCommitUserAssessments,
         headCommitTagsOwnerGroups,
-        $pull: { pendingAnalysisForCommits: { head: headCommitId } },
+        $pull: { pendingAnalysisForCommits: headCommitId },
         $push: mongoPushObject
       }
     ).exec();
@@ -400,11 +391,11 @@ export const clearPendingCommitOnAnalysisFailure =
     const updateFields =
       commitReviewError !== null
         ? {
-            $pull: { pendingAnalysisForCommits: { head: commitId } },
+            $pull: { pendingAnalysisForCommits: commitId },
             $addToSet: { "commitReviewErrors": commitReviewError }
           }
         : {
-            $pull: { pendingAnalysisForCommits: { head: commitId } }
+            $pull: { pendingAnalysisForCommits: commitId }
           }
 
     pullRequestReviewDoc = await PullRequestReviewModel.findOneAndUpdate(
@@ -458,7 +449,7 @@ export const clearPendingCommitOnAnalysisSkip =
 
     const newPullRequestReviewDoc = await PullRequestReviewModel.findOneAndUpdate(
       { repoId, pullRequestNumber },
-      { $pull: { pendingAnalysisForCommits: { head: commitId } } },
+      { $pull: { pendingAnalysisForCommits: commitId } },
       { new: true }
     );
 

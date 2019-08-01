@@ -25,14 +25,15 @@ export const pipeline = async (
   retrievePullRequestCommits: () => Promise<GH.PullRequestCommits>,
   retrieveDiff: (baseCommitId: string, headCommitId: string) => Promise<string>,
   retrieveFile: (commitId: string, filePath: string) => Promise<string>,
-  setCommitStatus: (commitId: string, statusState: "success" | "failure" | "pending", optional?: { description?: string, target_url?: string }) => Promise<any>
+  setCommitStatus: (commitId: string, statusState: "success" | "failure" | "pending", optional?: { description?: string, target_url?: string }) => Promise<any>,
+  getMostRecentCommonAncestor: (currentCommitOnPR: string) => Promise<string>
 ) => {
 
   // [PIPELINE] Set `analyzingCommitId` or return if no commits need analysis.
 
   if (pullRequestReview.pendingAnalysisForCommits.length === 0) { return }
-  const analyzingCommitId = pullRequestReview.pendingAnalysisForCommits[0].head;
-  const prBaseCommitIdForAnalyzingCommit = pullRequestReview.pendingAnalysisForCommits[0].base;
+  const analyzingCommitId = pullRequestReview.pendingAnalysisForCommits[0];
+  const prBaseCommitIdForAnalyzingCommit = await getMostRecentCommonAncestor(analyzingCommitId);
 
   // Helper for recovering from an error while analyzing a commit.
   const recoverFromError =
@@ -51,7 +52,8 @@ export const pipeline = async (
       retrievePullRequestCommits,
       retrieveDiff,
       retrieveFile,
-      setCommitStatus
+      setCommitStatus,
+      getMostRecentCommonAncestor
     );
   }
 
@@ -85,7 +87,8 @@ export const pipeline = async (
       retrievePullRequestCommits,
       retrieveDiff,
       retrieveFile,
-      setCommitStatus
+      setCommitStatus,
+      getMostRecentCommonAncestor
     );
 
     return;
@@ -473,7 +476,8 @@ export const pipeline = async (
     retrievePullRequestCommits,
     retrieveDiff,
     retrieveFile,
-    setCommitStatus
+    setCommitStatus,
+    getMostRecentCommonAncestor
   );
 
 }
@@ -1065,9 +1069,10 @@ const recoverFromErrorInPipeline =
                            , statusState: "success" | "failure" | "pending"
                            , optional?: { description?: string, target_url?: string }
                            ) => Promise<any>
+        , getMostRecentCommonAncestor: (currentCommitOnPR: string) => Promise<string>
         ): Promise<void> => {
 
-  const analyzingCommitId = pullRequestReview.pendingAnalysisForCommits[0].head;
+  const analyzingCommitId = pullRequestReview.pendingAnalysisForCommits[0];
 
   if (F.isJust(err)) {
     await AppError.logErrors(err, "github-app", null);
@@ -1140,7 +1145,8 @@ const recoverFromErrorInPipeline =
     retrievePullRequestCommits,
     retrieveDiff,
     retrieveFile,
-    setCommitStatus
+    setCommitStatus,
+    getMostRecentCommonAncestor
   );
 
 }

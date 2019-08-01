@@ -132,7 +132,6 @@ export = (app: Probot.Application) => {
       const headCommitId = (prPayload.pull_request as any).head.sha
 
       const baseBranchName = (prPayload.pull_request as any).base.ref
-      const baseCommitId = (prPayload.pull_request as any).base.sha
 
       await analyzeNewPullRequest(
         installationId,
@@ -145,8 +144,7 @@ export = (app: Probot.Application) => {
         baseBranchName,
         pullRequestId,
         pullRequestNumber,
-        headCommitId,
-        baseCommitId
+        headCommitId
       );
 
     });
@@ -163,7 +161,6 @@ export = (app: Probot.Application) => {
       const { owner } = context.repo()
       const pullRequestNumber = (syncPayload.pull_request as any).number;
       const headCommitId = (syncPayload.pull_request as any).head.sha;
-      const baseCommitId = (syncPayload.pull_request as any).base.sha;
 
       await analyzeOldPullRequest(
         installationId,
@@ -172,8 +169,7 @@ export = (app: Probot.Application) => {
         owner,
         repoName,
         pullRequestNumber,
-        headCommitId,
-        baseCommitId
+        headCommitId
       );
 
     });
@@ -195,7 +191,6 @@ const analyzeOldPullRequest =
         , repoName: string
         , pullRequestNumber: number
         , headCommitId: string
-        , baseCommitId: string
         ) : Promise<void> => {
 
 
@@ -203,8 +198,7 @@ const analyzeOldPullRequest =
     installationId,
     repoId,
     pullRequestNumber,
-    headCommitId,
-    baseCommitId
+    headCommitId
   );
 
   // No need to trigger pipeline if already analyzing commits.
@@ -256,7 +250,8 @@ const analyzeOldPullRequest =
     () => GH.listPullRequestCommits(installationId, context, owner, repoName, pullRequestNumber),
     GH.retrieveDiff(installationId, context, owner, repoName),
     GH.retrieveFile(installationId, context, owner, repoName),
-    GH.setCommitStatus(installationId, context, owner, repoName)
+    GH.setCommitStatus(installationId, context, owner, repoName),
+    GH.getMostCommonAncestor(installationId, context, owner, repoName, newPullRequestReviewObject.baseBranchName)
   );
 
 }
@@ -275,7 +270,6 @@ const analyzeNewPullRequest =
   , pullRequestId: number
   , pullRequestNumber: number
   , headCommitId : string
-  , baseCommitId : string
   ) : Promise<void> => {
 
   const pullRequestReviewObject = await PullRequestReview.newPullRequestReview(
@@ -288,7 +282,6 @@ const analyzeNewPullRequest =
     pullRequestId,
     pullRequestNumber,
     headCommitId,
-    baseCommitId
   );
 
   await Analysis.pipeline(
@@ -298,7 +291,8 @@ const analyzeNewPullRequest =
     () => GH.listPullRequestCommits(installationId, context, owner, repoName, pullRequestNumber),
     GH.retrieveDiff(installationId, context, owner, repoName),
     GH.retrieveFile(installationId, context, owner, repoName),
-    GH.setCommitStatus(installationId, context, owner, repoName)
+    GH.setCommitStatus(installationId, context, owner, repoName),
+    GH.getMostCommonAncestor(installationId, context, owner, repoName, baseBranchName)
   );
 
 }
@@ -346,7 +340,6 @@ const analyzeAlreadyOpenPrs =
       const pullRequestId = openPr.id;
       const pullRequestNumber = openPr.number;
       const headCommitId = openPr.head.sha;
-      const baseCommitId = openPr.base.sha;
 
       await analyzeNewPullRequest(
         installationId,
@@ -359,8 +352,7 @@ const analyzeAlreadyOpenPrs =
         baseBranchName,
         pullRequestId,
         pullRequestNumber,
-        headCommitId,
-        baseCommitId
+        headCommitId
       );
 
     })
