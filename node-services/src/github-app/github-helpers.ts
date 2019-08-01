@@ -256,6 +256,96 @@ export const listPullRequestCommits =
 }
 
 
+// @THROWS only `AppError.LogFriendlyGithubAppError` upon failure to find the common ancestor.
+export const getMostRecentCommonAncestor = R.curry(
+  async ( installationId: number
+        , context: Probot.Context
+        , owner: string
+        , repoName: string
+        , branchNameOrCommitId1: string
+        , branchNameOrCommitId2: string
+        ): Promise<string> => {
+
+  const max_per_page = 100;
+  let page = 1;
+
+  const listCommits = async (shaOrCommitId: string) => {
+    return (await context.github.repos.listCommits({
+      owner,
+      repo: repoName,
+      sha: shaOrCommitId,
+      per_page: max_per_page,
+      page
+    })).data;
+  }
+
+  const commitHashmap: { [commitHash: string]: true } = { };
+
+  const checkAndAdd = (sha: string): boolean => {
+    if (commitHashmap[sha]) {
+      return true;
+    }
+
+    commitHashmap[sha] = true;
+    return false;
+  }
+
+  try {
+
+    let commitList1HasCommits = true, commitList2HasCommits = true;
+
+    while (commitList1HasCommits && commitList2HasCommits) {
+
+      const commitList1 = await listCommits(branchNameOrCommitId1);
+      const commitList2 = await listCommits(branchNameOrCommitId2);
+
+      for (let index = 0; index < max_per_page; index++) {
+
+        const commitFromList1 = commitList1[index];
+        const commitFromList2 = commitList2[index];
+
+        if (commitFromList1 === undefined) {
+          commitList1HasCommits = false;
+        } else {
+          if (checkAndAdd(commitFromList1.sha)) { return commitFromList1.sha; }
+        }
+
+        if (commitFromList2 === undefined) {
+          commitList2HasCommits = false;
+        } else {
+          if (checkAndAdd(commitFromList2.sha)) { return commitFromList2.sha; }
+        }
+
+      }
+
+      page++;
+
+    }
+
+    throw "Ran out of commits and was unable to find a common ancestor.";
+
+  } catch (err) {
+
+    const cannotFindAncestorLoggableError: AppError.LogFriendlyGithubAppError = {
+      installationId,
+      name: "cannot-find-ancestor",
+      isSevere: false,
+      stack: AppError.getStack(),
+      data: {
+        err,
+        owner,
+        repoName,
+        branchNameOrCommitId1,
+        branchNameOrCommitId2
+      }
+    };
+
+    throw cannotFindAncestorLoggableError;
+  }
+
+});
+
+
 export interface RepoIdAndName {
   repoId: number;
   repoName: string;

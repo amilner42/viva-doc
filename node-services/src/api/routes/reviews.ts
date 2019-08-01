@@ -29,15 +29,12 @@ expressRouter.get('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId'
 
     const pullRequestReviewObject = await Verify.getPullRequestReviewObject(repoId, pullRequestNumber);
 
-    const pendingHeadCommitIds =
-      R.map((pendingCommit) => pendingCommit.head, pullRequestReviewObject.pendingAnalysisForCommits);
-
-    if (R.contains(commitId, pendingHeadCommitIds)) {
+    if (R.contains(commitId, pullRequestReviewObject.pendingAnalysisForCommits)) {
       return res.json(
         {
           responseTag: "pending",
           headCommitId: pullRequestReviewObject.headCommitId,
-          forCommits: pendingHeadCommitIds
+          forCommits: pullRequestReviewObject.pendingAnalysisForCommits
         }
       );
     }
