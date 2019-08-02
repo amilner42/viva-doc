@@ -31,15 +31,18 @@ init session =
 
 view : Model -> { title : String, content : Html Msg }
 view model =
-    { title = "Home"
-    , content =
-        case model.session of
-            Session.LoggedIn _ viewer ->
+    case model.session of
+        Session.LoggedIn _ viewer ->
+            { title = "Home"
+            , content =
                 renderLoggedInHomePage { viewer = viewer }
+            }
 
-            Session.Guest _ ->
+        Session.Guest _ ->
+            { title = "Welcome"
+            , content =
                 renderLandingPage
-    }
+            }
 
 
 renderLoggedInHomePage : { viewer : Viewer.Viewer } -> Html Msg

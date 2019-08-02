@@ -3,9 +3,13 @@ module Route exposing (Route(..), fromUrl, href, replaceUrl, routeToString)
 {-| A type to represent possible routes with helper functions.
 -}
 
+-- import Html.Events exposing (on)
+
 import Browser.Navigation as Nav
 import Html exposing (..)
 import Html.Attributes as Attr
+import Html.Events as Events
+import Json.Decode as Decode
 import Url exposing (Url)
 import Url.Parser as Parser exposing ((</>), (<?>), Parser, int, oneOf, s, string)
 import Url.Parser.Query as Query
@@ -27,6 +31,7 @@ type Route
     | OAuthRedirect (Maybe String)
       -- Repo number / prNumber / commit hash
     | CommitReview Int Int String
+    | Documentation
 
 
 parser : Parser (Route -> a) a
@@ -35,6 +40,7 @@ parser =
         [ Parser.map Home Parser.top
         , Parser.map OAuthRedirect (s "oauth_redirect" <?> Query.string "code")
         , Parser.map CommitReview (s "review" </> s "repo" </> int </> s "pr" </> int </> s "commit" </> string)
+        , Parser.map Documentation (s "documentation")
         ]
 
 
@@ -74,6 +80,9 @@ routeToString page =
 
                 CommitReview repoId prNumber commitId ->
                     [ "review", "repo", String.fromInt repoId, "pr", String.fromInt prNumber, "commit", commitId ]
+
+                Documentation ->
+                    [ "documentation" ]
 
                 -- Certain routes shouldn't be accessed directly
                 _ ->

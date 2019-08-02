@@ -1,4 +1,4 @@
-module Page exposing (viewWithHeader)
+module Page exposing (DisplayHeroOption(..), HighlightableTab(..), viewWithHeader)
 
 {-| This allows you to insert a page under a common header. The header is usually a navbar but not always.
 -}
@@ -14,8 +14,13 @@ import Session exposing (Session)
 import Viewer exposing (Viewer)
 
 
+type DisplayHeroOption
+    = NoHero
+    | LandingHero
+
+
 type alias RenderHeaderConfig msg =
-    { showLandingPageHero : Bool
+    { showHero : DisplayHeroOption
     , renderNavbarConfig : RenderNavbarConfig msg
     }
 
@@ -28,17 +33,24 @@ viewWithHeader :
     -> { title : String, content : Html pageMsg }
     -> (pageMsg -> msg)
     -> Document msg
-viewWithHeader { showLandingPageHero, renderNavbarConfig } maybeViewer { title, content } toMsg =
+viewWithHeader { showHero, renderNavbarConfig } maybeViewer { title, content } toMsg =
     { title = title
     , body =
-        [ if showLandingPageHero then
-            renderHero <| renderNavbar renderNavbarConfig maybeViewer
+        [ case showHero of
+            NoHero ->
+                renderNavbar renderNavbarConfig maybeViewer
 
-          else
-            renderNavbar renderNavbarConfig maybeViewer
+            LandingHero ->
+                renderLandingHero <| renderNavbar renderNavbarConfig maybeViewer
         , Html.map toMsg content
         ]
     }
+
+
+type HighlightableTab
+    = NoTab
+    | HomeTab
+    | DocumentationTab
 
 
 type alias RenderNavbarConfig msg =
@@ -49,11 +61,12 @@ type alias RenderNavbarConfig msg =
     , isLoggingIn : Bool
     , isLoggingOut : Bool
     , showHomeButton : Bool
+    , selectedTab : HighlightableTab
     }
 
 
-renderHero : Html msg -> Html msg
-renderHero navbar =
+renderLandingHero : Html msg -> Html msg
+renderLandingHero navbar =
     section
         [ class "hero is-medium is-primary is-bold" ]
         [ navbar
@@ -86,7 +99,7 @@ Will have log-in/sign-up or logout buttons according to whether there is a `View
 
 -}
 renderNavbar : RenderNavbarConfig msg -> Maybe Viewer -> Html msg
-renderNavbar { mobileNavbarOpen, toggleMobileNavbar, logout, loginWithGithub, isLoggingIn, isLoggingOut, showHomeButton } maybeViewer =
+renderNavbar config maybeViewer =
     nav [ class "navbar is-primary" ]
         [ div
             [ class "navbar-brand" ]
@@ -96,26 +109,36 @@ renderNavbar { mobileNavbarOpen, toggleMobileNavbar, logout, loginWithGithub, is
             , div
                 [ classList
                     [ ( "navbar-burger burger has-text-spark-bright", True )
-                    , ( "is-active", mobileNavbarOpen )
+                    , ( "is-active", config.mobileNavbarOpen )
                     ]
-                , onClick toggleMobileNavbar
+                , onClick config.toggleMobileNavbar
                 ]
                 [ span [] [], span [] [], span [] [] ]
             ]
         , div
             [ classList
                 [ ( "navbar-menu", True )
-                , ( "is-active", mobileNavbarOpen )
+                , ( "is-active", config.mobileNavbarOpen )
                 ]
             ]
             [ div
                 [ classList
                     [ ( "navbar-start", True )
-                    , ( "is-hidden", not showHomeButton )
+                    , ( "is-hidden", not config.showHomeButton )
                     ]
                 ]
                 [ a
-                    [ class "navbar-item"
+                    [ classList
+                        [ ( "navbar-item", True )
+                        , ( "is-border-bottom-underlined"
+                          , case config.selectedTab of
+                                HomeTab ->
+                                    True
+
+                                _ ->
+                                    False
+                          )
+                        ]
                     , Route.href Route.Home
                     ]
                     [ text "Home" ]
@@ -123,17 +146,29 @@ renderNavbar { mobileNavbarOpen, toggleMobileNavbar, logout, loginWithGithub, is
             , div
                 [ class "navbar-end" ]
                 [ a
-                    [ class "navbar-item" ]
-                    [ text "Documentation" ]
+                    [ classList
+                        [ ( "navbar-item", True )
+                        , ( "is-border-bottom-underlined"
+                          , case config.selectedTab of
+                                DocumentationTab ->
+                                    True
+
+                                _ ->
+                                    False
+                          )
+                        ]
+                    , Route.href <| Route.Documentation
+                    ]
+                    [ text "Docs" ]
                 , div [ class "navbar-item" ]
                     (case maybeViewer of
                         Nothing ->
                             [ a
                                 [ classList
                                     [ ( "button is-vd-box-link is-medium", True )
-                                    , ( "is-loading", isLoggingIn )
+                                    , ( "is-loading", config.isLoggingIn )
                                     ]
-                                , onClick loginWithGithub
+                                , onClick config.loginWithGithub
                                 ]
                                 [ text "Sign in with github" ]
                             ]
@@ -141,10 +176,10 @@ renderNavbar { mobileNavbarOpen, toggleMobileNavbar, logout, loginWithGithub, is
                         Just viewer ->
                             [ a
                                 [ classList
-                                    [ ( "button is-inverted", True )
-                                    , ( "is-loading", isLoggingOut )
+                                    [ ( "button is-vd-box-link is-medium", True )
+                                    , ( "is-loading", config.isLoggingOut )
                                     ]
-                                , onClick logout
+                                , onClick config.logout
                                 ]
                                 [ text "Log out" ]
                             ]

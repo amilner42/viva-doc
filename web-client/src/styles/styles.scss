@@ -32,16 +32,20 @@ $vd-spark-dark: #45A29E;
     }
 }
 
+.is-border-bottom-underlined {
+  border-bottom: 3px solid $vd-spark-dark !important;
+}
+
 .is-vd-hero-title {
     // font-size: 110px !important;
     color: $vd-spark-bright !important;
 }
 
 .is-vd-box-link {
-    border-radius: 1px !important;
-    background-color: $vd-base-dark !important;
-    border: 0.5px $vd-spark-bright solid !important;
-    color: white !important;
+    border-radius: 0px !important;
+    background-color: $vd-base-medium !important;
+    border: 0.5px $vd-spark-dark solid !important;
+    color: $vd-spark-bright !important;
 }
 
 .has-text-vd-base-light {
@@ -64,7 +68,7 @@ $vd-spark-dark: #45A29E;
 /** External CSS */
 
 // Bulma variables
-$primary: $vd-base-dark;
+$primary: $vd-base-medium;
 $link: $vd-spark-dark;
 $family-primary: 'Raleway', sans-serif;
 

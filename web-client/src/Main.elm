@@ -17,6 +17,7 @@ import LocalStorage
 import Page
 import Page.Blank as Blank
 import Page.CommitReview as CommitReview
+import Page.Documentation as Documentation
 import Page.Home as Home
 import Page.NotFound as NotFound
 import Page.OAuthRedirect as OAuthRedirect
@@ -45,6 +46,7 @@ type PageModel
     | Home Home.Model
     | OAuthRedirect OAuthRedirect.Model
     | CommitReview CommitReview.Model
+    | Documentation Session
 
 
 {-| On init we have 2 cases:
@@ -87,11 +89,11 @@ view model =
         viewer =
             Session.getViewer (toSession model)
 
-        viewPageWithNavbar { showHomeButton, showLandingPageHero } toMsg pageView =
+        viewPageWithNavbar { showHomeButton, showHero, selectedTab } toMsg pageView =
             let
                 { title, body } =
                     Page.viewWithHeader
-                        { showLandingPageHero = showLandingPageHero
+                        { showHero = showHero
                         , renderNavbarConfig =
                             { mobileNavbarOpen = model.mobileNavbarOpen
                             , toggleMobileNavbar = ToggledMobileNavbar
@@ -100,6 +102,7 @@ view model =
                             , isLoggingIn = model.isLoggingIn
                             , isLoggingOut = model.isLoggingOut
                             , showHomeButton = showHomeButton
+                            , selectedTab = selectedTab
                             }
                         }
                         viewer
@@ -113,13 +116,13 @@ view model =
     case model.pageModel of
         Redirect _ ->
             viewPageWithNavbar
-                { showHomeButton = False, showLandingPageHero = False }
+                { showHomeButton = False, showHero = Page.NoHero, selectedTab = Page.NoTab }
                 (\_ -> Ignored)
                 Blank.view
 
         NotFound _ ->
             viewPageWithNavbar
-                { showHomeButton = True, showLandingPageHero = False }
+                { showHomeButton = True, showHero = Page.NoHero, selectedTab = Page.NoTab }
                 (\_ -> Ignored)
                 NotFound.view
 
@@ -127,25 +130,31 @@ view model =
             viewPageWithNavbar
                 (case viewer of
                     Nothing ->
-                        { showHomeButton = False, showLandingPageHero = True }
+                        { showHomeButton = False, showHero = Page.LandingHero, selectedTab = Page.NoTab }
 
                     Just _ ->
-                        { showHomeButton = True, showLandingPageHero = False }
+                        { showHomeButton = True, showHero = Page.NoHero, selectedTab = Page.HomeTab }
                 )
                 GotHomeMsg
                 (Home.view homeModel)
 
         OAuthRedirect oauthRedirect ->
             viewPageWithNavbar
-                { showHomeButton = False, showLandingPageHero = False }
+                { showHomeButton = False, showHero = Page.NoHero, selectedTab = Page.NoTab }
                 GotOAuthRedirectMsg
                 (OAuthRedirect.view oauthRedirect)
 
         CommitReview commitReviewModel ->
             viewPageWithNavbar
-                { showHomeButton = True, showLandingPageHero = False }
+                { showHomeButton = True, showHero = Page.NoHero, selectedTab = Page.NoTab }
                 GotCommitReviewMsg
                 (CommitReview.view commitReviewModel)
+
+        Documentation _ ->
+            viewPageWithNavbar
+                { showHomeButton = True, showHero = Page.NoHero, selectedTab = Page.DocumentationTab }
+                (always Ignored)
+                Documentation.view
 
 
 
@@ -185,6 +194,9 @@ toSession { pageModel } =
         CommitReview commitReviewModel ->
             CommitReview.toSession commitReviewModel
 
+        Documentation session ->
+            session
+
 
 changeRouteTo : Maybe Route -> Model -> ( Model, Cmd Msg )
 changeRouteTo maybeRoute model =
@@ -220,6 +232,14 @@ changeRouteTo maybeRoute model =
         Just (Route.CommitReview repoId prNumber commitId) ->
             CommitReview.init session repoId prNumber commitId
                 |> updatePageModel CommitReview GotCommitReviewMsg model
+
+        Just Route.Documentation ->
+            ( { model
+                | mobileNavbarOpen = False
+                , pageModel = Documentation session
+              }
+            , Cmd.none
+            )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -286,6 +306,9 @@ update msg model =
                         Cmd.none
 
                     OAuthRedirect _ ->
+                        Cmd.none
+
+                    Documentation _ ->
                         Cmd.none
                 , Nav.load <| Github.oAuthSignInLink Github.oauthClientId
                 ]
@@ -394,6 +417,9 @@ subscriptions model =
 
             CommitReview commitReviewModel ->
                 Sub.map GotCommitReviewMsg <| CommitReview.subscriptions commitReviewModel
+
+            Documentation _ ->
+                Sub.none
         ]
 
 
