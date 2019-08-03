@@ -154,7 +154,7 @@ view model =
             viewPageWithNavbar
                 { showHomeButton = True, showHero = Page.NoHero, selectedTab = Page.DocumentationTab }
                 (always Ignored)
-                Documentation.view
+                (Documentation.view viewer)
 
 
 
@@ -308,8 +308,11 @@ update msg model =
                     OAuthRedirect _ ->
                         Cmd.none
 
-                    Documentation _ ->
-                        Cmd.none
+                    Documentation session ->
+                        LocalStorage.saveModel
+                            { relativeUrl =
+                                Route.Documentation |> Route.routeToString
+                            }
                 , Nav.load <| Github.oAuthSignInLink Github.oauthClientId
                 ]
             )

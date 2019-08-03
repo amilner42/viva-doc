@@ -56,12 +56,20 @@ $vd-spark-dark: #45A29E;
     color: $vd-base-medium;
 }
 
-.has-text-spark-bright {
+.has-text-vd-base-dark {
+  color: $vd-base-dark;
+}
+
+.has-text-vd-spark-bright {
     color: $vd-spark-bright !important;
 }
 
-.has-text-spark-dark {
+.has-text-vd-spark-dark {
     color: $vd-spark-dark !important;
+}
+
+.vd-regular-text {
+  color: hsl(0, 0%, 29%) !important;
 }
 
 

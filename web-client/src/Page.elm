@@ -108,7 +108,7 @@ renderNavbar config maybeViewer =
                 [ img [ Asset.src Asset.githubLogo ] [] ]
             , div
                 [ classList
-                    [ ( "navbar-burger burger has-text-spark-bright", True )
+                    [ ( "navbar-burger burger has-text-vd-spark-bright", True )
                     , ( "is-active", config.mobileNavbarOpen )
                     ]
                 , onClick config.toggleMobileNavbar
@@ -159,7 +159,7 @@ renderNavbar config maybeViewer =
                         ]
                     , Route.href <| Route.Documentation
                     ]
-                    [ text "Docs" ]
+                    [ text "Getting Started" ]
                 , div [ class "navbar-item" ]
                     (case maybeViewer of
                         Nothing ->
