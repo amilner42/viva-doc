@@ -1,4 +1,4 @@
-module Api.Core exposing (FormError(..), HttpError(..), Repo, Repos, Username, delete, expectJson, expectJsonWithUserAndRepos, get, getFormErrors, getRepoFullName, getRepoId, getRepoPrivateStatus, getRepos, getUsername, post, put)
+module Api.Core exposing (FormError(..), HttpError(..), Repo, Repos, Username, delete, expectJson, expectJsonWithUserAndRepos, get, getFormErrors, getRepoAppInstalledStatus, getRepoFullName, getRepoId, getRepoPrivateStatus, getRepos, getUsername, post, put)
 
 {-| This module provides a few core API-related responsibilities:
 
@@ -41,7 +41,7 @@ type Repos
 {-| Keep this private so the only way to create this is on an HttpRequest.
 -}
 type Repo
-    = Repo Int String Bool -- id, full_name, is_private
+    = Repo Int String Bool Bool -- id, full_name, is_private, appInstalled
 
 
 getUsername : Username -> String
@@ -55,18 +55,23 @@ getRepos (Repos repos) =
 
 
 getRepoFullName : Repo -> String
-getRepoFullName (Repo _ fullName _) =
+getRepoFullName (Repo _ fullName _ _) =
     fullName
 
 
 getRepoId : Repo -> Int
-getRepoId (Repo repoId _ _) =
+getRepoId (Repo repoId _ _ _) =
     repoId
 
 
 getRepoPrivateStatus : Repo -> Bool
-getRepoPrivateStatus (Repo _ _ isPrivate) =
+getRepoPrivateStatus (Repo _ _ isPrivate _) =
     isPrivate
+
+
+getRepoAppInstalledStatus : Repo -> Bool
+getRepoAppInstalledStatus (Repo _ _ _ appInstalled) =
+    appInstalled
 
 
 {-| Keep this private so the only way to get `Username` and `Repos` is through the http request.
@@ -90,10 +95,11 @@ decodeUsernameReposAnd decoder =
 
 decodeRepo : Decode.Decoder Repo
 decodeRepo =
-    Decode.map3 Repo
+    Decode.map4 Repo
         (Decode.field "id" Decode.int)
         (Decode.field "full_name" Decode.string)
         (Decode.field "private" Decode.bool)
+        (Decode.field "appInstalled" Decode.bool)
 
 
 

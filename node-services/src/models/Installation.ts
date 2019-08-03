@@ -164,3 +164,22 @@ export const removeReposFromInstallation =
   }
 
 }
+
+
+export const getInstalledRepoMap = async (repoIdList: string[]): Promise<{ [repoId: string]: true | undefined }> => {
+
+  const findInstallations = await InstallationModel.find(
+    { repoIds: { $in: repoIdList } },
+    { repoIds: true }
+  ).exec();
+
+  const result: { [repoId: string]: true | undefined } = { };
+
+  for (let installation of findInstallations) {
+    for (let repoId of installation.toObject().repoIds) {
+      result[repoId] = true;
+    }
+  }
+
+  return result;
+}

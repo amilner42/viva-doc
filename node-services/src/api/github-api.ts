@@ -2,6 +2,7 @@
 
 import * as R from "ramda";
 const Github = require('github-api'); // no types
+import * as Installation from "../models/Installation";
 
 
 export interface BasicUserData {
@@ -14,6 +15,7 @@ export interface BasicRepoInfo {
     id: string;
     full_name: string;
     private: boolean
+    appInstalled: boolean;
 }
 
 
@@ -22,10 +24,19 @@ export const getBasicUserData = async (username: string, token: string): Promise
     const ghApi = new Github({ username: username, token: token });
     const userGhApi = ghApi.getUser();
 
-    const repoResponse = await userGhApi.listRepos();
+    const repoResponseData: { id: string, full_name: string, private: boolean }[] = (await userGhApi.listRepos()).data;
+
+    const installedRepoMap = await Installation.getInstalledRepoMap(repoResponseData.map((repo) => repo.id));
 
     const repos: BasicRepoInfo[] =
-        R.map<any, BasicRepoInfo[]>(R.pickAll(["id", "full_name", "private"]), repoResponse.data);
+        R.map((repo) => {
+            return {
+                id: repo.id,
+                full_name: repo.full_name,
+                private: repo.private,
+                appInstalled: installedRepoMap[repo.id] === true
+            };
+        }, repoResponseData);
 
     return { username: username, repos: repos };
 }

@@ -1,5 +1,6 @@
 module Page.Documentation exposing (view)
 
+import Api.Core as Core
 import Bulma
 import Html exposing (Html, dd, div, dl, dt, h1, i, p, section, span, text)
 import Html.Attributes exposing (class, classList, style)
@@ -15,16 +16,23 @@ view viewer =
 
 
 renderDocumentation : Maybe Viewer.Viewer -> Html msg
-renderDocumentation viewer =
+renderDocumentation maybeViewer =
     div
         [ class "container" ]
         [ renderInstallSection <|
-            case viewer of
+            case maybeViewer of
                 Nothing ->
                     NotSignedUp
 
-                Just _ ->
-                    SignedUpWithRepos
+                Just viewer ->
+                    if
+                        Viewer.getRepos viewer
+                            |> List.any Core.getRepoAppInstalledStatus
+                    then
+                        SignedUpWithRepos
+
+                    else
+                        SignedUpWithNoRepos
         , renderBasicUsageSection
         ]
 
