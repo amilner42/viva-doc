@@ -163,7 +163,7 @@ renderNavbar config maybeViewer =
                 , div [ class "navbar-item" ]
                     (case maybeViewer of
                         Nothing ->
-                            [ a
+                            [ button
                                 [ classList
                                     [ ( "button is-vd-box-link is-medium", True )
                                     , ( "is-loading", config.isLoggingIn )
@@ -174,7 +174,7 @@ renderNavbar config maybeViewer =
                             ]
 
                         Just viewer ->
-                            [ a
+                            [ button
                                 [ classList
                                     [ ( "button is-vd-box-link is-medium", True )
                                     , ( "is-loading", config.isLoggingOut )

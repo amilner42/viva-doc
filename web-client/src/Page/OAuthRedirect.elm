@@ -87,7 +87,7 @@ update msg model =
                         (Session.getNavKey model.session)
                         (Just viewer)
             in
-            ( { model | session = newSession }
+            ( { model | session = newSession, isLoggingIn = False }
             , LocalStorage.loadModel ()
             )
 
