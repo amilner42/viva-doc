@@ -1,4 +1,4 @@
-module Route exposing (Route(..), fromUrl, href, replaceUrl, routeToString)
+module Route exposing (DocumentationTab(..), Route(..), fromUrl, href, replaceUrl, routeToString)
 
 {-| A type to represent possible routes with helper functions.
 -}
@@ -31,7 +31,18 @@ type Route
     | OAuthRedirect (Maybe String)
       -- Repo number / prNumber / commit hash
     | CommitReview Int Int String
-    | Documentation
+    | Documentation DocumentationTab
+
+
+type DocumentationTab
+    = InstallationTab
+    | BasicsTab
+    | OverviewTab
+    | TagsTab
+    | FileTagTab
+    | LineTagTab
+    | BlockTagTab
+    | OwnershipTab
 
 
 parser : Parser (Route -> a) a
@@ -40,7 +51,14 @@ parser =
         [ Parser.map Home Parser.top
         , Parser.map OAuthRedirect (s "oauth_redirect" <?> Query.string "code")
         , Parser.map CommitReview (s "review" </> s "repo" </> int </> s "pr" </> int </> s "commit" </> string)
-        , Parser.map Documentation (s "documentation")
+        , Parser.map (Documentation InstallationTab) (s "documentation" </> s "installation")
+        , Parser.map (Documentation BasicsTab) (s "documentation" </> s "basics")
+        , Parser.map (Documentation OverviewTab) (s "documentation" </> s "overview")
+        , Parser.map (Documentation TagsTab) (s "documentation" </> s "tags")
+        , Parser.map (Documentation FileTagTab) (s "documentation" </> s "tags" </> s "file")
+        , Parser.map (Documentation LineTagTab) (s "documentation" </> s "tags" </> s "line")
+        , Parser.map (Documentation BlockTagTab) (s "documentation" </> s "tags" </> s "block")
+        , Parser.map (Documentation OwnershipTab) (s "documentation" </> s "ownership")
         ]
 
 
@@ -70,6 +88,32 @@ fromUrl =
 routeToString : Route -> String
 routeToString page =
     let
+        docTabToUrlSegments docTab =
+            case docTab of
+                InstallationTab ->
+                    [ "installation" ]
+
+                BasicsTab ->
+                    [ "basics" ]
+
+                OverviewTab ->
+                    [ "overview" ]
+
+                TagsTab ->
+                    [ "tags" ]
+
+                FileTagTab ->
+                    [ "tags", "file" ]
+
+                LineTagTab ->
+                    [ "tags", "line" ]
+
+                BlockTagTab ->
+                    [ "tags", "block" ]
+
+                OwnershipTab ->
+                    [ "ownership" ]
+
         pieces =
             case page of
                 Home ->
@@ -81,8 +125,8 @@ routeToString page =
                 CommitReview repoId prNumber commitId ->
                     [ "review", "repo", String.fromInt repoId, "pr", String.fromInt prNumber, "commit", commitId ]
 
-                Documentation ->
-                    [ "documentation" ]
+                Documentation docTab ->
+                    "documentation" :: docTabToUrlSegments docTab
 
                 -- Certain routes shouldn't be accessed directly
                 _ ->

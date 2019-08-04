@@ -46,7 +46,7 @@ type PageModel
     | Home Home.Model
     | OAuthRedirect OAuthRedirect.Model
     | CommitReview CommitReview.Model
-    | Documentation Session
+    | Documentation Documentation.Model
 
 
 {-| On init we have 2 cases:
@@ -150,11 +150,11 @@ view model =
                 GotCommitReviewMsg
                 (CommitReview.view commitReviewModel)
 
-        Documentation _ ->
+        Documentation documentationModel ->
             viewPageWithNavbar
                 { showHomeButton = True, showHero = Page.NoHero, selectedTab = Page.DocumentationTab }
-                (always Ignored)
-                (Documentation.view viewer)
+                GotDocumentationMsg
+                (Documentation.view documentationModel)
 
 
 
@@ -174,6 +174,7 @@ type Msg
     | GotHomeMsg Home.Msg
     | GotCommitReviewMsg CommitReview.Msg
     | GotOAuthRedirectMsg OAuthRedirect.Msg
+    | GotDocumentationMsg Documentation.Msg
 
 
 toSession : Model -> Session
@@ -194,7 +195,7 @@ toSession { pageModel } =
         CommitReview commitReviewModel ->
             CommitReview.toSession commitReviewModel
 
-        Documentation session ->
+        Documentation { session } ->
             session
 
 
@@ -233,13 +234,9 @@ changeRouteTo maybeRoute model =
             CommitReview.init session repoId prNumber commitId
                 |> updatePageModel CommitReview GotCommitReviewMsg model
 
-        Just Route.Documentation ->
-            ( { model
-                | mobileNavbarOpen = False
-                , pageModel = Documentation session
-              }
-            , Cmd.none
-            )
+        Just (Route.Documentation docTab) ->
+            Documentation.init session docTab
+                |> updatePageModel Documentation GotDocumentationMsg model
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -308,10 +305,10 @@ update msg model =
                     OAuthRedirect _ ->
                         Cmd.none
 
-                    Documentation session ->
+                    Documentation { documentationTab } ->
                         LocalStorage.saveModel
                             { relativeUrl =
-                                Route.Documentation |> Route.routeToString
+                                Route.Documentation documentationTab |> Route.routeToString
                             }
                 , Nav.load <| Github.oAuthSignInLink Github.oauthClientId
                 ]

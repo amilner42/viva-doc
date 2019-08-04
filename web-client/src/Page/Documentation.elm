@@ -1,25 +1,142 @@
-module Page.Documentation exposing (view)
+module Page.Documentation exposing (Model, Msg, init, update, view)
 
 import Api.Core as Core
 import Bulma
-import Html exposing (Html, dd, div, dl, dt, h1, i, p, section, span, text)
+import Html exposing (Html, a, aside, dd, div, dl, dt, h1, i, li, p, section, span, text, ul)
 import Html.Attributes exposing (class, classList, style)
 import Icon
+import Route
+import Session
 import Viewer
 
 
-view : Maybe Viewer.Viewer -> { title : String, content : Html msg }
-view viewer =
-    { title = "Getting Started"
-    , content = renderDocumentation viewer
+type alias Model =
+    { documentationTab : Route.DocumentationTab
+    , session : Session.Session
     }
 
 
-renderDocumentation : Maybe Viewer.Viewer -> Html msg
-renderDocumentation maybeViewer =
+init : Session.Session -> Route.DocumentationTab -> ( Model, Cmd Msg )
+init session documentationTab =
+    ( { documentationTab = documentationTab, session = session }
+    , Cmd.none
+    )
+
+
+view : Model -> { title : String, content : Html msg }
+view model =
+    { title = "Getting Started"
+    , content = renderDocumentation model
+    }
+
+
+renderDocumentation : Model -> Html msg
+renderDocumentation ({ session, documentationTab } as model) =
     div
-        [ class "container" ]
-        [ renderInstallSection <|
+        [ class "columns" ]
+        [ div
+            [ class "column is-one-quarter" ]
+            [ renderSidebar documentationTab ]
+        , div
+            [ class "column is-three-quarters" ]
+            [ section [ class "section" ] [ renderSidebarView model ] ]
+        ]
+
+
+renderSidebar : Route.DocumentationTab -> Html msg
+renderSidebar docTab =
+    let
+        sidebarLink linkText linkToDocTab maybeSubLinks =
+            li
+                []
+                (a
+                    [ if docTab == linkToDocTab then
+                        class "is-active"
+
+                      else
+                        Route.href <| Route.Documentation linkToDocTab
+                    ]
+                    [ text linkText ]
+                    :: (case maybeSubLinks of
+                            Nothing ->
+                                []
+
+                            Just subLinks ->
+                                [ ul [] subLinks ]
+                       )
+                )
+    in
+    div [ class "section" ]
+        [ aside
+            [ class "box menu" ]
+            [ p
+                [ class "menu-label" ]
+                [ text "Getting Started" ]
+            , ul
+                [ class "menu-list" ]
+                [ sidebarLink "installation" Route.InstallationTab Nothing
+                , sidebarLink "basics" Route.BasicsTab Nothing
+                ]
+            , p
+                [ class "menu-label" ]
+                [ text "API Reference" ]
+            , ul
+                [ class "menu-list" ]
+                [ sidebarLink "overview" Route.OverviewTab Nothing
+                , sidebarLink "tags" Route.TagsTab <|
+                    Just
+                        [ sidebarLink "file tag" Route.FileTagTab Nothing
+                        , sidebarLink "line tag" Route.LineTagTab Nothing
+                        , sidebarLink "block tag" Route.BlockTagTab Nothing
+                        ]
+                , sidebarLink "ownership" Route.OwnershipTab Nothing
+                ]
+            ]
+        ]
+
+
+renderSidebarView : Model -> Html msg
+renderSidebarView { session, documentationTab } =
+    let
+        maybeViewer =
+            Session.getViewer session
+    in
+    case documentationTab of
+        Route.InstallationTab ->
+            renderInstallationTabView maybeViewer
+
+        Route.BasicsTab ->
+            renderBasicsTabView
+
+        Route.OverviewTab ->
+            div [] [ text "Page under development..." ]
+
+        Route.TagsTab ->
+            div [] [ text "Page under development..." ]
+
+        Route.FileTagTab ->
+            div [] [ text "Page under development..." ]
+
+        Route.LineTagTab ->
+            div [] [ text "Page under development..." ]
+
+        Route.BlockTagTab ->
+            div [] [ text "Page under development..." ]
+
+        Route.OwnershipTab ->
+            div [] [ text "Page under development..." ]
+
+
+type InstallationStage
+    = NotSignedUp
+    | SignedUpWithNoRepos
+    | SignedUpWithRepos
+
+
+renderInstallationTabView : Maybe Viewer.Viewer -> Html msg
+renderInstallationTabView maybeViewer =
+    let
+        installationStage =
             case maybeViewer of
                 Nothing ->
                     NotSignedUp
@@ -33,19 +150,7 @@ renderDocumentation maybeViewer =
 
                     else
                         SignedUpWithNoRepos
-        , renderBasicUsageSection
-        ]
 
-
-type InstallationStage
-    = NotSignedUp
-    | SignedUpWithNoRepos
-    | SignedUpWithRepos
-
-
-renderInstallSection : InstallationStage -> Html msg
-renderInstallSection installationStage =
-    let
         notSignedUpDt =
             dt
                 []
@@ -136,55 +241,58 @@ renderInstallSection installationStage =
                     }
                 ]
     in
-    section
-        [ class "section" ]
-        [ div
-            [ class "content" ]
-            [ h1
-                [ class "title is-2 has-text-vd-base-dark has-text-weight-light"
-                ]
-                [ text "Installation" ]
-            , div
-                [ class "content" ]
-                [ text "Adding VivaDoc to any GitHub project only takes a few clicks and works completely out of the box." ]
-            , dl [ style "padding-left" "20px" ] <|
-                case installationStage of
-                    NotSignedUp ->
-                        [ notSignedUpDt
-                        , notInstalledOnRepoDt False
-                        ]
-
-                    SignedUpWithNoRepos ->
-                        [ signedUpDt
-                        , notInstalledOnRepoDt True
-                        ]
-
-                    SignedUpWithRepos ->
-                        [ signedUpDt
-                        , installedOnRepoDt
-                        ]
+    div
+        [ class "content" ]
+        [ h1
+            [ class "title is-2 has-text-vd-base-dark has-text-weight-light"
             ]
+            [ text "Installation" ]
+        , div
+            [ class "content" ]
+            [ text "Adding VivaDoc to any GitHub project only takes a few clicks and works completely out of the box." ]
+        , dl [ style "padding-left" "20px" ] <|
+            case installationStage of
+                NotSignedUp ->
+                    [ notSignedUpDt
+                    , notInstalledOnRepoDt False
+                    ]
+
+                SignedUpWithNoRepos ->
+                    [ signedUpDt
+                    , notInstalledOnRepoDt True
+                    ]
+
+                SignedUpWithRepos ->
+                    [ signedUpDt
+                    , installedOnRepoDt
+                    ]
         ]
 
 
-renderBasicUsageSection : Html msg
-renderBasicUsageSection =
-    section
-        [ class "section" ]
-        [ div
-            [ class "content" ]
-            [ h1
-                [ class "title is-2 has-text-vd-base-dark has-text-weight-light"
-                ]
-                [ text "Basic Usage" ]
-            , p
-                [ class "vd-regular-text" ]
-                [ text vdOverviewText ]
-            ]
+renderBasicsTabView : Html msg
+renderBasicsTabView =
+    div
+        [ class "content" ]
+        [ h1
+            [ class "title is-2 has-text-vd-base-dark has-text-weight-light" ]
+            [ text "Basics" ]
+        , p
+            [ class "vd-regular-text" ]
+            [ text vdOverviewText ]
         ]
 
 
 vdOverviewText : String
 vdOverviewText =
-    """Once
-        """
+    """TODO"""
+
+
+type Msg
+    = NoOp
+
+
+update : Msg -> Model -> ( Model, Cmd Msg )
+update msg model =
+    case msg of
+        NoOp ->
+            ( model, Cmd.none )

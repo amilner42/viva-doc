@@ -157,9 +157,9 @@ renderNavbar config maybeViewer =
                                     False
                           )
                         ]
-                    , Route.href <| Route.Documentation
+                    , Route.href <| Route.Documentation Route.InstallationTab
                     ]
-                    [ text "Getting Started" ]
+                    [ text "Docs" ]
                 , div [ class "navbar-item" ]
                     (case maybeViewer of
                         Nothing ->
