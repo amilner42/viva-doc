@@ -326,6 +326,7 @@ update msg model =
             in
             ( { model
                 | mobileNavbarOpen = False
+                , isLoggingIn = False
                 , pageModel = Redirect <| Session.LoggedIn currentNavKey viewer
               }
             , Route.replaceUrl currentNavKey goToRoute
