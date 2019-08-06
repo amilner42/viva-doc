@@ -75,8 +75,8 @@ view model =
             Route.BlockTagTab ->
                 "Block Tags"
 
-            Route.OwnershipTab ->
-                "Ownership"
+            Route.OwnershipGroupsTab ->
+                "Ownership Groups"
     , content = renderDocumentation model
     }
 
@@ -143,7 +143,7 @@ renderSidebar docTab =
                         , sidebarLink "line tag" Route.LineTagTab Nothing
                         , sidebarLink "block tag" Route.BlockTagTab Nothing
                         ]
-                , sidebarLink "ownership" Route.OwnershipTab Nothing
+                , sidebarLink "Ownership Groups" Route.OwnershipGroupsTab Nothing
                 ]
             ]
         ]
@@ -183,7 +183,7 @@ renderSidebarView { session, documentationTab } =
         Route.BlockTagTab ->
             div [] [ text "Page under development..." ]
 
-        Route.OwnershipTab ->
+        Route.OwnershipGroupsTab ->
             div [] [ text "Page under development..." ]
 
 
@@ -672,7 +672,7 @@ renderTagsTabView =
             , span [ class "has-text-weight-semibold" ] [ text "amilner42" ]
             , text """. In addition, it allows ownership groups that allow for more fine-grained control to suit the
             specific needs of your team. You can read about the syntax for ownership groups """
-            , a [ Route.href <| Route.Documentation Route.OwnershipTab ] [ text "here" ]
+            , a [ Route.href <| Route.Documentation Route.OwnershipGroupsTab ] [ text "here" ]
             , text "."
             ]
         , h1

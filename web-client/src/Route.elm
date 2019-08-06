@@ -44,7 +44,7 @@ type DocumentationTab
     | FileTagTab
     | LineTagTab
     | BlockTagTab
-    | OwnershipTab
+    | OwnershipGroupsTab
 
 
 parser : Parser (Route -> a) a
@@ -62,7 +62,7 @@ parser =
         , Parser.map (Documentation FileTagTab) (s "documentation" </> s "tags" </> s "file")
         , Parser.map (Documentation LineTagTab) (s "documentation" </> s "tags" </> s "line")
         , Parser.map (Documentation BlockTagTab) (s "documentation" </> s "tags" </> s "block")
-        , Parser.map (Documentation OwnershipTab) (s "documentation" </> s "ownership")
+        , Parser.map (Documentation OwnershipGroupsTab) (s "documentation" </> s "ownership-groups")
         ]
 
 
@@ -121,8 +121,8 @@ routeToString page =
                 BlockTagTab ->
                     [ "tags", "block" ]
 
-                OwnershipTab ->
-                    [ "ownership" ]
+                OwnershipGroupsTab ->
+                    [ "ownership-groups" ]
 
         pieces =
             case page of
