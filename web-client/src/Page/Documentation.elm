@@ -152,7 +152,7 @@ renderSidebar docTab =
                         , sidebarLink "line tag" Route.LineTagTab Nothing
                         , sidebarLink "block tag" Route.BlockTagTab Nothing
                         ]
-                , sidebarLink "Ownership Groups" Route.OwnershipGroupsTab Nothing
+                , sidebarLink "ownership groups" Route.OwnershipGroupsTab Nothing
                 ]
             ]
         ]
