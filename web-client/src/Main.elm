@@ -355,9 +355,15 @@ update msg model =
             Home.update pageMsg homeModel
                 |> updatePageModel Home GotHomeMsg model
 
+        ( GotHomeMsg _, _ ) ->
+            ( model, Cmd.none )
+
         ( GotCommitReviewMsg pageMsg, CommitReview commitReviewModel ) ->
             CommitReview.update pageMsg commitReviewModel
                 |> updatePageModel CommitReview GotCommitReviewMsg model
+
+        ( GotCommitReviewMsg _, _ ) ->
+            ( model, Cmd.none )
 
         ( GotOAuthRedirectMsg pageMsg, OAuthRedirect oauthRedirectModel ) ->
             let
@@ -370,12 +376,14 @@ update msg model =
                 { model | isLoggingIn = newOauthRedirectModel.isLoggingIn }
                 ( newOauthRedirectModel, newOauthRedirectMsg )
 
+        ( GotOAuthRedirectMsg _, _ ) ->
+            ( model, Cmd.none )
+
         ( GotDocumentationMsg pageMsg, Documentation docModel ) ->
             Documentation.update pageMsg docModel
                 |> updatePageModel Documentation GotDocumentationMsg model
 
-        ( _, _ ) ->
-            -- Disregard messages that arrived for the wrong page.
+        ( GotDocumentationMsg _, _ ) ->
             ( model, Cmd.none )
 
 
