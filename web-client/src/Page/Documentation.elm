@@ -193,7 +193,7 @@ renderDocTabContent { session, documentationTab } =
             renderBlockTagTabView
 
         Route.OwnershipGroupsTab ->
-            div [] [ text "Page under development..." ]
+            renderOwnershipGroupsTabView
 
 
 type InstallationStage
@@ -536,7 +536,7 @@ example1c =
         , language = Language.toString Language.Typescript
         }
     , textAboveEditor = """It may be the case though that you don't want to be the only one directly responsible. If
-    you would like to require approval from multiple users you simply list all users seperated by commas. In the
+    you would like to require approval from multiple users you simply list all users separated by commas. In the
     following case, the tag will require approval from both amilner42 and bderayat."""
     , editorSubText = "Diff highlighted in green."
     , editorHeight = 130
@@ -621,7 +621,7 @@ example1f =
         , language = Language.toString Language.Typescript
         }
     , textAboveEditor = """Luckily VivaDoc would require my review, and upon VivaDoc showing me the diff and the docs
-    it would be rather obvious that the documentation has not been upated properly. I can commit a simple fix preventing
+    it would be rather obvious that the documentation has not been updated properly. I can commit a simple fix preventing
     these docs from frustrating the users consuming our API.
     """
     , editorSubText = "Diff highlighted in red."
@@ -637,7 +637,7 @@ renderSupportedLanguagesTabView =
             [ text "Supported Languages" ]
         , p
             []
-            [ text "VivaDoc is in its early stages and is only able to support the following langauges" ]
+            [ text "VivaDoc is in its early stages and is only able to support the following languages" ]
         , dl
             [ class "has-text-weight-semibold", style "padding-left" "30px" ]
             [ dt [] [ text "C" ]
@@ -649,7 +649,7 @@ renderSupportedLanguagesTabView =
         , p [] [ text "More languages will be supported as VivaDoc continues to grow." ]
         , p
             []
-            [ text """In the meantime, if your repository uses any of the languages listed above you can immedietely get
+            [ text """In the meantime, if your repository uses any of the languages listed above you can immediately get
             started using VivaDoc for files written in those languages. All files in languages that VivaDoc does not
             support will simply be ignored - they will not cause errors."""
             ]
@@ -884,6 +884,66 @@ blockTagEditor1 =
     , editorSubText = "A block tag"
     , editorHeight = 140
     }
+
+
+renderOwnershipGroupsTabView : Html msg
+renderOwnershipGroupsTabView =
+    div [ class "content" ] <|
+        [ h1
+            [ class "title is-2 has-text-vd-base-dark has-text-weight-light" ]
+            [ text "Ownership Groups" ]
+        , p
+            []
+            [ text """The most basic ownership group is a single user, the syntax for that is to just write the github
+            username."""
+            , div
+                [ class "has-text-weight-semibold is-italic", style "margin" "10px 0 0 20px" ]
+                [ text "username" ]
+            ]
+        , p
+            []
+            [ text """If you want to require multiple people to approve documentation, you can do so by writing all the
+            usernames separated by commas. Each comma creates a new ownership group, and approval is always required
+            from every ownership group."""
+            , div
+                [ class "has-text-weight-semibold is-italic", style "margin" "10px 0 0 20px" ]
+                [ text "username1,username2" ]
+            ]
+        , p
+            []
+            [ text """On the other hand, you may require that either one user or another user approve documentation. The
+            syntax for that is to use the unix pipe. This does not create a new ownership group, rather it allows any
+            user in the ownership group to approve the documentation on behalf of the group."""
+            , div
+                [ class "has-text-weight-semibold is-italic", style "margin" "10px 0 0 20px" ]
+                [ text "username1|username2" ]
+            ]
+        , p
+            []
+            [ text """You can of course combine these two operators. The following example requires approval from
+            (username1 or username2) and (username3 or username4). """
+            , div
+                [ class "has-text-weight-semibold is-italic", style "margin" "10px 0 0 20px" ]
+                [ text "username1|username2,username3|username4" ]
+            ]
+        , p
+            []
+            [ text """This last example requires approval from username1 or (username2 and username3). Note that
+            ownership groups do not allow parenthesis so it must be written in its expanded form."""
+            , div
+                [ class "has-text-weight-semibold is-italic", style "margin" "10px 0 0 20px" ]
+                [ text "username1|username2,username1|username3" ]
+            ]
+        , p
+            []
+            [ text """While it is allowed, it is not recommended to create super large ownership groups - this may
+            ruin the benefit of the DRI principle and cause team members to think """
+            , span [ class "has-text-weight-semibold" ] [ text "someone else will maintain it" ]
+            , text """. To avoid this, try to keep groups at a size of 1 - 3 people. Having a single owner is the
+            recommended solution for maintaining critical documentation. Having a single owner also has the benefit
+            of everyone knowing precisely who to talk to if something in the documentation seems incorrect."""
+            ]
+        ]
 
 
 type Msg
