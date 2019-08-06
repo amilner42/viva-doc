@@ -370,6 +370,10 @@ update msg model =
                 { model | isLoggingIn = newOauthRedirectModel.isLoggingIn }
                 ( newOauthRedirectModel, newOauthRedirectMsg )
 
+        ( GotDocumentationMsg pageMsg, Documentation docModel ) ->
+            Documentation.update pageMsg docModel
+                |> updatePageModel Documentation GotDocumentationMsg model
+
         ( _, _ ) ->
             -- Disregard messages that arrived for the wrong page.
             ( model, Cmd.none )

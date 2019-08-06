@@ -22,14 +22,19 @@ type alias Model =
 init : Session.Session -> Route.DocumentationTab -> ( Model, Cmd Msg )
 init session documentationTab =
     ( { documentationTab = documentationTab, session = session }
-    , Ports.renderCodeEditors
-        [ example1a.renderConfig
-        , example1b.renderConfig
-        , example1c.renderConfig
-        , example1d.renderConfig
-        , example1e.renderConfig
-        , example1f.renderConfig
-        ]
+    , case documentationTab of
+        Route.Example1Tab ->
+            Ports.renderCodeEditors
+                [ example1a.renderConfig
+                , example1b.renderConfig
+                , example1c.renderConfig
+                , example1d.renderConfig
+                , example1e.renderConfig
+                , example1f.renderConfig
+                ]
+
+        _ ->
+            Cmd.none
     )
 
 
@@ -463,7 +468,7 @@ renderExample1TabView =
 example1a : RenderCodeEditorColumnsConfig
 example1a =
     { renderConfig =
-        { tagId = "example-1"
+        { tagId = "example-1a"
         , startLineNumber = 200
         , customLineNumbers = Nothing
         , redLineRanges = []
