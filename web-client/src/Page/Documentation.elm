@@ -99,7 +99,7 @@ renderDocumentation ({ session, documentationTab } as model) =
             [ renderSidebar documentationTab ]
         , div
             [ class "column is-three-quarters" ]
-            [ section [ class "section" ] [ renderSidebarView model ] ]
+            [ section [ class "section" ] [ renderDocTabContent model ] ]
         ]
 
 
@@ -158,8 +158,8 @@ renderSidebar docTab =
         ]
 
 
-renderSidebarView : Model -> Html msg
-renderSidebarView { session, documentationTab } =
+renderDocTabContent : Model -> Html msg
+renderDocTabContent { session, documentationTab } =
     let
         maybeViewer =
             Session.getViewer session
