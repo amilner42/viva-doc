@@ -37,9 +37,7 @@ type Route
 type DocumentationTab
     = InstallationTab
     | GettingStartedTab
-    | Example1Tab
-    | Example2Tab
-    | Example3Tab
+    | CodeExample
     | SupportedLanguagesTab
     | OverviewTab
     | TagsTab
@@ -57,9 +55,7 @@ parser =
         , Parser.map CommitReview (s "review" </> s "repo" </> int </> s "pr" </> int </> s "commit" </> string)
         , Parser.map (Documentation InstallationTab) (s "documentation" </> s "installation")
         , Parser.map (Documentation GettingStartedTab) (s "documentation" </> s "getting-started")
-        , Parser.map (Documentation Example1Tab) (s "documentation" </> s "getting-started" </> s "example-1")
-        , Parser.map (Documentation Example2Tab) (s "documentation" </> s "getting-started" </> s "example-2")
-        , Parser.map (Documentation Example3Tab) (s "documentation" </> s "getting-started" </> s "example-3")
+        , Parser.map (Documentation CodeExample) (s "documentation" </> s "getting-started" </> s "code-example")
         , Parser.map (Documentation SupportedLanguagesTab) (s "documentation" </> s "supported-languages")
         , Parser.map (Documentation OverviewTab) (s "documentation" </> s "overview")
         , Parser.map (Documentation TagsTab) (s "documentation" </> s "tags")
@@ -104,14 +100,8 @@ routeToString page =
                 GettingStartedTab ->
                     [ "getting-started" ]
 
-                Example1Tab ->
-                    [ "getting-started", "example-1" ]
-
-                Example2Tab ->
-                    [ "getting-started", "example-2" ]
-
-                Example3Tab ->
-                    [ "getting-started", "example-3" ]
+                CodeExample ->
+                    [ "getting-started", "code-example" ]
 
                 SupportedLanguagesTab ->
                     [ "supported-languages" ]

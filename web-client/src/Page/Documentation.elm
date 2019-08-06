@@ -23,7 +23,7 @@ init : Session.Session -> Route.DocumentationTab -> ( Model, Cmd Msg )
 init session documentationTab =
     ( { documentationTab = documentationTab, session = session }
     , case documentationTab of
-        Route.Example1Tab ->
+        Route.CodeExample ->
             Ports.renderCodeEditors
                 [ example1a.renderConfig
                 , example1b.renderConfig
@@ -48,14 +48,8 @@ view model =
             Route.GettingStartedTab ->
                 "Getting Started"
 
-            Route.Example1Tab ->
-                "Example 1"
-
-            Route.Example2Tab ->
-                "Example 2"
-
-            Route.Example3Tab ->
-                "Example 3"
+            Route.CodeExample ->
+                "Code Example"
 
             Route.SupportedLanguagesTab ->
                 "Supported Languages"
@@ -129,10 +123,7 @@ renderSidebar docTab =
                 , sidebarLink "installation" Route.InstallationTab Nothing
                 , sidebarLink "getting started" Route.GettingStartedTab <|
                     Just
-                        [ sidebarLink "example 1" Route.Example1Tab Nothing
-                        , sidebarLink "example 2" Route.Example2Tab Nothing
-                        , sidebarLink "example 3" Route.Example3Tab Nothing
-                        ]
+                        [ sidebarLink "code example" Route.CodeExample Nothing ]
                 , sidebarLink "supported languages" Route.SupportedLanguagesTab Nothing
                 ]
             , p
@@ -165,14 +156,8 @@ renderSidebarView { session, documentationTab } =
         Route.GettingStartedTab ->
             renderGettingStartedTabView
 
-        Route.Example1Tab ->
-            renderExample1TabView
-
-        Route.Example2Tab ->
-            renderExample2TabView
-
-        Route.Example3Tab ->
-            renderExample3TabView
+        Route.CodeExample ->
+            renderCodeExampleTabView
 
         Route.SupportedLanguagesTab ->
             renderSupportedLanguagesTabView
@@ -447,12 +432,12 @@ renderCodeEditorColumns { renderConfig, textAboveEditor, editorSubText, editorHe
         ]
 
 
-renderExample1TabView : Html msg
-renderExample1TabView =
+renderCodeExampleTabView : Html msg
+renderCodeExampleTabView =
     div [ class "content" ] <|
         [ h1
             [ class "title is-2 has-text-vd-base-dark has-text-weight-light" ]
-            [ text "Example 1" ]
+            [ text "Code Example" ]
         , renderCodeEditorColumns example1a
         , renderCodeEditorColumns example1b
         , renderCodeEditorColumns example1c
@@ -627,24 +612,6 @@ example1f =
     , editorSubText = "Diff highlighted in red."
     , editorHeight = 175
     }
-
-
-renderExample2TabView : Html msg
-renderExample2TabView =
-    div [ class "content" ] <|
-        [ h1
-            [ class "title is-2 has-text-vd-base-dark has-text-weight-light" ]
-            [ text "Example 2" ]
-        ]
-
-
-renderExample3TabView : Html msg
-renderExample3TabView =
-    div [ class "content" ] <|
-        [ h1
-            [ class "title is-2 has-text-vd-base-dark has-text-weight-light" ]
-            [ text "Example 3" ]
-        ]
 
 
 renderSupportedLanguagesTabView : Html msg
