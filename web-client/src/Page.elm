@@ -157,7 +157,7 @@ renderNavbar config maybeViewer =
                                     False
                           )
                         ]
-                    , Route.href <| Route.Documentation Route.InstallationTab
+                    , Route.href <| Route.Documentation Route.OverviewTab
                     ]
                     [ text "Docs" ]
                 , div [ class "navbar-item" ]
