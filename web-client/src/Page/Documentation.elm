@@ -33,6 +33,12 @@ init session documentationTab =
                 , example1f.renderConfig
                 ]
 
+        Route.TagsTab ->
+            Ports.renderCodeEditors
+                [ docTagsCodeEditor1.renderConfig
+                , docTagsCodeEditor2.renderConfig
+                ]
+
         _ ->
             Cmd.none
     )
@@ -166,7 +172,7 @@ renderSidebarView { session, documentationTab } =
             renderOverviewTabView
 
         Route.TagsTab ->
-            div [] [ text "Page under development..." ]
+            renderTagsTabView
 
         Route.FileTagTab ->
             div [] [ text "Page under development..." ]
@@ -639,6 +645,115 @@ renderSupportedLanguagesTabView =
             support will simply be ignored - they will not cause errors."""
             ]
         ]
+
+
+renderTagsTabView : Html msg
+renderTagsTabView =
+    div [ class "content" ] <|
+        [ h1
+            [ class "title is-2 has-text-vd-base-dark has-text-weight-light" ]
+            [ text "Documentation Tags" ]
+        , p
+            []
+            [ text """Documentation tags are the core of VivaDoc. They enable you to monitor the documentation
+            associated to a chunk of code. If the documentation or the code changes, VivaDoc will require the owners
+            to approve it before putting a success status on that commit.""" ]
+        , h1
+            [ class "title is-5 has-text-vd-base-dark has-text-weight-bold" ]
+            [ text "Syntax" ]
+        , renderCodeEditorColumns docTagsCodeEditor1
+        , renderCodeEditorColumns docTagsCodeEditor2
+        , h1
+            [ class "title is-5 has-text-vd-base-dark has-text-weight-bold" ]
+            [ text "Ownership Groups" ]
+        , p
+            [ style "margin-bottom" "40px" ]
+            [ text "VivaDoc permits a single owner for the documentation, such as "
+            , span [ class "has-text-weight-semibold" ] [ text "amilner42" ]
+            , text """. In addition, it allows ownership groups that allow for more fine-grained control to suit the
+            specific needs of your team. You can read about the syntax for ownership groups """
+            , a [ Route.href <| Route.Documentation Route.OwnershipTab ] [ text "here" ]
+            , text "."
+            ]
+        , h1
+            [ class "title is-5 has-text-vd-base-dark has-text-weight-bold" ]
+            [ text "Tag Types" ]
+        , p
+            []
+            [ text "The tag type must be one of "
+            , span [ class "has-text-weight-semibold" ] [ text "file" ]
+            , text ", "
+            , span [ class "has-text-weight-semibold" ] [ text "line" ]
+            , text ", or "
+            , span [ class "has-text-weight-semibold" ] [ text "block" ]
+            , text "."
+            ]
+        , dl
+            [ style "margin" "10px 0 0 20px" ]
+            [ dt
+                []
+                [ a [ Route.href <| Route.Documentation Route.FileTagTab ] [ text "File Tag" ]
+                , dd [] [ text "Associate some documentation to an entire file." ]
+                ]
+            , dt
+                []
+                [ a [ Route.href <| Route.Documentation Route.LineTagTab ] [ text "Line Tag" ]
+                , dd [] [ text "Associate some documentation to the following line." ]
+                ]
+            , dt
+                []
+                [ a [ Route.href <| Route.Documentation Route.BlockTagTab ] [ text "Block Tag" ]
+                , dd [] [ text "Associate some documentation to a specified block of code." ]
+                ]
+            ]
+        ]
+
+
+docTagsCodeEditor1 : RenderCodeEditorColumnsConfig
+docTagsCodeEditor1 =
+    { renderConfig =
+        { tagId = "doc-tags-1"
+        , startLineNumber = 1
+        , customLineNumbers = Nothing
+        , redLineRanges = []
+        , greenLineRanges = []
+        , content =
+            [ "/* some docs"
+            , " * more docs"
+            , " *"
+            , " * @VD <ownership-groups> <tag-type>"
+            , " */"
+            , "... code ..."
+            ]
+        , language = Language.toString Language.Javascript
+        }
+    , textAboveEditor = "VivaDoc documentation tags always use the following syntax."
+    , editorSubText = "multi-line comment"
+    , editorHeight = 110
+    }
+
+
+docTagsCodeEditor2 : RenderCodeEditorColumnsConfig
+docTagsCodeEditor2 =
+    { renderConfig =
+        { tagId = "doc-tags-2"
+        , startLineNumber = 1
+        , customLineNumbers = Nothing
+        , redLineRanges = []
+        , greenLineRanges = []
+        , content =
+            [ "// some docs"
+            , "// more docs"
+            , "// @VD <ownership-groups> <tag-type>"
+            , "... code ..."
+            ]
+        , language = Language.toString Language.Javascript
+        }
+    , textAboveEditor = """VivaDoc will detect and group multiple single line comments that start at the same
+    indentation level into a single doc - use whatever you prefer."""
+    , editorSubText = "grouped single-line comments"
+    , editorHeight = 80
+    }
 
 
 type Msg
