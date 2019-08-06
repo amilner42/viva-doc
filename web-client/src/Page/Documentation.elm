@@ -39,6 +39,15 @@ init session documentationTab =
                 , docTagsCodeEditor2.renderConfig
                 ]
 
+        Route.FileTagTab ->
+            Ports.renderCodeEditors [ fileTagEditor1.renderConfig ]
+
+        Route.LineTagTab ->
+            Ports.renderCodeEditors [ lineTagEditor1.renderConfig ]
+
+        Route.BlockTagTab ->
+            Ports.renderCodeEditors [ blockTagEditor1.renderConfig ]
+
         _ ->
             Cmd.none
     )
@@ -175,13 +184,13 @@ renderSidebarView { session, documentationTab } =
             renderTagsTabView
 
         Route.FileTagTab ->
-            div [] [ text "Page under development..." ]
+            renderFileTagTabView
 
         Route.LineTagTab ->
-            div [] [ text "Page under development..." ]
+            renderLineTagTabView
 
         Route.BlockTagTab ->
-            div [] [ text "Page under development..." ]
+            renderBlockTagTabView
 
         Route.OwnershipGroupsTab ->
             div [] [ text "Page under development..." ]
@@ -753,6 +762,127 @@ docTagsCodeEditor2 =
     indentation level into a single doc - use whatever you prefer."""
     , editorSubText = "grouped single-line comments"
     , editorHeight = 80
+    }
+
+
+renderFileTagTabView : Html msg
+renderFileTagTabView =
+    div [ class "content" ] <|
+        [ h1
+            [ class "title is-2 has-text-vd-base-dark has-text-weight-light" ]
+            [ text "File Tag" ]
+        , renderCodeEditorColumns fileTagEditor1
+        , p
+            []
+            [ text """You should not use the file tag for monitoring specific chunks of code, the block tag is more
+            effective for that situation. The file tag is effective when you have some documentation for the entire
+            package or module at the top of the file and you want to make sure it stays relevant as people upgrade the
+            package or module.""" ]
+        ]
+
+
+fileTagEditor1 : RenderCodeEditorColumnsConfig
+fileTagEditor1 =
+    { renderConfig =
+        { tagId = "file-tag-1"
+        , startLineNumber = 1
+        , customLineNumbers = Nothing
+        , redLineRanges = []
+        , greenLineRanges = []
+        , content =
+            [ "// module docs"
+            , "// module docs"
+            , "// @VD amilner42 file"
+            , ""
+            , "... code ..."
+            , ""
+            , "... code ..."
+            , ""
+            , "... code ..."
+            ]
+        , language = Language.toString Language.Javascript
+        }
+    , textAboveEditor = """A file tag will associate the documentation with everything in the entire file.
+    Any changes made to any parts of the file will require approval."""
+    , editorSubText = "A file tag"
+    , editorHeight = 160
+    }
+
+
+renderLineTagTabView : Html msg
+renderLineTagTabView =
+    div [ class "content" ] <|
+        [ h1
+            [ class "title is-2 has-text-vd-base-dark has-text-weight-light" ]
+            [ text "Line Tag" ]
+        , renderCodeEditorColumns lineTagEditor1
+        ]
+
+
+lineTagEditor1 : RenderCodeEditorColumnsConfig
+lineTagEditor1 =
+    { renderConfig =
+        { tagId = "line-tag-1"
+        , startLineNumber = 100
+        , customLineNumbers = Nothing
+        , redLineRanges = []
+        , greenLineRanges = []
+        , content =
+            [ "... code ..."
+            , ""
+            , "// some docs"
+            , "// @VD amilner42 line"
+            , "export const WEBPACK_INIT_KEY_VAL = ..."
+            , ""
+            , "... code ..."
+            ]
+        , language = Language.toString Language.Typescript
+        }
+    , textAboveEditor = """A line tag will associate the documentation with the following line. Any changes
+    made to the documentation or the following line will require approval."""
+    , editorSubText = "A line tag"
+    , editorHeight = 130
+    }
+
+
+renderBlockTagTabView : Html msg
+renderBlockTagTabView =
+    div [ class "content" ] <|
+        [ h1
+            [ class "title is-2 has-text-vd-base-dark has-text-weight-light" ]
+            [ text "Block Tag" ]
+        , renderCodeEditorColumns blockTagEditor1
+        , p
+            []
+            [ text "The block tag should be the standard way you use VivaDoc to monitor documentation." ]
+        ]
+
+
+blockTagEditor1 : RenderCodeEditorColumnsConfig
+blockTagEditor1 =
+    { renderConfig =
+        { tagId = "block-tag-1"
+        , startLineNumber = 100
+        , customLineNumbers = Nothing
+        , redLineRanges = []
+        , greenLineRanges = []
+        , content =
+            [ "... code ..."
+            , ""
+            , "// some docs"
+            , "// @VD amilner42 block"
+            , "...code..."
+            , "...code..."
+            , "...code..."
+            , "// @VD end-block"
+            ]
+        , language = Language.toString Language.Typescript
+        }
+    , textAboveEditor = """A block tag will associate the documentation with a block of code. Any changes
+    made to the documentation or the block of code will require approval. Unlike the other tags, block tags require
+    an end-block VivaDoc annotation in order to specify the end of the block."""
+    , editorSubText = "A block tag"
+    , editorHeight = 140
     }
 
 
