@@ -1,4 +1,4 @@
-module Asset exposing (Image, src, vdLogo)
+module Asset exposing (Image, src, vdLogo, vdTitle)
 
 {-| Assets, such as images, videos, and audio.
 
@@ -22,6 +22,11 @@ type Image
 vdLogo : Image
 vdLogo =
     image "vd-logo.svg"
+
+
+vdTitle : Image
+vdTitle =
+    image "vd-title.svg"
 
 
 image : String -> Image

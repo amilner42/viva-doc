@@ -74,9 +74,12 @@ renderLandingHero navbar =
             [ class "hero-body" ]
             [ div
                 [ class "container has-text-centered" ]
-                [ h1
-                    [ class "title is-1 is-vd-hero-title" ]
-                    [ text "VivaDoc" ]
+                [ img
+                    [ Asset.src Asset.vdTitle
+                    , style "width" "400px"
+                    , style "height" "100px"
+                    ]
+                    []
                 , p
                     [ class "subtitle is-4 has-text-vd-base-light" ]
                     [ text "Documentation that lives" ]
