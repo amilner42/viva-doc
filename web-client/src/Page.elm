@@ -104,8 +104,18 @@ renderNavbar config maybeViewer =
         [ div
             [ class "navbar-brand" ]
             [ div
-                [ class "navbar-item" ]
-                [ img [ Asset.src Asset.githubLogo ] [] ]
+                [ class "navbar-item"
+                , style "padding" "5px"
+                , style "width" "50px"
+                , style "margin-left" "3px"
+                ]
+                [ img
+                    [ style "height" "45px !important"
+                    , style "max-height" "45px"
+                    , Asset.src Asset.vdLogo
+                    ]
+                    []
+                ]
             , div
                 [ classList
                     [ ( "navbar-burger burger has-text-vd-spark-bright", True )
