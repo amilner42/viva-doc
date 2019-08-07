@@ -4,6 +4,7 @@ module Page.Home exposing (Model, Msg, init, subscriptions, toSession, update, v
 -}
 
 import Api.Core as Core
+import Asset
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
@@ -69,8 +70,54 @@ renderLoggedInHomePage config =
 renderLandingPage : Html Msg
 renderLandingPage =
     div
-        []
-        [ text "TODO" ]
+        [ class "columns is-multiline"
+        , style "height" "100vh"
+        , style "padding-top" "30px"
+        ]
+    <|
+        renderLandingPageIconTextCombo
+            ++ renderLandingPageIconTextCombo
+            ++ renderLandingPageIconTextCombo
+            ++ renderLandingButtons
+
+
+renderLandingPageIconTextCombo : List (Html msg)
+renderLandingPageIconTextCombo =
+    [ div [ class "column is-one-quarter" ] []
+    , div
+        [ class "column is-one-quarter has-text-centered"
+        ]
+        [ img
+            [ Asset.src Asset.vdLandingIcon1, style "height" "200px" ]
+            []
+        ]
+    , div
+        [ class "column is-one-quarter"
+        , style "height" "200px"
+        ]
+        [ div
+            [ class "level level-item"
+            , style "height" "100%"
+            , style "padding" "10px"
+            ]
+            [ text "testing text testing text testing text testing text testing text" ]
+        ]
+    , div [ class "column is-one-quarter" ] []
+    ]
+
+
+renderLandingButtons : List (Html msg)
+renderLandingButtons =
+    [ div [ class "column is-one-quarter" ] []
+    , div
+        [ class "column is-half has-text-centered buttons"
+        , style "margin-top" "20px"
+        ]
+        [ a [ class "button is-large is-light" ] [ text "Read the Docs" ]
+        , button [ class "button is-large is-primary" ] [ text "Sign Up" ]
+        ]
+    , div [ class "column is-one-quarter" ] []
+    ]
 
 
 

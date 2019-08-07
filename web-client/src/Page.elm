@@ -68,7 +68,7 @@ type alias RenderNavbarConfig msg =
 renderLandingHero : Html msg -> Html msg
 renderLandingHero navbar =
     section
-        [ class "hero is-medium is-primary is-bold" ]
+        [ class "hero is-fullheight is-primary is-bold" ]
         [ navbar
         , div
             [ class "hero-body" ]

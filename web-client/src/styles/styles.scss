@@ -42,10 +42,10 @@ $vd-spark-dark: #45A29E;
 }
 
 .is-vd-box-link {
-    border-radius: 0px !important;
+    border-radius: 2px !important;
     background-color: $vd-base-medium !important;
     border: 0.5px $vd-spark-dark solid !important;
-    color: $vd-spark-bright !important;
+    color: $vd-spark-dark !important;
 }
 
 .has-text-vd-base-light {
