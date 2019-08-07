@@ -5,9 +5,12 @@ module Page.Home exposing (Model, Msg, init, subscriptions, toSession, update, v
 
 import Api.Core as Core
 import Asset
+import Browser.Navigation as Nav
+import Github
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
+import Route
 import Session exposing (Session)
 import Viewer
 
@@ -117,15 +120,23 @@ renderLandingPageIconTextCombo config =
     ]
 
 
-renderLandingButtons : List (Html msg)
+renderLandingButtons : List (Html Msg)
 renderLandingButtons =
     [ div [ class "column is-one-quarter" ] []
     , div
         [ class "column is-half has-text-centered buttons"
         , style "margin-top" "20px"
         ]
-        [ a [ class "button is-large is-light" ] [ text "Read the Docs" ]
-        , button [ class "button is-large is-primary" ] [ text "Sign Up" ]
+        [ a
+            [ class "button is-large is-light"
+            , Route.href <| Route.Documentation Route.OverviewTab
+            ]
+            [ text "Read the docs" ]
+        , button
+            [ class "button is-large is-primary"
+            , onClick SignUpWithGithub
+            ]
+            [ text "Sign up with GitHub" ]
         ]
     , div [ class "column is-one-quarter" ] []
     ]
@@ -136,14 +147,16 @@ renderLandingButtons =
 
 
 type Msg
-    = Ignored
+    = SignUpWithGithub
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        Ignored ->
-            ( model, Cmd.none )
+        SignUpWithGithub ->
+            ( model
+            , Nav.load <| Github.oAuthSignInLink Github.oauthClientId
+            )
 
 
 
