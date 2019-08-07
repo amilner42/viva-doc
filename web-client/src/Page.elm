@@ -14,13 +14,13 @@ import Session exposing (Session)
 import Viewer exposing (Viewer)
 
 
-type DisplayHeroOption
+type DisplayHeroOption msg
     = NoHero
-    | LandingHero
+    | LandingHero msg
 
 
 type alias RenderHeaderConfig msg =
-    { showHero : DisplayHeroOption
+    { showHero : DisplayHeroOption msg
     , renderNavbarConfig : RenderNavbarConfig msg
     }
 
@@ -40,8 +40,8 @@ viewWithHeader { showHero, renderNavbarConfig } maybeViewer { title, content } t
             NoHero ->
                 renderNavbar renderNavbarConfig maybeViewer
 
-            LandingHero ->
-                renderLandingHero <| renderNavbar renderNavbarConfig maybeViewer
+            LandingHero scrollMsg ->
+                renderLandingHero scrollMsg <| renderNavbar renderNavbarConfig maybeViewer
         , Html.map toMsg content
         ]
     }
@@ -65,8 +65,8 @@ type alias RenderNavbarConfig msg =
     }
 
 
-renderLandingHero : Html msg -> Html msg
-renderLandingHero navbar =
+renderLandingHero : msg -> Html msg -> Html msg
+renderLandingHero scrollMsg navbar =
     section
         [ class "hero is-fullheight is-primary is-bold" ]
         [ navbar
@@ -87,7 +87,15 @@ renderLandingHero navbar =
             ]
         , div
             [ class "hero-foot" ]
-            [ p
+            [ div
+                [ class "has-text-centered" ]
+                [ button
+                    [ class "button is-primary"
+                    , onClick scrollMsg
+                    ]
+                    [ text "more" ]
+                ]
+            , p
                 [ class "content is-small has-text-right"
                 , style "margin" "0 10px 10px 0"
                 ]

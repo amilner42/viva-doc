@@ -6,7 +6,9 @@ module Main exposing (main)
 import Api.Api as Api
 import Api.Core as Core
 import Browser exposing (Document)
+import Browser.Dom as Dom
 import Browser.Navigation as Nav
+import Ease
 import Github
 import Html exposing (..)
 import Html.Attributes exposing (..)
@@ -24,6 +26,8 @@ import Page.OAuthRedirect as OAuthRedirect
 import Ports
 import Route exposing (Route)
 import Session exposing (Session)
+import SmoothScroll
+import Task
 import Url exposing (Url)
 import Viewer exposing (Viewer)
 
@@ -130,7 +134,10 @@ view model =
             viewPageWithNavbar
                 (case viewer of
                     Nothing ->
-                        { showHomeButton = False, showHero = Page.LandingHero, selectedTab = Page.NoTab }
+                        { showHomeButton = False
+                        , showHero = Page.LandingHero LandingPageScrollDown
+                        , selectedTab = Page.NoTab
+                        }
 
                     Just _ ->
                         { showHomeButton = True, showHero = Page.NoHero, selectedTab = Page.HomeTab }
@@ -175,6 +182,7 @@ type Msg
     | GotCommitReviewMsg CommitReview.Msg
     | GotOAuthRedirectMsg OAuthRedirect.Msg
     | GotDocumentationMsg Documentation.Msg
+    | LandingPageScrollDown
 
 
 toSession : Model -> Session
@@ -350,6 +358,30 @@ update msg model =
         -- TODO
         ( CompletedLogout (Err _), _ ) ->
             ( { model | isLoggingOut = False }, Cmd.none )
+
+        ( LandingPageScrollDown, Home _ ) ->
+            let
+                scrollMilliseconds =
+                    750
+
+                scrollEase =
+                    Ease.inOutSine
+
+                scrollTask =
+                    Dom.getViewport
+                        |> Task.andThen
+                            (\{ viewport } ->
+                                SmoothScroll.scrollTo
+                                    (SmoothScroll.createConfig scrollEase scrollMilliseconds)
+                                    viewport.height
+                            )
+            in
+            ( model
+            , Task.perform (always Ignored) scrollTask
+            )
+
+        ( LandingPageScrollDown, _ ) ->
+            ( model, Cmd.none )
 
         ( GotHomeMsg pageMsg, Home homeModel ) ->
             Home.update pageMsg homeModel
