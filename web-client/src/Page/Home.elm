@@ -76,31 +76,42 @@ renderLandingPage =
         ]
     <|
         renderLandingPageIconTextCombo
+            { text = "In a single line tell VivaDoc to monitor critical documentation."
+            , image = Asset.vdLandingIcon1
+            }
             ++ renderLandingPageIconTextCombo
+                { text = "Sit back as VivaDoc keenly monitors all of your critical documentation."
+                , image = Asset.vdLandingIcon2
+                }
             ++ renderLandingPageIconTextCombo
+                { text = "Review critical documentation VivaDoc alerts you about before it makes it into production."
+                , image = Asset.vdLandingIcon3
+                }
             ++ renderLandingButtons
 
 
-renderLandingPageIconTextCombo : List (Html msg)
-renderLandingPageIconTextCombo =
+type alias RenderLandingPageIconTextComboConfig =
+    { text : String
+    , image : Asset.Image
+    }
+
+
+renderLandingPageIconTextCombo : RenderLandingPageIconTextComboConfig -> List (Html msg)
+renderLandingPageIconTextCombo config =
     [ div [ class "column is-one-quarter" ] []
     , div
-        [ class "column is-one-quarter has-text-centered"
-        ]
-        [ img
-            [ Asset.src Asset.vdLandingIcon1, style "height" "200px" ]
-            []
-        ]
+        [ class "column is-one-quarter has-text-centered" ]
+        [ img [ Asset.src config.image, style "height" "190px" ] [] ]
     , div
         [ class "column is-one-quarter"
-        , style "height" "200px"
+        , style "height" "190px"
         ]
         [ div
             [ class "level level-item"
             , style "height" "100%"
             , style "padding" "10px"
             ]
-            [ text "testing text testing text testing text testing text testing text" ]
+            [ text config.text ]
         ]
     , div [ class "column is-one-quarter" ] []
     ]
