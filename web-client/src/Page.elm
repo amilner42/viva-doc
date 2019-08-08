@@ -89,11 +89,17 @@ renderLandingHero scrollMsg navbar =
             [ class "hero-foot" ]
             [ div
                 [ class "has-text-centered" ]
-                [ button
-                    [ class "button is-primary"
+                [ span
+                    [ class "icon is-large"
+                    , style "cursor" "pointer"
                     , onClick scrollMsg
                     ]
-                    [ text "more" ]
+                    [ i
+                        [ class "material-icons has-text-vd-spark-dark"
+                        , style "font-size" "48px"
+                        ]
+                        [ text "expand_more" ]
+                    ]
                 ]
             , p
                 [ class "content is-small has-text-right"

@@ -130,11 +130,13 @@ renderLandingButtons =
         [ a
             [ class "button is-large is-light"
             , Route.href <| Route.Documentation Route.OverviewTab
+            , style "min-width" "45%"
             ]
             [ text "Read the docs" ]
         , button
             [ class "button is-large is-primary"
             , onClick SignUpWithGithub
+            , style "min-width" "45%"
             ]
             [ text "Sign up with GitHub" ]
         ]
