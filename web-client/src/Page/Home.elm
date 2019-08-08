@@ -36,10 +36,10 @@ init session =
 view : Model -> { title : String, content : Html Msg }
 view model =
     case model.session of
-        Session.LoggedIn _ viewer ->
+        Session.LoggedIn navKey viewer ->
             { title = "Home"
             , content =
-                renderLoggedInHomePage { viewer = viewer }
+                renderLoggedInHomePage { viewer = viewer, navKey = navKey }
             }
 
         Session.Guest _ ->
@@ -49,24 +49,80 @@ view model =
             }
 
 
-renderLoggedInHomePage : { viewer : Viewer.Viewer } -> Html Msg
+renderLoggedInHomePage : { viewer : Viewer.Viewer, navKey : Nav.Key } -> Html Msg
 renderLoggedInHomePage config =
+    case (Viewer.getRepos >> Core.getInstalledRepos) config.viewer of
+        [] ->
+            renderNoRepoPage
+
+        installedRepos ->
+            renderHasReposPage config.navKey installedRepos
+
+
+renderNoRepoPage : Html Msg
+renderNoRepoPage =
     section
         [ class "section is-medium" ]
         [ div
             [ class "container" ]
             [ div
-                [ class "columns is-centered" ]
-                [ div [ class "column is-half" ] <|
+                [ class "columns is-centered is-vcentered" ]
+                [ div
+                    [ class "column is-half" ]
                     [ h1
-                        [ class "title has-text-centered" ]
-                        [ text <| Viewer.getUsername config.viewer ]
+                        [ class "title is-1 has-text-centered" ]
+                        [ text <| "Welcome to VivaDoc" ]
+                    , div
+                        [ class "content" ]
+                        [ p
+                            [ class "has-vd-regular-text has-text-centered" ]
+                            [ text """You are one step away from better documentation.""" ]
+                        , div
+                            [ class "buttons is-centered" ]
+                            [ a
+                                [ class "button is-primary is-medium"
+                                , style "width" "375px"
+                                , href Github.installAppOnRepositoriesLink
+                                ]
+                                [ text "install on select repositories" ]
+                            ]
+                        ]
                     ]
-                        ++ List.map
-                            (\repo -> p [] [ text <| Core.getRepoFullName repo ])
-                            (Viewer.getRepos config.viewer)
                 ]
             ]
+        ]
+
+
+renderHasReposPage : Nav.Key -> List Core.Repo -> Html.Html Msg
+renderHasReposPage navKey installedRepos =
+    div
+        [ class "section has-text-centered" ]
+        [ h1
+            [ class "title is-4" ]
+            [ text "Monitored Repositories" ]
+        , dl [] <|
+            List.map (renderInstalledRepoLink navKey) installedRepos
+        , div
+            [ class "buttons is-centered"
+            , style "margin-top" "20px"
+            ]
+            [ a
+                [ class "button is-primary is-medium"
+                , style "width" "375px"
+                , href Github.installAppOnRepositoriesLink
+                ]
+                [ text "add or remove repositories" ]
+            ]
+        ]
+
+
+renderInstalledRepoLink : Nav.Key -> Core.Repo -> Html.Html Msg
+renderInstalledRepoLink navKey repo =
+    dd
+        []
+        [ a
+            [ Route.href <| Route.Repo <| Core.getRepoId repo ]
+            [ text <| Core.getRepoFullName repo ]
         ]
 
 

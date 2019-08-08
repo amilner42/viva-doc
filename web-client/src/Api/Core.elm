@@ -1,4 +1,4 @@
-module Api.Core exposing (FormError(..), HttpError(..), Repo, Repos, Username, delete, expectJson, expectJsonWithUserAndRepos, get, getFormErrors, getRepoAppInstalledStatus, getRepoFullName, getRepoId, getRepoPrivateStatus, getRepos, getUsername, post, put)
+module Api.Core exposing (FormError(..), HttpError(..), Repo, Repos, Username, delete, expectJson, expectJsonWithUserAndRepos, get, getFormErrors, getInstalledRepos, getRepoAppInstalledStatus, getRepoFullName, getRepoId, getRepoPrivateStatus, getRepos, getUsername, post, put)
 
 {-| This module provides a few core API-related responsibilities:
 
@@ -52,6 +52,11 @@ getUsername (Username username) =
 getRepos : Repos -> List Repo
 getRepos (Repos repos) =
     repos
+
+
+getInstalledRepos : List Repo -> List Repo
+getInstalledRepos =
+    List.filter getRepoAppInstalledStatus
 
 
 getRepoFullName : Repo -> String

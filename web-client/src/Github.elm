@@ -1,4 +1,4 @@
-module Github exposing (oAuthSignInLink, oauthClientId)
+module Github exposing (installAppOnRepositoriesLink, oAuthSignInLink, oauthClientId)
 
 {-| A module for all things relating to Github.
 -}
@@ -24,6 +24,14 @@ oAuthSignInLink clientID =
 oauthClientId : String
 oauthClientId =
     "d887c8b5dea7b99a76af"
+
+
+installAppOnRepositoriesLink : String
+installAppOnRepositoriesLink =
+    UB.crossOrigin
+        githubURL
+        [ "apps", "vivadoc" ]
+        []
 
 
 
