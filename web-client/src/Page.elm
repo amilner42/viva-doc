@@ -1,39 +1,113 @@
-module Page exposing (view)
+module Page exposing (DisplayHeroOption(..), HighlightableTab(..), viewWithHeader)
 
-{-| This allows you to insert a page, providing the navbar outline common to all pages.
+{-| This allows you to insert a page under a common header. The header is usually a navbar but not always.
 -}
 
 import Asset
 import Browser exposing (Document)
 import Github
-import Html exposing (Html, a, button, div, i, img, li, nav, p, span, strong, text, ul)
-import Html.Attributes exposing (class, classList, href)
+import Html exposing (Html, a, button, div, h1, i, img, li, nav, p, section, span, strong, text, ul)
+import Html.Attributes exposing (class, classList, href, style)
 import Html.Events exposing (onClick)
 import Route exposing (Route)
 import Session exposing (Session)
 import Viewer exposing (Viewer)
 
 
-{-| Take a page's Html and frames it with a navbar.
+type DisplayHeroOption msg
+    = NoHero
+    | LandingHero msg
+
+
+type alias RenderHeaderConfig msg =
+    { showHero : DisplayHeroOption msg
+    , renderNavbarConfig : RenderNavbarConfig msg
+    }
+
+
+{-| Frame a page under a header.
 -}
-view :
+viewWithHeader :
+    RenderHeaderConfig msg
+    -> Maybe Viewer
+    -> { title : String, content : Html pageMsg }
+    -> (pageMsg -> msg)
+    -> Document msg
+viewWithHeader { showHero, renderNavbarConfig } maybeViewer { title, content } toMsg =
+    { title = title
+    , body =
+        [ case showHero of
+            NoHero ->
+                renderNavbar renderNavbarConfig maybeViewer
+
+            LandingHero scrollMsg ->
+                renderLandingHero scrollMsg <| renderNavbar renderNavbarConfig maybeViewer
+        , Html.map toMsg content
+        ]
+    }
+
+
+type HighlightableTab
+    = NoTab
+    | HomeTab
+    | DocumentationTab
+
+
+type alias RenderNavbarConfig msg =
     { mobileNavbarOpen : Bool
     , toggleMobileNavbar : msg
     , logout : msg
     , loginWithGithub : msg
     , isLoggingIn : Bool
     , isLoggingOut : Bool
+    , showHomeButton : Bool
+    , selectedTab : HighlightableTab
     }
-    -> Maybe Viewer
-    -> { title : String, content : Html pageMsg }
-    -> (pageMsg -> msg)
-    -> Document msg
-view navConfig maybeViewer { title, content } toMsg =
-    { title = title
-    , body =
-        viewNavbar navConfig maybeViewer
-            :: List.map (Html.map toMsg) [ content ]
-    }
+
+
+renderLandingHero : msg -> Html msg -> Html msg
+renderLandingHero scrollMsg navbar =
+    section
+        [ class "hero is-fullheight is-primary is-bold" ]
+        [ navbar
+        , div
+            [ class "hero-body" ]
+            [ div
+                [ class "container has-text-centered" ]
+                [ img
+                    [ Asset.src Asset.vdTitle
+                    , style "width" "400px"
+                    , style "height" "100px"
+                    ]
+                    []
+                , p
+                    [ class "subtitle is-4 has-text-vd-base-light" ]
+                    [ text "Documentation that lives" ]
+                ]
+            ]
+        , div
+            [ class "hero-foot" ]
+            [ div
+                [ class "has-text-centered" ]
+                [ span
+                    [ class "icon is-large"
+                    , style "cursor" "pointer"
+                    , onClick scrollMsg
+                    ]
+                    [ i
+                        [ class "material-icons has-text-vd-spark-dark"
+                        , style "font-size" "48px"
+                        ]
+                        [ text "expand_more" ]
+                    ]
+                ]
+            , p
+                [ class "content is-small has-text-right"
+                , style "margin" "0 10px 10px 0"
+                ]
+                [ text "Alpha Version 1" ]
+            ]
+        ]
 
 
 {-| Render the navbar.
@@ -41,68 +115,98 @@ view navConfig maybeViewer { title, content } toMsg =
 Will have log-in/sign-up or logout buttons according to whether there is a `Viewer`.
 
 -}
-viewNavbar :
-    { mobileNavbarOpen : Bool
-    , toggleMobileNavbar : msg
-    , logout : msg
-    , loginWithGithub : msg
-    , isLoggingIn : Bool
-    , isLoggingOut : Bool
-    }
-    -> Maybe Viewer
-    -> Html msg
-viewNavbar { mobileNavbarOpen, toggleMobileNavbar, logout, loginWithGithub, isLoggingIn, isLoggingOut } maybeViewer =
-    nav [ class "navbar is-info" ]
+renderNavbar : RenderNavbarConfig msg -> Maybe Viewer -> Html msg
+renderNavbar config maybeViewer =
+    nav [ class "navbar is-primary" ]
         [ div
             [ class "navbar-brand" ]
-            [ a
-                [ class "navbar-item", href "https://github.com/amilner42/meen-kickstarter" ]
-                [ img [ Asset.src Asset.githubLogo ] [] ]
+            [ div
+                [ class "navbar-item"
+                , style "padding" "5px"
+                , style "width" "50px"
+                , style "margin-left" "3px"
+                ]
+                [ img
+                    [ style "height" "45px !important"
+                    , style "max-height" "45px"
+                    , Asset.src Asset.vdLogo
+                    ]
+                    []
+                ]
             , div
                 [ classList
-                    [ ( "navbar-burger", True )
-                    , ( "is-active", mobileNavbarOpen )
+                    [ ( "navbar-burger burger has-text-vd-spark-bright", True )
+                    , ( "is-active", config.mobileNavbarOpen )
                     ]
-                , onClick toggleMobileNavbar
+                , onClick config.toggleMobileNavbar
                 ]
                 [ span [] [], span [] [], span [] [] ]
             ]
         , div
             [ classList
                 [ ( "navbar-menu", True )
-                , ( "is-active", mobileNavbarOpen )
+                , ( "is-active", config.mobileNavbarOpen )
                 ]
             ]
             [ div
-                [ class "navbar-start" ]
+                [ classList
+                    [ ( "navbar-start", True )
+                    , ( "is-hidden", not config.showHomeButton )
+                    ]
+                ]
                 [ a
-                    [ class "navbar-item"
+                    [ classList
+                        [ ( "navbar-item", True )
+                        , ( "is-border-bottom-underlined"
+                          , case config.selectedTab of
+                                HomeTab ->
+                                    True
+
+                                _ ->
+                                    False
+                          )
+                        ]
                     , Route.href Route.Home
                     ]
                     [ text "Home" ]
                 ]
             , div
                 [ class "navbar-end" ]
-                [ div [ class "navbar-item" ]
+                [ a
+                    [ classList
+                        [ ( "navbar-item", True )
+                        , ( "is-border-bottom-underlined"
+                          , case config.selectedTab of
+                                DocumentationTab ->
+                                    True
+
+                                _ ->
+                                    False
+                          )
+                        ]
+                    , Route.href <| Route.Documentation Route.OverviewTab
+                    ]
+                    [ text "Docs" ]
+                , div [ class "navbar-item" ]
                     (case maybeViewer of
                         Nothing ->
-                            [ a
+                            [ button
                                 [ classList
-                                    [ ( "button is-link", True )
-                                    , ( "is-loading", isLoggingIn )
+                                    [ ( "button is-vd-box-link is-medium", True )
+                                    , ( "is-loading", config.isLoggingIn )
                                     ]
-                                , onClick loginWithGithub
+                                , onClick config.loginWithGithub
                                 ]
-                                [ text "Sign in with Github" ]
+                                [ text "Sign in with github" ]
                             ]
 
                         Just viewer ->
-                            [ a
+                            [ button
                                 [ classList
-                                    [ ( "button is-white", True )
-                                    , ( "is-loading", isLoggingOut )
+                                    [ ( "button is-vd-box-link is-medium", True )
+                                    , ( "is-loading", config.isLoggingOut )
                                     ]
-                                , onClick logout
+                                , onClick config.logout
                                 ]
                                 [ text "Log out" ]
                             ]

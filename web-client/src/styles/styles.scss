@@ -1,11 +1,20 @@
 /** Global SCSS */
 
+/** Color Scheme */
+
+$vd-base-dark: #0B0C10;
+$vd-base-medium: #1F2833;
+$vd-base-light: #C5C6C7;
+$vd-spark-bright: #66FCF1;
+$vd-spark-dark: #45A29E;
+
+
 .has-code-editor {
     overflow: auto;
     height: 500px;
 
     pre {
-      min-height: 500px;
+      min-height: 100%;
       border: 1px solid lightgrey;
 
       .green-line {
@@ -23,8 +32,53 @@
     }
 }
 
+.is-border-bottom-underlined {
+  border-bottom: 3px solid $vd-spark-dark !important;
+}
+
+.is-vd-hero-title {
+    // font-size: 110px !important;
+    color: $vd-spark-bright !important;
+}
+
+.is-vd-box-link {
+    border-radius: 2px !important;
+    background-color: $vd-base-medium !important;
+    border: 0.5px $vd-spark-dark solid !important;
+    color: $vd-spark-dark !important;
+}
+
+.has-text-vd-base-light {
+    color: $vd-base-light !important;
+}
+
+.has-text-vd-base-medium {
+    color: $vd-base-medium;
+}
+
+.has-text-vd-base-dark {
+  color: $vd-base-dark;
+}
+
+.has-text-vd-spark-bright {
+    color: $vd-spark-bright !important;
+}
+
+.has-text-vd-spark-dark {
+    color: $vd-spark-dark !important;
+}
+
+.vd-regular-text {
+  color: hsl(0, 0%, 29%) !important;
+}
+
 
 /** External CSS */
+
+// Bulma variables
+$primary: $vd-base-medium;
+$link: $vd-spark-dark;
+$family-primary: 'Raleway', sans-serif;
 
 @import "~bulma/sass/utilities/_all.sass";
 @import "~bulma/sass/base/_all.sass";
@@ -32,6 +86,7 @@
 @import "~bulma/sass/components/level.sass";
 @import "~bulma/sass/components/modal.sass";
 @import "~bulma/sass/components/navbar.sass";
+@import "~bulma/sass/components/menu.sass";
 
 @import "~bulma/sass/elements/box.sass";
 @import "~bulma/sass/elements/button.sass";
@@ -46,3 +101,4 @@
 @import "~bulma/sass/grid/tiles.sass";
 
 @import "~bulma/sass/layout/section.sass";
+@import "~bulma/sass/layout/hero.sass";

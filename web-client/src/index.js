@@ -62,17 +62,18 @@ const getAceModeNameFromLanguage = (language) => {
 
 const renderCodeEditor = (renderConfig) => {
 
-  // Already had an editor, delete then re-render.
-
+  // Already had same editor, destroy it to cancel previous listeners.
   if (editors[renderConfig.tagId]) {
-    const replacementDiv = document.createElement("pre");
-    replacementDiv.setAttribute("id", `editor-${renderConfig.tagId}`);
+
     const editor = editors[renderConfig.tagId];
     editor.destroy();
-    editor.container.parentNode.replaceChild(replacementDiv, editor.container);
-  }
 
-  // First time making this editor.
+    if (renderConfig.rerender) {
+      const replacementDiv = document.createElement("pre");
+      replacementDiv.setAttribute("id", `editor-${renderConfig.tagId}`);
+      editor.container.parentNode.replaceChild(replacementDiv, editor.container);
+    }
+  }
 
   window.requestAnimationFrame(() => {
     const editor = ace.edit(`editor-${renderConfig.tagId}`);
@@ -128,11 +129,13 @@ const renderCodeEditor = (renderConfig) => {
 app.ports.renderCodeEditors.subscribe(function(renderConfigs) {
 
   window.requestAnimationFrame(() => {
-    renderConfigs.map(renderCodeEditor);
+    renderConfigs.map((renderConfig) => {
+      renderCodeEditor({ ...renderConfig, rerender: false });
+    });
   });
 
 })
 
 app.ports.rerenderCodeEditor.subscribe(function(renderConfig) {
-  renderCodeEditor(renderConfig);
+  renderCodeEditor({ ...renderConfig, rerender: true });
 })

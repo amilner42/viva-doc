@@ -1,11 +1,15 @@
-module Route exposing (Route(..), fromUrl, href, replaceUrl, routeToString)
+module Route exposing (DocumentationTab(..), Route(..), fromUrl, href, replaceUrl, routeToString)
 
 {-| A type to represent possible routes with helper functions.
 -}
 
+-- import Html.Events exposing (on)
+
 import Browser.Navigation as Nav
 import Html exposing (..)
 import Html.Attributes as Attr
+import Html.Events as Events
+import Json.Decode as Decode
 import Url exposing (Url)
 import Url.Parser as Parser exposing ((</>), (<?>), Parser, int, oneOf, s, string)
 import Url.Parser.Query as Query
@@ -27,6 +31,20 @@ type Route
     | OAuthRedirect (Maybe String)
       -- Repo number / prNumber / commit hash
     | CommitReview Int Int String
+    | Documentation DocumentationTab
+
+
+type DocumentationTab
+    = InstallationTab
+    | GettingStartedTab
+    | CodeExample
+    | SupportedLanguagesTab
+    | OverviewTab
+    | TagsTab
+    | FileTagTab
+    | LineTagTab
+    | BlockTagTab
+    | OwnershipGroupsTab
 
 
 parser : Parser (Route -> a) a
@@ -35,6 +53,16 @@ parser =
         [ Parser.map Home Parser.top
         , Parser.map OAuthRedirect (s "oauth_redirect" <?> Query.string "code")
         , Parser.map CommitReview (s "review" </> s "repo" </> int </> s "pr" </> int </> s "commit" </> string)
+        , Parser.map (Documentation InstallationTab) (s "documentation" </> s "installation")
+        , Parser.map (Documentation GettingStartedTab) (s "documentation" </> s "getting-started")
+        , Parser.map (Documentation CodeExample) (s "documentation" </> s "getting-started" </> s "code-example")
+        , Parser.map (Documentation SupportedLanguagesTab) (s "documentation" </> s "supported-languages")
+        , Parser.map (Documentation OverviewTab) (s "documentation" </> s "overview")
+        , Parser.map (Documentation TagsTab) (s "documentation" </> s "tags")
+        , Parser.map (Documentation FileTagTab) (s "documentation" </> s "tags" </> s "file")
+        , Parser.map (Documentation LineTagTab) (s "documentation" </> s "tags" </> s "line")
+        , Parser.map (Documentation BlockTagTab) (s "documentation" </> s "tags" </> s "block")
+        , Parser.map (Documentation OwnershipGroupsTab) (s "documentation" </> s "ownership-groups")
         ]
 
 
@@ -64,6 +92,38 @@ fromUrl =
 routeToString : Route -> String
 routeToString page =
     let
+        docTabToUrlSegments docTab =
+            case docTab of
+                InstallationTab ->
+                    [ "installation" ]
+
+                GettingStartedTab ->
+                    [ "getting-started" ]
+
+                CodeExample ->
+                    [ "getting-started", "code-example" ]
+
+                SupportedLanguagesTab ->
+                    [ "supported-languages" ]
+
+                OverviewTab ->
+                    [ "overview" ]
+
+                TagsTab ->
+                    [ "tags" ]
+
+                FileTagTab ->
+                    [ "tags", "file" ]
+
+                LineTagTab ->
+                    [ "tags", "line" ]
+
+                BlockTagTab ->
+                    [ "tags", "block" ]
+
+                OwnershipGroupsTab ->
+                    [ "ownership-groups" ]
+
         pieces =
             case page of
                 Home ->
@@ -74,6 +134,9 @@ routeToString page =
 
                 CommitReview repoId prNumber commitId ->
                     [ "review", "repo", String.fromInt repoId, "pr", String.fromInt prNumber, "commit", commitId ]
+
+                Documentation docTab ->
+                    "documentation" :: docTabToUrlSegments docTab
 
                 -- Certain routes shouldn't be accessed directly
                 _ ->

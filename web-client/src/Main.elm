@@ -6,7 +6,9 @@ module Main exposing (main)
 import Api.Api as Api
 import Api.Core as Core
 import Browser exposing (Document)
+import Browser.Dom as Dom
 import Browser.Navigation as Nav
+import Ease
 import Github
 import Html exposing (..)
 import Html.Attributes exposing (..)
@@ -17,12 +19,15 @@ import LocalStorage
 import Page
 import Page.Blank as Blank
 import Page.CommitReview as CommitReview
+import Page.Documentation as Documentation
 import Page.Home as Home
 import Page.NotFound as NotFound
 import Page.OAuthRedirect as OAuthRedirect
 import Ports
 import Route exposing (Route)
 import Session exposing (Session)
+import SmoothScroll
+import Task
 import Url exposing (Url)
 import Viewer exposing (Viewer)
 
@@ -45,6 +50,7 @@ type PageModel
     | Home Home.Model
     | OAuthRedirect OAuthRedirect.Model
     | CommitReview CommitReview.Model
+    | Documentation Documentation.Model
 
 
 {-| On init we have 2 cases:
@@ -84,18 +90,26 @@ init flags url navKey =
 view : Model -> Document Msg
 view model =
     let
-        viewPage toMsg pageView =
+        viewer =
+            Session.getViewer (toSession model)
+
+        viewPageWithNavbar { showHomeButton, showHero, selectedTab } toMsg pageView =
             let
                 { title, body } =
-                    Page.view
-                        { mobileNavbarOpen = model.mobileNavbarOpen
-                        , toggleMobileNavbar = ToggledMobileNavbar
-                        , logout = Logout
-                        , loginWithGithub = OnClickLoginWithGithub
-                        , isLoggingIn = model.isLoggingIn
-                        , isLoggingOut = model.isLoggingOut
+                    Page.viewWithHeader
+                        { showHero = showHero
+                        , renderNavbarConfig =
+                            { mobileNavbarOpen = model.mobileNavbarOpen
+                            , toggleMobileNavbar = ToggledMobileNavbar
+                            , logout = Logout
+                            , loginWithGithub = OnClickLoginWithGithub
+                            , isLoggingIn = model.isLoggingIn
+                            , isLoggingOut = model.isLoggingOut
+                            , showHomeButton = showHomeButton
+                            , selectedTab = selectedTab
+                            }
                         }
-                        (Session.getViewer (toSession model))
+                        viewer
                         pageView
                         toMsg
             in
@@ -105,19 +119,49 @@ view model =
     in
     case model.pageModel of
         Redirect _ ->
-            viewPage (\_ -> Ignored) Blank.view
+            viewPageWithNavbar
+                { showHomeButton = False, showHero = Page.NoHero, selectedTab = Page.NoTab }
+                (\_ -> Ignored)
+                Blank.view
 
         NotFound _ ->
-            viewPage (\_ -> Ignored) NotFound.view
+            viewPageWithNavbar
+                { showHomeButton = True, showHero = Page.NoHero, selectedTab = Page.NoTab }
+                (\_ -> Ignored)
+                NotFound.view
 
         Home homeModel ->
-            viewPage GotHomeMsg (Home.view homeModel)
+            viewPageWithNavbar
+                (case viewer of
+                    Nothing ->
+                        { showHomeButton = False
+                        , showHero = Page.LandingHero LandingPageScrollDown
+                        , selectedTab = Page.NoTab
+                        }
+
+                    Just _ ->
+                        { showHomeButton = True, showHero = Page.NoHero, selectedTab = Page.HomeTab }
+                )
+                GotHomeMsg
+                (Home.view homeModel)
 
         OAuthRedirect oauthRedirect ->
-            viewPage GotOAuthRedirectMsg (OAuthRedirect.view oauthRedirect)
+            viewPageWithNavbar
+                { showHomeButton = False, showHero = Page.NoHero, selectedTab = Page.NoTab }
+                GotOAuthRedirectMsg
+                (OAuthRedirect.view oauthRedirect)
 
         CommitReview commitReviewModel ->
-            viewPage GotCommitReviewMsg (CommitReview.view commitReviewModel)
+            viewPageWithNavbar
+                { showHomeButton = True, showHero = Page.NoHero, selectedTab = Page.NoTab }
+                GotCommitReviewMsg
+                (CommitReview.view commitReviewModel)
+
+        Documentation documentationModel ->
+            viewPageWithNavbar
+                { showHomeButton = True, showHero = Page.NoHero, selectedTab = Page.DocumentationTab }
+                GotDocumentationMsg
+                (Documentation.view documentationModel)
 
 
 
@@ -137,6 +181,8 @@ type Msg
     | GotHomeMsg Home.Msg
     | GotCommitReviewMsg CommitReview.Msg
     | GotOAuthRedirectMsg OAuthRedirect.Msg
+    | GotDocumentationMsg Documentation.Msg
+    | LandingPageScrollDown
 
 
 toSession : Model -> Session
@@ -156,6 +202,9 @@ toSession { pageModel } =
 
         CommitReview commitReviewModel ->
             CommitReview.toSession commitReviewModel
+
+        Documentation { session } ->
+            session
 
 
 changeRouteTo : Maybe Route -> Model -> ( Model, Cmd Msg )
@@ -192,6 +241,10 @@ changeRouteTo maybeRoute model =
         Just (Route.CommitReview repoId prNumber commitId) ->
             CommitReview.init session repoId prNumber commitId
                 |> updatePageModel CommitReview GotCommitReviewMsg model
+
+        Just (Route.Documentation docTab) ->
+            Documentation.init session docTab
+                |> updatePageModel Documentation GotDocumentationMsg model
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -259,6 +312,12 @@ update msg model =
 
                     OAuthRedirect _ ->
                         Cmd.none
+
+                    Documentation { documentationTab } ->
+                        LocalStorage.saveModel
+                            { relativeUrl =
+                                Route.Documentation documentationTab |> Route.routeToString
+                            }
                 , Nav.load <| Github.oAuthSignInLink Github.oauthClientId
                 ]
             )
@@ -275,6 +334,7 @@ update msg model =
             in
             ( { model
                 | mobileNavbarOpen = False
+                , isLoggingIn = False
                 , pageModel = Redirect <| Session.LoggedIn currentNavKey viewer
               }
             , Route.replaceUrl currentNavKey goToRoute
@@ -299,13 +359,43 @@ update msg model =
         ( CompletedLogout (Err _), _ ) ->
             ( { model | isLoggingOut = False }, Cmd.none )
 
+        ( LandingPageScrollDown, Home _ ) ->
+            let
+                scrollMilliseconds =
+                    750
+
+                scrollEase =
+                    Ease.inOutSine
+
+                scrollTask =
+                    Dom.getViewport
+                        |> Task.andThen
+                            (\{ viewport } ->
+                                SmoothScroll.scrollTo
+                                    (SmoothScroll.createConfig scrollEase scrollMilliseconds)
+                                    viewport.height
+                            )
+            in
+            ( model
+            , Task.perform (always Ignored) scrollTask
+            )
+
+        ( LandingPageScrollDown, _ ) ->
+            ( model, Cmd.none )
+
         ( GotHomeMsg pageMsg, Home homeModel ) ->
             Home.update pageMsg homeModel
                 |> updatePageModel Home GotHomeMsg model
 
+        ( GotHomeMsg _, _ ) ->
+            ( model, Cmd.none )
+
         ( GotCommitReviewMsg pageMsg, CommitReview commitReviewModel ) ->
             CommitReview.update pageMsg commitReviewModel
                 |> updatePageModel CommitReview GotCommitReviewMsg model
+
+        ( GotCommitReviewMsg _, _ ) ->
+            ( model, Cmd.none )
 
         ( GotOAuthRedirectMsg pageMsg, OAuthRedirect oauthRedirectModel ) ->
             let
@@ -318,8 +408,14 @@ update msg model =
                 { model | isLoggingIn = newOauthRedirectModel.isLoggingIn }
                 ( newOauthRedirectModel, newOauthRedirectMsg )
 
-        ( _, _ ) ->
-            -- Disregard messages that arrived for the wrong page.
+        ( GotOAuthRedirectMsg _, _ ) ->
+            ( model, Cmd.none )
+
+        ( GotDocumentationMsg pageMsg, Documentation docModel ) ->
+            Documentation.update pageMsg docModel
+                |> updatePageModel Documentation GotDocumentationMsg model
+
+        ( GotDocumentationMsg _, _ ) ->
             ( model, Cmd.none )
 
 
@@ -366,6 +462,9 @@ subscriptions model =
 
             CommitReview commitReviewModel ->
                 Sub.map GotCommitReviewMsg <| CommitReview.subscriptions commitReviewModel
+
+            Documentation _ ->
+                Sub.none
         ]
 
 
