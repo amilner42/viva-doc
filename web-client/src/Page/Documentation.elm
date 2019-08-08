@@ -392,29 +392,21 @@ renderGettingStartedTabView =
             [ class "vd-regular-text" ]
             [ text "Once you have installed VivaDoc on a repository, it will automatically monitor all"
             , span [ class "has-text-weight-semibold" ] [ text " documentation tags " ]
-            , text """ on all open pull requests. It does this by analyzing the HEAD commit of every
-            pull request. Any time code is pushed to a pull request, VivaDoc will analyze the new HEAD commit.
-            VivaDoc wants to ensure that any code merged in a pull request will not outdate any documentation
-            being monitored. All critical documentation should therefore be monitored with VivaDoc."""
+            , text """ on all open pull requests. Everytime a pull request is changed in any way, VivaDoc will
+            analyze the most recent commit on the pull request."""
             ]
         , p
             []
             [ text """If any documentation tags have been modified and have not been approved by their owners, VivaDoc
-            will assign a failure status to that commit. Once all documentation tags have been reviewed and approved,
-            VivaDoc will assign a success status to that commit. This behaves similar to continuous integration,
-            but instead of monitoring tests passing, we monitor documentation quality. At VivaDoc we call this """
-            , span [ class "has-text-weight-semibold" ] [ text "continuous documentation." ]
+            will assign a failure status to that commit. To review documentation tags, click the VivaDoc status link
+            displayed on the Github pull request. It will direct you to the documentation review page within the VivaDoc
+            app. There you will be able to review all documentation tags that require your approval. Once all
+            documentation tags have been reviewed and approved, VivaDoc will assign a success status to that commit."""
             ]
         , p
             []
-            [ text """To review documentation tags, simply click the link given on Github on the commit status. It will
-            direct you to the documentation review page within the VivaDoc app. There you will be able to review all
-            documentation tags that belong to you that have been modified as well as view what documentation tags
-            are awaiting review from the rest of your team.""" ]
-        , p
-            []
-            [ text """Similar to continuous integration, it is up to the owner of the repository to decide whether a
-            pull request can be merged if the continuous documentation has a failing status. While it is optional,
+            [ text """It is up to the owners of the repository to decide whether a pull request can be merged if the
+            documentation has a failing status. While it is optional,
             it is highly recommended to require a VivaDoc success status to merge a pull request with a production
             branch - fixing broken documentation is not nearly as time consuming or frustrating as stumbling into broken
             documentation unknowingly."""
