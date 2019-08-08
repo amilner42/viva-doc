@@ -399,7 +399,7 @@ renderGettingStartedTabView =
             []
             [ text """If any documentation tags have been modified and have not been approved by their owners, VivaDoc
             will assign a failure status to that commit. To review documentation tags, click the VivaDoc status link
-            displayed on the Github pull request. It will direct you to the documentation review page within the VivaDoc
+            displayed on the GitHub pull request. It will direct you to the documentation review page within the VivaDoc
             app. There you will be able to review all documentation tags that require your approval. Once all
             documentation tags have been reviewed and approved, VivaDoc will assign a success status to that commit."""
             ]
