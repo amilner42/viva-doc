@@ -52,20 +52,11 @@
                 <path d="M22,129.478L28,138L16,138L22,129.478Z" style="fill:rgb(31,40,51);stroke:rgb(31,40,51);stroke-width:4px;stroke-linecap:round;"/>
             </g>
         </g>
-        <g transform="matrix(1,0,0,1,0,3)">
-            <path d="M136,123L136,40" style="fill:none;stroke:rgb(31,40,51);stroke-width:4px;stroke-linecap:round;"/>
-        </g>
         <g transform="matrix(1.02054e-16,-1.66667,1.66667,1.02054e-16,-273.333,236)">
             <circle cx="60" cy="284" r="6" style="fill:none;stroke:rgb(31,40,51);stroke-width:2.4px;"/>
         </g>
         <g transform="matrix(1.02054e-16,-1.66667,1.66667,1.02054e-16,-241.333,236)">
             <circle cx="60" cy="284" r="6" style="fill:rgb(31,40,51);stroke:rgb(31,40,51);stroke-width:2.4px;"/>
-        </g>
-        <g transform="matrix(0.818182,0,0,0.833333,24.7273,7.16667)">
-            <path d="M136,43L114,19" style="fill:none;stroke:rgb(31,40,51);stroke-width:4.84px;stroke-linecap:round;"/>
-        </g>
-        <g transform="matrix(0.6,0,0,0.6,44.2,6.2)">
-            <path d="M123,18C123,12.477 118.523,8 113,8C112.335,8 111.665,8 111,8C105.477,8 101,12.477 101,18C101,18 101,18 101,18C101,23.523 105.477,28 111,28C111.665,28 112.335,28 113,28C118.523,28 123,23.523 123,18C123,18 123,18 123,18Z" style="fill:none;stroke:rgb(31,40,51);stroke-width:6.67px;stroke-linecap:round;"/>
         </g>
         <g transform="matrix(0.6,0,0,0.6,101.061,371.2)">
             <path d="M123,18C123,12.477 118.523,8 113,8C112.335,8 111.665,8 111,8C105.477,8 101,12.477 101,18C101,18 101,18 101,18C101,23.523 105.477,28 111,28C111.665,28 112.335,28 113,28C118.523,28 123,23.523 123,18C123,18 123,18 123,18Z" style="fill:none;stroke:rgb(31,40,51);stroke-width:6.67px;stroke-linecap:round;"/>
@@ -76,23 +67,29 @@
         <g transform="matrix(0.6,0,0,0.6,164.498,371.2)">
             <path d="M123,18C123,12.477 118.523,8 113,8C112.335,8 111.665,8 111,8C105.477,8 101,12.477 101,18C101,18 101,18 101,18C101,23.523 105.477,28 111,28C111.665,28 112.335,28 113,28C118.523,28 123,23.523 123,18C123,18 123,18 123,18Z" style="fill:none;stroke:rgb(31,40,51);stroke-width:6.67px;stroke-linecap:round;"/>
         </g>
-        <g transform="matrix(1,0,0,1,32.2,3)">
-            <path d="M136,123L136,40" style="fill:none;stroke:rgb(31,40,51);stroke-width:4px;stroke-linecap:round;"/>
+        <g transform="matrix(1,0,0,1.16495,-0.656522,-20.7835)">
+            <g transform="matrix(1,0,0,1,96.2,3)">
+                <path d="M136,123L136,40" style="fill:none;stroke:rgb(31,40,51);stroke-width:3.68px;stroke-linecap:round;"/>
+            </g>
+            <g transform="matrix(0.6,0,0,0.6,165.1,24.2)">
+                <path d="M123,17.442C123,14.938 121.841,12.536 119.778,10.766C117.715,8.995 114.917,8 112,8C112,8 112,8 112,8C109.083,8 106.285,8.995 104.222,10.766C102.159,12.536 101,14.938 101,17.442C101,17.814 101,18.186 101,18.558C101,21.062 102.159,23.464 104.222,25.234C106.285,27.005 109.083,28 112,28C112,28 112,28 112,28C114.917,28 117.715,27.005 119.778,25.234C121.841,23.464 123,21.062 123,18.558C123,18.186 123,17.814 123,17.442Z" style="fill:none;stroke:rgb(31,40,51);stroke-width:6.14px;stroke-linecap:round;"/>
+            </g>
         </g>
-        <g transform="matrix(0.818182,0,0,0.833333,56.9273,7.16667)">
-            <path d="M136,43L114,19" style="fill:none;stroke:rgb(31,40,51);stroke-width:4.84px;stroke-linecap:round;"/>
+        <g transform="matrix(1,0,0,1.16495,-33.113,-20.7835)">
+            <g transform="matrix(1,0,0,1,96.2,3)">
+                <path d="M136,123L136,40" style="fill:none;stroke:rgb(31,40,51);stroke-width:3.68px;stroke-linecap:round;"/>
+            </g>
+            <g transform="matrix(0.6,0,0,0.6,165.1,24.2)">
+                <path d="M123,17.442C123,14.938 121.841,12.536 119.778,10.766C117.715,8.995 114.917,8 112,8C112,8 112,8 112,8C109.083,8 106.285,8.995 104.222,10.766C102.159,12.536 101,14.938 101,17.442C101,17.814 101,18.186 101,18.558C101,21.062 102.159,23.464 104.222,25.234C106.285,27.005 109.083,28 112,28C112,28 112,28 112,28C114.917,28 117.715,27.005 119.778,25.234C121.841,23.464 123,21.062 123,18.558C123,18.186 123,17.814 123,17.442Z" style="fill:none;stroke:rgb(31,40,51);stroke-width:6.14px;stroke-linecap:round;"/>
+            </g>
         </g>
-        <g transform="matrix(0.6,0,0,0.6,76.4,6.2)">
-            <path d="M123,18C123,12.477 118.523,8 113,8C112.335,8 111.665,8 111,8C105.477,8 101,12.477 101,18C101,18 101,18 101,18C101,23.523 105.477,28 111,28C111.665,28 112.335,28 113,28C118.523,28 123,23.523 123,18C123,18 123,18 123,18Z" style="fill:none;stroke:rgb(31,40,51);stroke-width:6.67px;stroke-linecap:round;"/>
-        </g>
-        <g transform="matrix(1,0,0,1,64,3)">
-            <path d="M136,123L136,40" style="fill:none;stroke:rgb(31,40,51);stroke-width:4px;stroke-linecap:round;"/>
-        </g>
-        <g transform="matrix(0.818182,0,0,0.833333,88.7273,7.16667)">
-            <path d="M136,43L114,19" style="fill:none;stroke:rgb(31,40,51);stroke-width:4.84px;stroke-linecap:round;"/>
-        </g>
-        <g transform="matrix(0.6,0,0,0.6,108.2,6.2)">
-            <path d="M123,18C123,12.477 118.523,8 113,8C112.335,8 111.665,8 111,8C105.477,8 101,12.477 101,18C101,18 101,18 101,18C101,23.523 105.477,28 111,28C111.665,28 112.335,28 113,28C118.523,28 123,23.523 123,18C123,18 123,18 123,18Z" style="fill:none;stroke:rgb(31,40,51);stroke-width:6.67px;stroke-linecap:round;"/>
+        <g transform="matrix(1,0,0,1.16495,-65.5696,-20.7835)">
+            <g transform="matrix(1,0,0,1,96.2,3)">
+                <path d="M136,123L136,40" style="fill:none;stroke:rgb(31,40,51);stroke-width:3.68px;stroke-linecap:round;"/>
+            </g>
+            <g transform="matrix(0.6,0,0,0.6,165.1,24.2)">
+                <path d="M123,17.442C123,14.938 121.841,12.536 119.778,10.766C117.715,8.995 114.917,8 112,8C112,8 112,8 112,8C109.083,8 106.285,8.995 104.222,10.766C102.159,12.536 101,14.938 101,17.442C101,17.814 101,18.186 101,18.558C101,21.062 102.159,23.464 104.222,25.234C106.285,27.005 109.083,28 112,28C112,28 112,28 112,28C114.917,28 117.715,27.005 119.778,25.234C121.841,23.464 123,21.062 123,18.558C123,18.186 123,17.814 123,17.442Z" style="fill:none;stroke:rgb(31,40,51);stroke-width:6.14px;stroke-linecap:round;"/>
+            </g>
         </g>
         <g transform="matrix(0.6,0,0,0.6,84.4,51.2)">
             <path d="M123,18C123,12.477 118.523,8 113,8C112.335,8 111.665,8 111,8C105.477,8 101,12.477 101,18C101,18 101,18 101,18C101,23.523 105.477,28 111,28C111.665,28 112.335,28 113,28C118.523,28 123,23.523 123,18C123,18 123,18 123,18Z" style="fill:rgb(31,40,51);stroke:rgb(31,40,51);stroke-width:6.67px;stroke-linecap:round;"/>
@@ -257,24 +254,6 @@
         </g>
         <g transform="matrix(-1,-1.22465e-16,1.22465e-16,-1,400.522,403)">
             <rect x="168" y="230" width="7.739" height="6" style="fill:rgb(31,40,51);stroke:rgb(31,40,51);stroke-width:4px;stroke-linejoin:miter;"/>
-        </g>
-        <g transform="matrix(1,0,0,1,96.2,3)">
-            <path d="M136,123L136,40" style="fill:none;stroke:rgb(31,40,51);stroke-width:4px;stroke-linecap:round;"/>
-        </g>
-        <g transform="matrix(0.818182,0,0,0.833333,120.927,7.16667)">
-            <path d="M136,43L114,19" style="fill:none;stroke:rgb(31,40,51);stroke-width:4.84px;stroke-linecap:round;"/>
-        </g>
-        <g transform="matrix(0.6,0,0,0.6,140.4,6.2)">
-            <path d="M123,18C123,12.477 118.523,8 113,8C112.335,8 111.665,8 111,8C105.477,8 101,12.477 101,18C101,18 101,18 101,18C101,23.523 105.477,28 111,28C111.665,28 112.335,28 113,28C118.523,28 123,23.523 123,18C123,18 123,18 123,18Z" style="fill:none;stroke:rgb(31,40,51);stroke-width:6.67px;stroke-linecap:round;"/>
-        </g>
-        <g transform="matrix(1,0,0,1,127.4,3)">
-            <path d="M136,123L136,40" style="fill:none;stroke:rgb(31,40,51);stroke-width:4px;stroke-linecap:round;"/>
-        </g>
-        <g transform="matrix(0.818182,0,0,0.833333,152.127,7.16667)">
-            <path d="M136,43L114,19" style="fill:none;stroke:rgb(31,40,51);stroke-width:4.84px;stroke-linecap:round;"/>
-        </g>
-        <g transform="matrix(0.6,0,0,0.6,171.6,6.2)">
-            <path d="M123,18C123,12.477 118.523,8 113,8C112.335,8 111.665,8 111,8C105.477,8 101,12.477 101,18C101,18 101,18 101,18C101,23.523 105.477,28 111,28C111.665,28 112.335,28 113,28C118.523,28 123,23.523 123,18C123,18 123,18 123,18Z" style="fill:none;stroke:rgb(31,40,51);stroke-width:6.67px;stroke-linecap:round;"/>
         </g>
         <g transform="matrix(1,0,0,1,63.7137,0)">
             <g transform="matrix(0.6,0,0,0.6,117.204,319.443)">
