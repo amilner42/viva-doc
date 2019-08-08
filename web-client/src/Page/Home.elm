@@ -83,11 +83,11 @@ renderLandingPage =
             , image = Asset.vdLandingIcon1
             }
             ++ renderLandingPageIconTextCombo
-                { text = "Sit back as VivaDoc keenly monitors all of your critical documentation."
+                { text = "Sit back as VivaDoc vigilantly monitors documentation across code changes."
                 , image = Asset.vdLandingIcon2
                 }
             ++ renderLandingPageIconTextCombo
-                { text = "Review critical documentation VivaDoc alerts you about before it makes it into production."
+                { text = "Approve or fix documentation VivaDoc notifies you may have become outdated."
                 , image = Asset.vdLandingIcon3
                 }
             ++ renderLandingButtons
