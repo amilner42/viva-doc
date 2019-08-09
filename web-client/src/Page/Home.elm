@@ -83,7 +83,7 @@ renderNoRepoPage =
                                 , style "width" "375px"
                                 , href Github.installAppOnRepositoriesLink
                                 ]
-                                [ text "install on select repositories" ]
+                                [ text "install in select repositories" ]
                             ]
                         ]
                     ]
@@ -97,7 +97,7 @@ renderHasReposPage installedRepos =
     div
         [ class "section" ]
         [ h1
-            [ class "title is-4" ]
+            [ class "title is-4 has-text-centered" ]
             [ text "Monitored Repositories" ]
         , div
             [ class "columns is-multiline"
@@ -109,7 +109,7 @@ renderHasReposPage installedRepos =
             , style "margin-top" "20px"
             ]
             [ a
-                [ class "button is-primary is-medium"
+                [ class "button is-light is-medium"
                 , style "width" "375px"
                 , href Github.installAppOnRepositoriesLink
                 ]
