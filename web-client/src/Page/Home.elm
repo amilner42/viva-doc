@@ -38,8 +38,7 @@ view model =
     case model.session of
         Session.LoggedIn _ viewer ->
             { title = "Home"
-            , content =
-                renderLoggedInHomePage { viewer = viewer }
+            , content = renderLoggedInHomePage { viewer = viewer }
             }
 
         Session.Guest _ ->
@@ -51,21 +50,102 @@ view model =
 
 renderLoggedInHomePage : { viewer : Viewer.Viewer } -> Html Msg
 renderLoggedInHomePage config =
+    case (Viewer.getRepos >> Core.getInstalledRepos) config.viewer of
+        [] ->
+            renderNoRepoPage
+
+        installedRepos ->
+            renderHasReposPage installedRepos
+
+
+renderNoRepoPage : Html Msg
+renderNoRepoPage =
     section
         [ class "section is-medium" ]
         [ div
             [ class "container" ]
             [ div
-                [ class "columns is-centered" ]
-                [ div [ class "column is-half" ] <|
+                [ class "columns is-centered is-vcentered" ]
+                [ div
+                    [ class "column is-half" ]
                     [ h1
-                        [ class "title has-text-centered" ]
-                        [ text <| Viewer.getUsername config.viewer ]
+                        [ class "title is-1 has-text-centered" ]
+                        [ text <| "Welcome to VivaDoc" ]
+                    , div
+                        [ class "content" ]
+                        [ p
+                            [ class "has-vd-regular-text has-text-centered" ]
+                            [ text """You are one step away from better documentation.""" ]
+                        , div
+                            [ class "buttons is-centered" ]
+                            [ a
+                                [ class "button is-primary is-medium"
+                                , style "width" "375px"
+                                , href Github.installAppOnRepositoriesLink
+                                ]
+                                [ text "install in select repositories" ]
+                            ]
+                        ]
                     ]
-                        ++ List.map
-                            (\repo -> p [] [ text <| Core.getRepoFullName repo ])
-                            (Viewer.getRepos config.viewer)
                 ]
+            ]
+        ]
+
+
+renderHasReposPage : List Core.Repo -> Html.Html Msg
+renderHasReposPage installedRepos =
+    div
+        [ class "section" ]
+        [ h1
+            [ class "title is-4 has-text-centered" ]
+            [ text "Monitored Repositories" ]
+        , div
+            [ class "columns is-multiline"
+            , style "margin" "0px"
+            ]
+            (List.map renderInstalledRepoLink installedRepos)
+        , div
+            [ class "buttons is-centered"
+            , style "margin-top" "20px"
+            ]
+            [ a
+                [ class "button is-light is-medium"
+                , style "width" "375px"
+                , href Github.installAppOnRepositoriesLink
+                ]
+                [ text "add or remove repositories" ]
+            ]
+        ]
+
+
+renderInstalledRepoLink : Core.Repo -> Html.Html Msg
+renderInstalledRepoLink repo =
+    let
+        { owner, name } =
+            Core.getRepoNameAndOwner repo
+    in
+    div
+        [ class "column is-4" ]
+        [ div
+            [ class "box has-text-centered"
+            , style "height" "100px"
+            , style "padding" "10px"
+            ]
+            [ div
+                [ class "level"
+                , style "width" "100%"
+                , style "height" "20px"
+                , style "margin-bottom" "5px"
+                ]
+                [ div
+                    [ class "level-item level-right has-text-grey-light" ]
+                    [ text owner ]
+                ]
+            , a
+                [ class "has-text-weight-medium single-line-ellipsis"
+                , Route.href <| Route.Repo <| Core.getRepoId repo
+                ]
+                [ text name ]
             ]
         ]
 

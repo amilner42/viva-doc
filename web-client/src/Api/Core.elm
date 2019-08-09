@@ -1,4 +1,4 @@
-module Api.Core exposing (FormError(..), HttpError(..), Repo, Repos, Username, delete, expectJson, expectJsonWithUserAndRepos, get, getFormErrors, getRepoAppInstalledStatus, getRepoFullName, getRepoId, getRepoPrivateStatus, getRepos, getUsername, post, put)
+module Api.Core exposing (FormError(..), HttpError(..), Repo, Repos, Username, delete, expectJson, expectJsonWithUserAndRepos, get, getFormErrors, getInstalledRepos, getRepoAppInstalledStatus, getRepoFullName, getRepoId, getRepoNameAndOwner, getRepoPrivateStatus, getRepos, getUsername, post, put)
 
 {-| This module provides a few core API-related responsibilities:
 
@@ -54,9 +54,27 @@ getRepos (Repos repos) =
     repos
 
 
+getInstalledRepos : List Repo -> List Repo
+getInstalledRepos =
+    List.filter getRepoAppInstalledStatus
+
+
 getRepoFullName : Repo -> String
 getRepoFullName (Repo _ fullName _ _) =
     fullName
+
+
+getRepoNameAndOwner : Repo -> { name : String, owner : String }
+getRepoNameAndOwner (Repo _ fullName _ _) =
+    String.split "/" fullName
+        |> (\splitStr ->
+                case splitStr of
+                    [ owner, name ] ->
+                        { owner = owner, name = name }
+
+                    _ ->
+                        { owner = "", name = "" }
+           )
 
 
 getRepoId : Repo -> Int

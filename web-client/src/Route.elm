@@ -32,6 +32,8 @@ type Route
       -- Repo number / prNumber / commit hash
     | CommitReview Int Int String
     | Documentation DocumentationTab
+      -- RepoId
+    | Repo Int
 
 
 type DocumentationTab
@@ -63,6 +65,7 @@ parser =
         , Parser.map (Documentation LineTagTab) (s "documentation" </> s "tags" </> s "line")
         , Parser.map (Documentation BlockTagTab) (s "documentation" </> s "tags" </> s "block")
         , Parser.map (Documentation OwnershipGroupsTab) (s "documentation" </> s "ownership-groups")
+        , Parser.map Repo (s "repo" </> int)
         ]
 
 
@@ -137,6 +140,9 @@ routeToString page =
 
                 Documentation docTab ->
                     "documentation" :: docTabToUrlSegments docTab
+
+                Repo repoId ->
+                    [ "repo", String.fromInt repoId ]
 
                 -- Certain routes shouldn't be accessed directly
                 _ ->

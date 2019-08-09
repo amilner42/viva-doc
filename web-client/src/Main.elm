@@ -23,6 +23,7 @@ import Page.Documentation as Documentation
 import Page.Home as Home
 import Page.NotFound as NotFound
 import Page.OAuthRedirect as OAuthRedirect
+import Page.Repo as Repo
 import Ports
 import Route exposing (Route)
 import Session exposing (Session)
@@ -51,6 +52,7 @@ type PageModel
     | OAuthRedirect OAuthRedirect.Model
     | CommitReview CommitReview.Model
     | Documentation Documentation.Model
+    | Repo Repo.Model
 
 
 {-| On init we have 2 cases:
@@ -163,6 +165,12 @@ view model =
                 GotDocumentationMsg
                 (Documentation.view documentationModel)
 
+        Repo repoModel ->
+            viewPageWithNavbar
+                { showHomeButton = True, showHero = Page.NoHero, selectedTab = Page.NoTab }
+                GotRepoMsg
+                (Repo.view repoModel)
+
 
 
 -- UPDATE
@@ -182,6 +190,7 @@ type Msg
     | GotCommitReviewMsg CommitReview.Msg
     | GotOAuthRedirectMsg OAuthRedirect.Msg
     | GotDocumentationMsg Documentation.Msg
+    | GotRepoMsg Repo.Msg
     | LandingPageScrollDown
 
 
@@ -204,6 +213,9 @@ toSession { pageModel } =
             CommitReview.toSession commitReviewModel
 
         Documentation { session } ->
+            session
+
+        Repo { session } ->
             session
 
 
@@ -245,6 +257,10 @@ changeRouteTo maybeRoute model =
         Just (Route.Documentation docTab) ->
             Documentation.init session docTab
                 |> updatePageModel Documentation GotDocumentationMsg model
+
+        Just (Route.Repo repoId) ->
+            Repo.init session repoId
+                |> updatePageModel Repo GotRepoMsg model
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -317,6 +333,12 @@ update msg model =
                         LocalStorage.saveModel
                             { relativeUrl =
                                 Route.Documentation documentationTab |> Route.routeToString
+                            }
+
+                    Repo { repoId } ->
+                        LocalStorage.saveModel
+                            { relativeUrl =
+                                Route.Repo repoId |> Route.routeToString
                             }
                 , Nav.load <| Github.oAuthSignInLink Github.oauthClientId
                 ]
@@ -418,6 +440,13 @@ update msg model =
         ( GotDocumentationMsg _, _ ) ->
             ( model, Cmd.none )
 
+        ( GotRepoMsg pageMsg, Repo repoModel ) ->
+            Repo.update pageMsg repoModel
+                |> updatePageModel Repo GotRepoMsg model
+
+        ( GotRepoMsg _, _ ) ->
+            ( model, Cmd.none )
+
 
 {-| For updating the model given a page model and page msg.
 
@@ -464,6 +493,9 @@ subscriptions model =
                 Sub.map GotCommitReviewMsg <| CommitReview.subscriptions commitReviewModel
 
             Documentation _ ->
+                Sub.none
+
+            Repo _ ->
                 Sub.none
         ]
 
