@@ -390,15 +390,15 @@ renderGettingStartedTabView =
             [ text "Getting Started" ]
         , p
             [ class "vd-regular-text" ]
-            [ text "Once you have installed VivaDoc on a repository, it will automatically monitor all"
+            [ text "Once you have installed VivaDoc in a repository, it automatically monitors all"
             , span [ class "has-text-weight-semibold" ] [ text " documentation tags " ]
-            , text """ on all open pull requests. Everytime a pull request is changed in any way, VivaDoc will
-            analyze the most recent commit on the pull request."""
+            , text """ on every open pull request. Everytime a pull request changes, VivaDoc analyzes
+            the most recent commit on that pull request."""
             ]
         , p
             []
-            [ text """If any documentation tags have been modified and have not been approved by their owners, VivaDoc
-            will assign a failure status to that commit. To review documentation tags, click the VivaDoc status link
+            [ text """If any documentation tags have been modified but have not been approved by their owners, VivaDoc
+            assigns a failure status to that commit. To review documentation tags, click the VivaDoc status link
             displayed on the GitHub pull request. It will direct you to the documentation review page within the VivaDoc
             app. There you will be able to review all documentation tags that require your approval. Once all
             documentation tags have been reviewed and approved, VivaDoc will assign a success status to that commit."""

@@ -167,7 +167,7 @@ renderLandingPage =
                 , image = Asset.vdLandingIcon2
                 }
             ++ renderLandingPageIconTextCombo
-                { text = "Approve or fix documentation VivaDoc notifies you may have become outdated."
+                { text = "Approve or fix outdated documentation when automatically notified by VivaDoc."
                 , image = Asset.vdLandingIcon3
                 }
             ++ renderLandingButtons
