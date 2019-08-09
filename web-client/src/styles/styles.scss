@@ -72,6 +72,11 @@ $vd-spark-dark: #45A29E;
   color: hsl(0, 0%, 29%) !important;
 }
 
+.single-line-ellipsis {
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+}
 
 /** External CSS */
 

@@ -36,10 +36,9 @@ init session =
 view : Model -> { title : String, content : Html Msg }
 view model =
     case model.session of
-        Session.LoggedIn navKey viewer ->
+        Session.LoggedIn _ viewer ->
             { title = "Home"
-            , content =
-                renderLoggedInHomePage { viewer = viewer, navKey = navKey }
+            , content = renderLoggedInHomePage { viewer = viewer }
             }
 
         Session.Guest _ ->
@@ -49,14 +48,14 @@ view model =
             }
 
 
-renderLoggedInHomePage : { viewer : Viewer.Viewer, navKey : Nav.Key } -> Html Msg
+renderLoggedInHomePage : { viewer : Viewer.Viewer } -> Html Msg
 renderLoggedInHomePage config =
     case (Viewer.getRepos >> Core.getInstalledRepos) config.viewer of
         [] ->
             renderNoRepoPage
 
         installedRepos ->
-            renderHasReposPage config.navKey installedRepos
+            renderHasReposPage installedRepos
 
 
 renderNoRepoPage : Html Msg
@@ -93,15 +92,18 @@ renderNoRepoPage =
         ]
 
 
-renderHasReposPage : Nav.Key -> List Core.Repo -> Html.Html Msg
-renderHasReposPage navKey installedRepos =
+renderHasReposPage : List Core.Repo -> Html.Html Msg
+renderHasReposPage installedRepos =
     div
-        [ class "section has-text-centered" ]
+        [ class "section" ]
         [ h1
             [ class "title is-4" ]
             [ text "Monitored Repositories" ]
-        , dl [] <|
-            List.map (renderInstalledRepoLink navKey) installedRepos
+        , div
+            [ class "columns is-multiline"
+            , style "margin" "0px"
+            ]
+            (List.map renderInstalledRepoLink installedRepos)
         , div
             [ class "buttons is-centered"
             , style "margin-top" "20px"
@@ -116,13 +118,35 @@ renderHasReposPage navKey installedRepos =
         ]
 
 
-renderInstalledRepoLink : Nav.Key -> Core.Repo -> Html.Html Msg
-renderInstalledRepoLink navKey repo =
-    dd
-        []
-        [ a
-            [ Route.href <| Route.Repo <| Core.getRepoId repo ]
-            [ text <| Core.getRepoFullName repo ]
+renderInstalledRepoLink : Core.Repo -> Html.Html Msg
+renderInstalledRepoLink repo =
+    let
+        { owner, name } =
+            Core.getRepoNameAndOwner repo
+    in
+    div
+        [ class "column is-4" ]
+        [ div
+            [ class "box has-text-centered"
+            , style "height" "100px"
+            , style "padding" "10px"
+            ]
+            [ div
+                [ class "level"
+                , style "width" "100%"
+                , style "height" "20px"
+                , style "margin-bottom" "5px"
+                ]
+                [ div
+                    [ class "level-item level-right has-text-grey-light" ]
+                    [ text owner ]
+                ]
+            , a
+                [ class "has-text-weight-medium single-line-ellipsis"
+                , Route.href <| Route.Repo <| Core.getRepoId repo
+                ]
+                [ text name ]
+            ]
         ]
 
 
