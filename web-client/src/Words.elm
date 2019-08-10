@@ -1,4 +1,24 @@
-module Words exposing (pluralize, pluralizeWithNumericPrefix, singularAndPlural)
+module Words exposing (ellipsify, pluralize, pluralizeWithNumericPrefix, singularAndPlural)
+
+
+ellipsify : Int -> String -> String
+ellipsify maxChars str =
+    let
+        totalChars =
+            String.length str
+
+        charsOver =
+            totalChars - maxChars
+
+        ellipsis =
+            "..."
+    in
+    if charsOver <= 0 then
+        str
+
+    else
+        String.dropRight (charsOver + String.length ellipsis) str
+            |> (\cropString -> cropString ++ ellipsis)
 
 
 pluralize : Int -> String -> String

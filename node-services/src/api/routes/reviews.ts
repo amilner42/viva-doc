@@ -4,6 +4,7 @@ import Express from "express";
 import * as Verify from "../verify";
 import * as ClientErrors from "../client-errors";
 import * as GithubApp from "../github-app";
+import * as GithubApi from "../github-api";
 import * as MongoHelpers from "../../mongo-helpers";
 import * as UA from "../../user-assessment";
 import * as TOG from "../../tag-owner-group";
@@ -25,7 +26,8 @@ expressRouter.get('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId'
     const repoId = Verify.isInt(req.params.repoId, ClientErrors.invalidUrlParams("Repo ID must be a number."));
 
     const user = Verify.getLoggedInUser(req);
-    await Verify.hasAccessToRepo(user, repoId);
+    const basicUserData = await GithubApi.getBasicUserData(user.username, user.accessToken);
+    Verify.hasAccessToRepo(basicUserData, repoId);
 
     const pullRequestReviewObject = await Verify.getPullRequestReviewObject(repoId, pullRequestNumber);
 
@@ -88,7 +90,8 @@ expressRouter.post('/review/repo/:repoId/pr/:pullRequestNumber/commit/:commitId/
 
     const user = Verify.getLoggedInUser(req);
     const username = user.username;
-    await Verify.hasAccessToRepo(user, repoId);
+    const basicUserData = await GithubApi.getBasicUserData(username, user.accessToken);
+    Verify.hasAccessToRepo(basicUserData, repoId);
 
     const newUserApprovalAssessments = createAssessments("approved", username, tagIdsToApprove);
     const newUserRejectionAssessments = createAssessments("rejected", username, tagIdsToReject);

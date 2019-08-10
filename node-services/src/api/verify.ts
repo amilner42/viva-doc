@@ -29,12 +29,16 @@ export const getLoggedInUser = (req: Express.Request): User.User => {
 }
 
 
-export const hasAccessToRepo = async (user: User.User, repoId: number): Promise<void> => {
+export const hasAccessToRepo =
+  ( basicUserData: GithubApi.BasicUserData
+  , repoId: number
+  ): GithubApi.BasicRepoInfo => {
 
-  const basicUserData = await GithubApi.getBasicUserData(user.username, user.accessToken);
-  const hasAccessToRepo = GithubApi.hasAccessToRepo(basicUserData.repos, repoId);
+   const maybeBasicRepoInfo = R.find(({ id }) => { return id === repoId; }, basicUserData.repos);
 
-  if (!hasAccessToRepo) { throw ClientErrors.noAccessToRepoError; }
+   if (maybeBasicRepoInfo === undefined) { throw ClientErrors.noAccessToRepoError; }
+
+   return maybeBasicRepoInfo;
 }
 
 

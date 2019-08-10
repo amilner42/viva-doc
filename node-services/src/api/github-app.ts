@@ -35,3 +35,37 @@ export const putSuccessStatusOnCommit =
     target_url: `${config.webClientOrigin}/review/repo/${repoId}/pr/${prNumber}/commit/${commitId}`
   });
 }
+
+
+export interface BasicPullRequestInfo {
+  number: number;
+  title: string;
+  headCommitId: string;
+}
+
+
+export const getOpenPullRequests =
+  async ( installationId: number
+        , owner: string
+        , repoName: string
+      ) : Promise<BasicPullRequestInfo[]> => {
+
+  const github = await app.asInstallation(installationId);
+
+  const pullsResponse = await github.pullRequests.list({
+    owner,
+    repo: repoName,
+    state: "open"
+  });
+
+  return pullsResponse.data.map((pull: any) => {
+    const basicPullRequestInfo: BasicPullRequestInfo = {
+      number: pull.number,
+      title: pull.title,
+      headCommitId: pull.head.sha
+    };
+
+    return basicPullRequestInfo;
+  });
+
+}
