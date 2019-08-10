@@ -9,6 +9,7 @@ import Html.Attributes exposing (class, style)
 import PullRequest
 import Route
 import Session
+import Words
 
 
 type alias Model =
@@ -104,10 +105,8 @@ renderPullRequest repoId pullRequest =
                     , style "padding" "0 10px"
                     ]
                     [ a
-                        [ class "single-line-ellipsis"
-                        , Route.href <| Route.CommitReview repoId pullRequest.number pullRequest.headCommitId
-                        ]
-                        [ text pullRequest.title ]
+                        [ Route.href <| Route.CommitReview repoId pullRequest.number pullRequest.headCommitId ]
+                        [ text <| Words.ellipsify 150 pullRequest.title ]
                     ]
                 ]
             ]
