@@ -40,6 +40,7 @@ export const putSuccessStatusOnCommit =
 export interface BasicPullRequestInfo {
   number: number;
   title: string;
+  headCommitId: string;
 }
 
 
@@ -58,7 +59,13 @@ export const getOpenPullRequests =
   });
 
   return pullsResponse.data.map((pull: any) => {
-    return { number: pull.number, title: pull.title }
+    const basicPullRequestInfo: BasicPullRequestInfo = {
+      number: pull.number,
+      title: pull.title,
+      headCommitId: pull.head.sha
+    };
+
+    return basicPullRequestInfo;
   });
 
 }

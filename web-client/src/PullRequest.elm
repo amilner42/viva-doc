@@ -6,6 +6,7 @@ import Json.Decode as Decode
 type alias PullRequest =
     { number : Int
     , title : String
+    , headCommitId : String
     }
 
 
@@ -16,6 +17,7 @@ decodePullRequests =
 
 decodePullRequest : Decode.Decoder PullRequest
 decodePullRequest =
-    Decode.map2 PullRequest
+    Decode.map3 PullRequest
         (Decode.field "number" Decode.int)
         (Decode.field "title" Decode.string)
+        (Decode.field "headCommitId" Decode.string)
