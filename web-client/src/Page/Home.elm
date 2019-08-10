@@ -138,6 +138,9 @@ renderInstalledRepoLink repo =
                 , style "margin-bottom" "5px"
                 ]
                 [ div
+                    [ class "level-item level-left" ]
+                    [ Github.githubIcon <| Github.githubRepoLink <| Core.getRepoFullName repo ]
+                , div
                     [ class "level-item level-right has-text-grey-light" ]
                     [ text owner ]
                 ]

@@ -41,6 +41,7 @@ export interface BasicPullRequestInfo {
   number: number;
   title: string;
   headCommitId: string;
+  htmlUrl: string;
 }
 
 
@@ -62,7 +63,8 @@ export const getOpenPullRequests =
     const basicPullRequestInfo: BasicPullRequestInfo = {
       number: pull.number,
       title: pull.title,
-      headCommitId: pull.head.sha
+      headCommitId: pull.head.sha,
+      htmlUrl: pull.html_url
     };
 
     return basicPullRequestInfo;

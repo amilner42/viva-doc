@@ -4,6 +4,7 @@ import Api.Api as Api
 import Api.Core as Core
 import Api.Errors.GetOpenPullRequests as GoprError
 import FetchData
+import Github
 import Html exposing (a, button, div, h1, section, span, text)
 import Html.Attributes exposing (class, style)
 import PullRequest
@@ -104,6 +105,9 @@ renderPullRequest repoId pullRequest =
                 , style "margin-bottom" "35px"
                 ]
                 [ div
+                    [ class "level-item level-left" ]
+                    [ Github.githubIcon pullRequest.htmlUrl ]
+                , div
                     [ class "level-item level-right has-text-grey-light" ]
                     [ text <| "#" ++ String.fromInt pullRequest.number ]
                 ]
