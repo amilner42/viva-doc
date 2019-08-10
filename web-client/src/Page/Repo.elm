@@ -4,8 +4,10 @@ import Api.Api as Api
 import Api.Core as Core
 import Api.Errors.GetOpenPullRequests as GoprError
 import FetchData
-import Html exposing (div, text)
+import Html exposing (a, div, h1, section, span, text)
+import Html.Attributes exposing (class, style)
 import PullRequest
+import Route
 import Session
 
 
@@ -37,14 +39,79 @@ view model =
             Session.LoggedIn _ viewer ->
                 case model.openPullRequests of
                     FetchData.Loading ->
-                        div [] [ text "loading..." ]
+                        renderLoadingScreen
 
                     FetchData.Success pullRequests ->
-                        div [] [ text "got it" ]
+                        renderPullRequests model.repoId pullRequests
 
                     FetchData.Failure err ->
-                        div [] [ text "some err" ]
+                        renderErrorScreen err
     }
+
+
+renderLoadingScreen : Html.Html msg
+renderLoadingScreen =
+    div [] [ text "loading" ]
+
+
+renderErrorScreen : Core.HttpError GoprError.GetOpenPullRequestsError -> Html.Html msg
+renderErrorScreen err =
+    div [] [ text "Internal error" ]
+
+
+renderPullRequests : Int -> List PullRequest.PullRequest -> Html.Html msg
+renderPullRequests repoId pullRequests =
+    section
+        [ class "section" ]
+        [ h1
+            [ class "title is-4 has-text-centered" ]
+            [ text "Open Pull Requests" ]
+        , div
+            [ class "columns is-multiline"
+            , style "margin" "0px"
+            ]
+            (List.map (renderPullRequest repoId) pullRequests)
+        ]
+
+
+renderPullRequest : Int -> PullRequest.PullRequest -> Html.Html msg
+renderPullRequest repoId pullRequest =
+    div
+        [ class "column is-6" ]
+        [ div
+            [ class "box has-text-centered"
+            , style "height" "200px"
+            , style "padding" "10px"
+            ]
+            [ div
+                [ class "level"
+                , style "width" "100%"
+                , style "height" "20px"
+                , style "margin-bottom" "35px"
+                ]
+                [ div
+                    [ class "level-item level-right has-text-grey-light" ]
+                    [ text <| "#" ++ String.fromInt pullRequest.number ]
+                ]
+            , div
+                [ class "level"
+                , style "height" "70px"
+                ]
+                [ div
+                    [ class "level-item has-text-weight-medium"
+                    , style "height" "70px"
+                    , style "width" "100%"
+                    , style "padding" "0 10px"
+                    ]
+                    [ a
+                        [ class "single-line-ellipsis"
+                        , Route.href <| Route.CommitReview repoId pullRequest.number pullRequest.headCommitId
+                        ]
+                        [ text pullRequest.title ]
+                    ]
+                ]
+            ]
+        ]
 
 
 type Msg
