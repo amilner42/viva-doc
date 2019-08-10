@@ -1,4 +1,4 @@
-module Api.Endpoint exposing (Endpoint, commitReview, commitReviewUserAssessments, githubLoginFromCode, logout, request, user)
+module Api.Endpoint exposing (Endpoint, commitReview, commitReviewUserAssessments, githubLoginFromCode, logout, openPullRequests, request, user)
 
 {-| This module hides creates the opaque Endpoint type and keeps all endpoints within this file so
 this file serves as the single source of truth for all app API endpoints.
@@ -124,5 +124,15 @@ commitReviewUserAssessments repoId prNumber commitId =
         , "commit"
         , commitId
         , "userassessments"
+        ]
+        []
+
+
+openPullRequests : Int -> Endpoint
+openPullRequests repoId =
+    url
+        [ "repo"
+        , String.fromInt repoId
+        , "open-pull-requests"
         ]
         []

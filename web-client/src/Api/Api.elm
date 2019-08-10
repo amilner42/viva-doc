@@ -1,4 +1,4 @@
-module Api.Api exposing (GithubLoginBody, getCommitReview, getLogout, getUser, githubLoginFromCode, postUserAssessments)
+module Api.Api exposing (GithubLoginBody, getCommitReview, getLogout, getOpenPullRequests, getUser, githubLoginFromCode, postUserAssessments)
 
 {-| This module strictly contains the routes to the API.
 
@@ -10,6 +10,7 @@ likely be put in `Api.Core`.
 import Api.Core as Core
 import Api.Endpoint as Endpoint
 import Api.Errors.GetCommitReview as GcrError
+import Api.Errors.GetOpenPullRequests as GoprError
 import Api.Errors.PostUserAssessments as PuaError
 import Api.Responses.GetCommitReview as GcrResponse
 import Api.Responses.PostUserAssessments as PuaResponse
@@ -18,6 +19,7 @@ import Http
 import Json.Decode as Decode
 import Json.Decode.Pipeline exposing (optional)
 import Json.Encode as Encode
+import PullRequest
 import Set
 import Viewer
 
@@ -70,6 +72,18 @@ getCommitReview repoId prNumber commitId handleResult =
         standardTimeout
         Nothing
         (Core.expectJson handleResult GcrResponse.decodeCommitReviewResponse GcrError.decodeGetCommitReviewError)
+
+
+getOpenPullRequests :
+    Int
+    -> (Result.Result (Core.HttpError GoprError.GetOpenPullRequestsError) (List PullRequest.PullRequest) -> msg)
+    -> Cmd.Cmd msg
+getOpenPullRequests repoId handleResult =
+    Core.get
+        (Endpoint.openPullRequests repoId)
+        standardTimeout
+        Nothing
+        (Core.expectJson handleResult PullRequest.decodePullRequests GoprError.decodeGetOpenPullRequestsError)
 
 
 {-| TODO handle errors.
