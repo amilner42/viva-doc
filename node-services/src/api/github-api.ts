@@ -12,19 +12,18 @@ export interface BasicUserData {
 
 
 export interface BasicRepoInfo {
-    id: string;
+    id: number;
     full_name: string;
     private: boolean
     appInstalled: boolean;
 }
 
 
-/** Get's the basic user data for the client `Viewer.elm`. */
 export const getBasicUserData = async (username: string, token: string): Promise<BasicUserData> => {
     const ghApi = new Github({ username: username, token: token });
     const userGhApi = ghApi.getUser();
 
-    const repoResponseData: { id: string, full_name: string, private: boolean }[] = (await userGhApi.listRepos()).data;
+    const repoResponseData: { id: number, full_name: string, private: boolean }[] = (await userGhApi.listRepos()).data;
 
     const installedRepoMap = await Installation.getInstalledRepoMap(repoResponseData.map((repo) => repo.id));
 
@@ -39,15 +38,4 @@ export const getBasicUserData = async (username: string, token: string): Promise
         }, repoResponseData);
 
     return { username: username, repos: repos };
-}
-
-
-// TODO MOVE
-// Check if a list of repos contain a repo with a specific ID.
-export const hasAccessToRepo = (repos: BasicRepoInfo[], repoId: string | number): boolean => {
-    if (typeof repoId === "string") {
-        repoId = parseInt(repoId)
-    }
-
-    return R.any(({ id }) => { return id === repoId; }, repos);
 }
