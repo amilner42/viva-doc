@@ -4,7 +4,7 @@ import Api.Api as Api
 import Api.Core as Core
 import Api.Errors.GetOpenPullRequests as GoprError
 import FetchData
-import Html exposing (a, div, h1, section, span, text)
+import Html exposing (a, button, div, h1, section, span, text)
 import Html.Attributes exposing (class, style)
 import PullRequest
 import Route
@@ -52,12 +52,25 @@ view model =
 
 renderLoadingScreen : Html.Html msg
 renderLoadingScreen =
-    div [] [ text "loading" ]
+    div
+        [ class "section is-large" ]
+        [ div
+            [ class "has-text-centered title is-6 has-text-grey-light" ]
+            [ text "loading pull requests" ]
+        , div [ class "loader", style "margin" "10px auto" ] []
+        ]
 
 
 renderErrorScreen : Core.HttpError GoprError.GetOpenPullRequestsError -> Html.Html msg
 renderErrorScreen err =
-    div [] [ text "Internal error" ]
+    div
+        [ class "section is-large has-text-centered" ]
+        [ div
+            [ class "title is-2" ]
+            [ text "Internal Error"
+            , div [ class "subtitle is-5" ] [ text "try again later..." ]
+            ]
+        ]
 
 
 renderPullRequests : Int -> List PullRequest.PullRequest -> Html.Html msg

@@ -107,3 +107,9 @@ $family-primary: 'Raleway', sans-serif;
 
 @import "~bulma/sass/layout/section.sass";
 @import "~bulma/sass/layout/hero.sass";
+
+.loader {
+  @extend %loader;
+  height: 50px;
+  width: 50px;
+}
