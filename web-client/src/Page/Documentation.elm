@@ -95,10 +95,10 @@ renderDocumentation ({ session, documentationTab } as model) =
     div
         [ class "columns" ]
         [ div
-            [ class "column is-one-quarter" ]
+            [ class "column is-one-quarter-desktop is-one-third-tablet" ]
             [ renderSidebar documentationTab ]
         , div
-            [ class "column is-three-quarters" ]
+            [ class "column is-three-quarters-desktop is-two-thirds-tablet" ]
             [ section [ class "section" ] [ renderDocTabContent model ] ]
         ]
 
