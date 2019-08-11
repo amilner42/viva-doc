@@ -1,4 +1,4 @@
-module Asset exposing (Image, src, vdLandingIcon1, vdLandingIcon2, vdLandingIcon3, vdLogo, vdTitle)
+module Asset exposing (Image, githubLogo, src, vdLandingIcon1, vdLandingIcon2, vdLandingIcon3, vdLogo, vdTitle)
 
 {-| Assets, such as images, videos, and audio.
 
@@ -17,6 +17,11 @@ type Image
 
 
 -- IMAGES
+
+
+githubLogo : Image
+githubLogo =
+    image "github-logo.svg"
 
 
 vdLogo : Image

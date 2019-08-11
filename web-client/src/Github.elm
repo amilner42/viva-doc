@@ -1,8 +1,11 @@
-module Github exposing (installAppOnRepositoriesLink, oAuthSignInLink, oauthClientId)
+module Github exposing (githubIcon, githubPullRequestLink, githubRepoLink, installAppOnRepositoriesLink, oAuthSignInLink, oauthClientId)
 
 {-| A module for all things relating to Github.
 -}
 
+import Asset
+import Html exposing (Html, a, img)
+import Html.Attributes exposing (href, style)
 import Url.Builder as UB
 
 
@@ -14,7 +17,7 @@ The `clientID` is from the github oauth app.
 oAuthSignInLink : String -> String
 oAuthSignInLink clientID =
     UB.crossOrigin
-        githubURL
+        githubUrl
         [ "login", "oauth", "authorize" ]
         [ UB.string "client_id" clientID
         , UB.string "scope" "repo read:org"
@@ -29,15 +32,44 @@ oauthClientId =
 installAppOnRepositoriesLink : String
 installAppOnRepositoriesLink =
     UB.crossOrigin
-        githubURL
+        githubUrl
         [ "apps", "vivadoc" ]
         []
+
+
+githubRepoLink : String -> String
+githubRepoLink fullRepoName =
+    UB.crossOrigin
+        githubUrl
+        [ fullRepoName ]
+        []
+
+
+githubPullRequestLink : String -> Int -> String
+githubPullRequestLink fullRepoName prNumber =
+    UB.crossOrigin
+        githubUrl
+        [ fullRepoName, "pull", String.fromInt prNumber ]
+        []
+
+
+githubIcon : String -> Html msg
+githubIcon url =
+    a
+        [ href url ]
+        [ img
+            [ Asset.src Asset.githubLogo
+            , style "width" "24px"
+            , style "height" "24px"
+            ]
+            []
+        ]
 
 
 
 -- INTERNAL
 
 
-githubURL : String
-githubURL =
+githubUrl : String
+githubUrl =
     "https://github.com"
