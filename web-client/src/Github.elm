@@ -1,4 +1,4 @@
-module Github exposing (githubIcon, githubRepoLink, installAppOnRepositoriesLink, oAuthSignInLink, oauthClientId)
+module Github exposing (githubIcon, githubPullRequestLink, githubRepoLink, installAppOnRepositoriesLink, oAuthSignInLink, oauthClientId)
 
 {-| A module for all things relating to Github.
 -}
@@ -42,6 +42,14 @@ githubRepoLink fullRepoName =
     UB.crossOrigin
         githubUrl
         [ fullRepoName ]
+        []
+
+
+githubPullRequestLink : String -> Int -> String
+githubPullRequestLink fullRepoName prNumber =
+    UB.crossOrigin
+        githubUrl
+        [ fullRepoName, "pull", String.fromInt prNumber ]
         []
 
 

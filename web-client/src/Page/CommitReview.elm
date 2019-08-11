@@ -8,8 +8,9 @@ import Api.Responses.GetCommitReview as GcrResponse
 import Api.Responses.PostUserAssessments as PuaResponse
 import CodeEditor
 import CommitReview
-import Html exposing (Html, a, button, dd, div, dl, dt, hr, i, li, ol, p, progress, section, span, table, tbody, td, text, th, thead, tr)
-import Html.Attributes exposing (class, classList, disabled, max, style, value)
+import Github
+import Html exposing (Html, a, button, dd, div, dl, dt, hr, i, img, li, ol, p, progress, section, span, table, tbody, td, text, th, thead, tr)
+import Html.Attributes exposing (class, classList, disabled, href, max, style, value)
 import Html.Events exposing (onClick)
 import Language
 import OwnerGroup as OG
@@ -165,6 +166,8 @@ renderCommitReview config commitReview =
                 , displayFilter = config.displayFilter
                 , submitDocReviewState = config.submitDocReviewState
                 , username = config.username
+                , repoFullName = commitReview.repoFullName
+                , pullRequestNumber = commitReview.pullRequestNumber
                 }
 
         commitReviewHeader =
@@ -221,6 +224,8 @@ type alias RenderStatusConfig =
     , displayFilter : CommitReview.ViewFilterOption
     , username : String
     , submitDocReviewState : SubmitDocReviewState
+    , repoFullName : String
+    , pullRequestNumber : Int
     }
 
 
@@ -239,7 +244,7 @@ renderStatus config =
         []
         [ div
             [ class "title" ]
-            [ text "Status Summary" ]
+            [ text "Pull Request Status" ]
         , Progress.progress
             { height = "30px"
             , bars =
@@ -296,6 +301,16 @@ renderStatus config =
                         , pluralPrefix = ""
                         , pluralSuffix = " tags remain unresolved."
                         }
+                ]
+            , div
+                [ class "level"
+                , style "margin-top" "10px"
+                ]
+                [ a
+                    [ class "level-left"
+                    , href <| Github.githubPullRequestLink config.repoFullName config.pullRequestNumber
+                    ]
+                    [ span [ class "level-item" ] [ text "View PR on GitHub" ] ]
                 ]
             ]
         , submitReviewButton
