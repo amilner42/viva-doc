@@ -3,6 +3,7 @@ module Page.OAuthRedirect exposing (Model, Msg, init, subscriptions, toSession, 
 import Api.Api as Api
 import Api.Core as Core
 import Html exposing (..)
+import Loading
 import LocalStorage
 import Route
 import Session exposing (Session)
@@ -61,7 +62,7 @@ view { hasGithubCode, loginFromCodeError } =
             True ->
                 case loginFromCodeError of
                     Nothing ->
-                        div [] [ text "Loading..." ]
+                        Loading.renderLoadingScreen "fetching user"
 
                     Just _ ->
                         -- TODO

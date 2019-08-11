@@ -17,12 +17,12 @@ import Http exposing (Error(..))
 import Json.Decode as Decode
 import LocalStorage
 import Page
-import Page.Blank as Blank
 import Page.CommitReview as CommitReview
 import Page.Documentation as Documentation
 import Page.Home as Home
 import Page.NotFound as NotFound
 import Page.OAuthRedirect as OAuthRedirect
+import Page.Redirect as Redirect
 import Page.Repo as Repo
 import Ports
 import Route exposing (Route)
@@ -46,7 +46,7 @@ type alias Model =
 
 
 type PageModel
-    = Redirect Session
+    = Redirect Session Redirect.RedirectDisplay
     | NotFound Session
     | Home Home.Model
     | OAuthRedirect OAuthRedirect.Model
@@ -69,7 +69,7 @@ init flags url navKey =
             changeRouteTo
                 oauthRedirectRoute
                 { mobileNavbarOpen = False
-                , pageModel = Redirect <| Session.Guest navKey
+                , pageModel = Redirect (Session.Guest navKey) Redirect.FetchingUser
                 , isLoggingIn = True
                 , isLoggingOut = False
                 }
@@ -77,7 +77,20 @@ init flags url navKey =
         -- Otherwise we've hit the website and should try to get the user
         maybeRoute ->
             ( { mobileNavbarOpen = False
-              , pageModel = Redirect <| Session.Guest navKey
+              , pageModel =
+                    Redirect (Session.Guest navKey) <|
+                        -- To prevent the flash of the loading user spinner on the landing page we don't display
+                        -- the fetching user spinner on those pages. On the other pages it looks nice, especially the
+                        -- stacked spinners ("loading user" -> "loading commit review").
+                        case maybeRoute of
+                            Nothing ->
+                                Redirect.Blank
+
+                            Just Route.Home ->
+                                Redirect.Blank
+
+                            _ ->
+                                Redirect.FetchingUser
               , isLoggingIn = True
               , isLoggingOut = False
               }
@@ -120,11 +133,11 @@ view model =
             }
     in
     case model.pageModel of
-        Redirect _ ->
+        Redirect _ redirectReason ->
             viewPageWithNavbar
                 { showHomeButton = False, showHero = Page.NoHero, selectedTab = Page.NoTab }
                 (\_ -> Ignored)
-                Blank.view
+                (Redirect.view redirectReason)
 
         NotFound _ ->
             viewPageWithNavbar
@@ -197,7 +210,7 @@ type Msg
 toSession : Model -> Session
 toSession { pageModel } =
     case pageModel of
-        Redirect session ->
+        Redirect session _ ->
             session
 
         NotFound session ->
@@ -317,7 +330,7 @@ update msg model =
                                     |> Route.routeToString
                             }
 
-                    Redirect _ ->
+                    Redirect _ _ ->
                         Cmd.none
 
                     NotFound _ ->
@@ -357,7 +370,7 @@ update msg model =
             ( { model
                 | mobileNavbarOpen = False
                 , isLoggingIn = False
-                , pageModel = Redirect <| Session.LoggedIn currentNavKey viewer
+                , pageModel = Redirect (Session.LoggedIn currentNavKey viewer) Redirect.Blank
               }
             , Route.replaceUrl currentNavKey goToRoute
             )
@@ -373,7 +386,7 @@ update msg model =
             changeRouteTo
                 (Just Route.Home)
                 { model
-                    | pageModel = Redirect <| Session.Guest currentNavKey
+                    | pageModel = Redirect (Session.Guest currentNavKey) Redirect.Blank
                     , isLoggingOut = False
                 }
 
@@ -480,7 +493,7 @@ subscriptions model =
             NotFound _ ->
                 Sub.none
 
-            Redirect _ ->
+            Redirect _ _ ->
                 Sub.none
 
             Home homeModel ->
