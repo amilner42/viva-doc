@@ -7,6 +7,7 @@ import FetchData
 import Github
 import Html exposing (a, button, div, h1, section, span, text)
 import Html.Attributes exposing (class, style)
+import Loading
 import PullRequest
 import Route
 import Session
@@ -41,7 +42,7 @@ view model =
             Session.LoggedIn _ viewer ->
                 case model.openPullRequests of
                     FetchData.Loading ->
-                        renderLoadingScreen
+                        Loading.renderLoadingScreen "loading pull requests"
 
                     FetchData.Success pullRequests ->
                         renderPullRequests model.repoId pullRequests
@@ -49,17 +50,6 @@ view model =
                     FetchData.Failure err ->
                         renderErrorScreen err
     }
-
-
-renderLoadingScreen : Html.Html msg
-renderLoadingScreen =
-    div
-        [ class "section is-large" ]
-        [ div
-            [ class "has-text-centered title is-6 has-text-grey-light" ]
-            [ text "loading pull requests" ]
-        , div [ class "loader", style "margin" "10px auto" ] []
-        ]
 
 
 renderErrorScreen : Core.HttpError GoprError.GetOpenPullRequestsError -> Html.Html msg

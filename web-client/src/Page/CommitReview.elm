@@ -13,6 +13,7 @@ import Html exposing (Html, a, button, dd, div, dl, dt, hr, i, img, li, ol, p, p
 import Html.Attributes exposing (class, classList, disabled, href, max, style, value)
 import Html.Events exposing (onClick)
 import Language
+import Loading
 import OwnerGroup as OG
 import Ports
 import Progress
@@ -92,30 +93,32 @@ view : Model -> { title : String, content : Html Msg }
 view model =
     { title = "Review"
     , content =
-        div [ class "section" ] <|
-            case model.session of
-                Session.Guest _ ->
+        case model.session of
+            Session.Guest _ ->
+                div [ class "section" ]
                     [ text "You need to be logged in to view this page..." ]
 
-                Session.LoggedIn _ viewer ->
-                    case model.commitReview of
-                        RemoteData.NotAsked ->
+            Session.LoggedIn _ viewer ->
+                case model.commitReview of
+                    RemoteData.NotAsked ->
+                        div [ class "section" ]
                             [ text "Logged in... " ]
 
-                        RemoteData.Loading ->
-                            [ text "Loading review..." ]
+                    RemoteData.Loading ->
+                        Loading.renderLoadingScreen "loading commit review"
 
-                        RemoteData.Failure err ->
-                            renderGetCommitReviewErrorModal err
+                    RemoteData.Failure err ->
+                        div [ class "section" ] <| renderGetCommitReviewErrorModal err
 
-                        RemoteData.Success { headCommitId, responseType } ->
+                    RemoteData.Success { headCommitId, responseType } ->
+                        div [ class "section" ] <|
                             if headCommitId /= model.commitId && not model.modalClosed then
                                 renderHeadUpdatedModal
                                     responseType
                                     """This commit is stale! You can continue to browse to see what was previosly
-                                approved/rejected but if you would like to make changes you must go to the most
-                                recent commit in the PR.
-                                """
+                                    approved/rejected but if you would like to make changes you must go to the most
+                                    recent commit in the PR.
+                                    """
                                     (Route.CommitReview model.repoId model.prNumber headCommitId)
 
                             else
