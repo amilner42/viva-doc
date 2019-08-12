@@ -89,7 +89,7 @@ renderPullRequest repoId pullRequest =
             , style "padding" "10px"
             ]
             [ div
-                [ class "level"
+                [ class "level is-mobile"
                 , style "width" "100%"
                 , style "height" "20px"
                 , style "margin-bottom" "35px"
