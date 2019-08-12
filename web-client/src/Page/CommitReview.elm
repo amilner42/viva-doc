@@ -883,23 +883,24 @@ renderHeadUpdatedModal gcrResponseType modalText headCommitRoute =
             [ class "modal-card" ]
             [ section
                 [ class "modal-card-body"
-                , style "border-radius" "10px"
+                , style "border-radius" "1px"
                 ]
                 [ div
-                    [ class "content" ]
+                    [ class "content has-text-centered" ]
                     [ text modalText ]
+                , hr [ class "styled-hr" ] []
                 , div
                     [ class "buttons are-large is-centered" ]
                     [ button
-                        [ class "button is-info is-fullwidth"
+                        [ class "button is-light tile"
                         , onClick <| SetModalClosed True gcrResponseType
                         ]
                         [ text "browse stale commit" ]
                     , a
-                        [ class "button is-link is-fullwidth"
+                        [ class "button is-link tile"
                         , Route.href headCommitRoute
                         ]
-                        [ text "jump to most recent commit" ]
+                        [ text "go to newest commit" ]
                     ]
                 ]
             ]

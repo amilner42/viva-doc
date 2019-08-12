@@ -74,6 +74,11 @@ $vd-spark-dark: #45A29E;
   white-space: nowrap;
 }
 
+.styled-hr {
+  border: 0;
+  height: 1px;
+  background-image: linear-gradient(to right, rgba(0, 0, 0, 0.05), rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.05));
+}
 /** Bulma CSS and internal CSS requiring Bulma to be loaded. */
 
 // Bulma variables
