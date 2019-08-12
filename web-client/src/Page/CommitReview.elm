@@ -882,9 +882,7 @@ renderHeadUpdatedModal gcrResponseType modalText headCommitRoute =
         , div
             [ class "modal-card" ]
             [ section
-                [ class "modal-card-body"
-                , style "border-radius" "1px"
-                ]
+                [ class "modal-card-body" ]
                 [ div
                     [ class "content has-text-centered" ]
                     [ text modalText ]
@@ -999,9 +997,7 @@ renderGetCommitReviewErrorModal httpError =
         , div
             [ class "modal-card" ]
             [ section
-                [ class "modal-card-body"
-                , style "border-radius" "10px"
-                ]
+                [ class "modal-card-body" ]
                 [ div
                     [ class "content" ]
                     [ text modalText ]

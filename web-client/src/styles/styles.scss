@@ -85,6 +85,9 @@ $vd-spark-dark: #45A29E;
 $primary: $vd-base-medium;
 $link: $vd-spark-dark;
 $family-primary: 'Raleway', sans-serif;
+$box-radius: 2px;
+$modal-card-head-radius: 2px;
+$modal-card-foot-radius: 2px;
 
 @import "~bulma/sass/utilities/_all.sass";
 @import "~bulma/sass/base/_all.sass";
@@ -122,4 +125,8 @@ $family-primary: 'Raleway', sans-serif;
     border-bottom: none;
     background-color: whitesmoke;
   }
+}
+
+.modal-card {
+  border-radius: 2px;
 }
