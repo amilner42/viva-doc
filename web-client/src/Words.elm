@@ -1,4 +1,4 @@
-module Words exposing (ellipsify, pluralize, pluralizeWithNumericPrefix, singularAndPlural)
+module Words exposing (ellipsify, pixelify, pluralize, pluralizeWithNumericPrefix, singularAndPlural)
 
 
 ellipsify : Int -> String -> String
@@ -19,6 +19,11 @@ ellipsify maxChars str =
     else
         String.dropRight (charsOver + String.length ellipsis) str
             |> (\cropString -> cropString ++ ellipsis)
+
+
+pixelify : Int -> String
+pixelify pixels =
+    String.fromInt pixels ++ "px"
 
 
 pluralize : Int -> String -> String

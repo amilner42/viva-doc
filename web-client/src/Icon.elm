@@ -6,6 +6,7 @@ module Icon exposing (IconSize(..), RenderIconConfig, renderIcon)
 import Bulma
 import Html exposing (Attribute, Html, div, i, span, text)
 import Html.Attributes exposing (class, style)
+import Words
 
 
 type alias RenderIconConfig =
@@ -27,13 +28,12 @@ renderIcon { iconName, optionalAdjacentText, iconSize, iconColor } =
     let
         icon =
             span
-                [ class "icon is-small" ]
+                [ Bulma.withBulmaClasses [ Bulma.BulmaSize iconSize ] "icon" ]
                 [ i
                     [ Bulma.withBulmaClasses
-                        [ Bulma.BulmaSize iconSize
-                        , Bulma.TextColor iconColor
-                        ]
-                        "material-icons "
+                        [ Bulma.TextColor iconColor ]
+                        "material-icons"
+                    , style "font-size" <| Words.pixelify <| iconSizeToPixels iconSize
                     ]
                     [ text iconName ]
                 ]
@@ -44,7 +44,7 @@ renderIcon { iconName, optionalAdjacentText, iconSize, iconColor } =
 
         Just ( adjacentText, textColor ) ->
             div
-                [ class "level", style "margin" "0" ]
+                [ class "level is-mobile", style "margin" "0" ]
                 [ div
                     [ class "level-left" ]
                     [ icon
@@ -57,3 +57,16 @@ renderIcon { iconName, optionalAdjacentText, iconSize, iconColor } =
                         [ text adjacentText ]
                     ]
                 ]
+
+
+iconSizeToPixels : Bulma.BulmaSize -> Int
+iconSizeToPixels bulmaSize =
+    case bulmaSize of
+        Bulma.BulmaSmall ->
+            24
+
+        Bulma.BulmaMedium ->
+            36
+
+        Bulma.BulmaLarge ->
+            48

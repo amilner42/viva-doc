@@ -6,12 +6,14 @@ import Api.Errors.GetCommitReview as GcrError
 import Api.Errors.PostUserAssessments as PuaError
 import Api.Responses.GetCommitReview as GcrResponse
 import Api.Responses.PostUserAssessments as PuaResponse
+import Bulma
 import CodeEditor
 import CommitReview
 import Github
 import Html exposing (Html, a, button, dd, div, dl, dt, hr, i, img, li, ol, p, progress, section, span, table, tbody, td, text, th, thead, tr)
 import Html.Attributes exposing (class, classList, disabled, href, max, style, value)
 import Html.Events exposing (onClick)
+import Icon
 import Language
 import Loading
 import OwnerGroup as OG
@@ -882,6 +884,15 @@ renderHeadUpdatedModal gcrResponseType modalText headCommitRoute =
         , div
             [ class "modal-card" ]
             [ section
+                [ class "modal-card-head" ]
+                [ Icon.renderIcon
+                    { iconName = "warning"
+                    , optionalAdjacentText = Just ( "warning", Bulma.DarkGrey )
+                    , iconSize = Bulma.BulmaMedium
+                    , iconColor = Bulma.Warning
+                    }
+                ]
+            , section
                 [ class "modal-card-body" ]
                 [ div
                     [ class "content has-text-centered" ]
@@ -997,11 +1008,17 @@ renderGetCommitReviewErrorModal httpError =
         , div
             [ class "modal-card" ]
             [ section
-                [ class "modal-card-body" ]
-                [ div
-                    [ class "content" ]
-                    [ text modalText ]
+                [ class "modal-card-head" ]
+                [ Icon.renderIcon
+                    { iconName = "error"
+                    , optionalAdjacentText = Just ( "Error", Bulma.DarkGrey )
+                    , iconSize = Bulma.BulmaMedium
+                    , iconColor = Bulma.Danger
+                    }
                 ]
+            , section
+                [ class "modal-card-body" ]
+                [ text modalText ]
             ]
         ]
     ]
