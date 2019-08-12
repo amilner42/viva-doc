@@ -458,9 +458,9 @@ renderCommitReviewHeader config =
                     ]
                 ]
             ]
-        , div [ class "buttons level-right" ]
+        , div [ class "buttons has-addons level-right" ]
             [ button
-                [ class "button is-rounded"
+                [ class "button"
                 , onClick <| SetDisplayFilter CommitReview.ViewAllTags
                 ]
                 [ span [ class "icon is-small" ]
@@ -478,7 +478,7 @@ renderCommitReviewHeader config =
                 , div [] [ text "All" ]
                 ]
             , button
-                [ class "button is-rounded"
+                [ class "button"
                 , onClick <| SetDisplayFilter <| CommitReview.ViewTagsThatRequireUserAssessment config.username
                 ]
                 [ span
@@ -497,7 +497,7 @@ renderCommitReviewHeader config =
                 , div [] [ text "Requires Your Assessment" ]
                 ]
             , button
-                [ class "button is-rounded"
+                [ class "button"
                 , onClick <| SetDisplayFilter CommitReview.ViewTagsInCurrentDocReview
                 ]
                 [ span
