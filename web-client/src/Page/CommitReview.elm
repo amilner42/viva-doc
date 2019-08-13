@@ -113,8 +113,8 @@ view model =
                         div [ class "section" ] <| renderGetCommitReviewErrorModal err
 
                     RemoteData.Success { headCommitId, responseType } ->
-                        div [ class "section" ] <|
-                            if headCommitId /= model.commitId && not model.modalClosed then
+                        if headCommitId /= model.commitId && not model.modalClosed then
+                            div [ class "section" ] <|
                                 renderHeadUpdatedModal
                                     responseType
                                     """This commit is stale! You can continue to browse to see what was previosly
@@ -123,22 +123,24 @@ view model =
                                     """
                                     (Route.CommitReview model.repoId model.prNumber headCommitId)
 
-                            else
-                                case responseType of
-                                    GcrResponse.Pending forCommits ->
+                        else
+                            case responseType of
+                                GcrResponse.Pending forCommits ->
+                                    div [ class "section" ] <|
                                         renderPendingAnalysisPane model.commitId forCommits
 
-                                    GcrResponse.AnalysisFailed withReason ->
+                                GcrResponse.AnalysisFailed withReason ->
+                                    div [ class "section" ] <|
                                         renderAnalysisFailedPane withReason
 
-                                    GcrResponse.Complete commitReview ->
-                                        renderCommitReview
-                                            { username = Viewer.getUsername viewer
-                                            , displayFilter = model.displayFilter
-                                            , isCommitStale = model.commitId /= headCommitId
-                                            , submitDocReviewState = model.submitDocReviewState
-                                            }
-                                            commitReview
+                                GcrResponse.Complete commitReview ->
+                                    renderCommitReview
+                                        { username = Viewer.getUsername viewer
+                                        , displayFilter = model.displayFilter
+                                        , isCommitStale = model.commitId /= headCommitId
+                                        , submitDocReviewState = model.submitDocReviewState
+                                        }
+                                        commitReview
     }
 
 
@@ -149,7 +151,7 @@ renderCommitReview :
     , submitDocReviewState : SubmitDocReviewState
     }
     -> CommitReview.CommitReview
-    -> List (Html.Html Msg)
+    -> Html.Html Msg
 renderCommitReview config commitReview =
     let
         tagCountBreakdown =
@@ -161,7 +163,7 @@ renderCommitReview config commitReview =
         docReviewTagIds =
             CommitReview.getTagIdsInDocReview commitReview
 
-        status =
+        statusSection =
             renderStatus
                 { totalTagCount = tagCountBreakdown.totalCount
                 , approvedTagCount = tagCountBreakdown.approvedCount
@@ -200,24 +202,29 @@ renderCommitReview config commitReview =
                         , isCommitStale = config.isCommitStale
                         }
                     )
+
+        reviewsSection =
+            div [ class "section", style "min-height" "100vh" ] <|
+                [ commitReviewHeader
+                , noReviewsDisplayedText
+                ]
+                    ++ fileReviews
     in
     if tagCountBreakdown.totalCount == 0 then
-        [ div
-            [ class "title has-text-centered" ]
-            [ text "No documentation needs review" ]
-        , div
-            [ class "subtitle has-text-centered" ]
-            [ text "Let's call it a day and grab a beer..." ]
-        ]
+        div [ class "section is-large" ]
+            [ div
+                [ class "title has-text-centered" ]
+                [ text "No documentation needs review" ]
+            , div
+                [ class "subtitle has-text-centered" ]
+                [ text "Let's call it a day and grab a beer..." ]
+            ]
 
     else
         -- NOTE We always render the file reviews and hide them with "is-hidden" because of the nature of elm's VDOM
         -- not being aware of the code editors. This prevents us from calling to the port every time as they stay
         -- rendered but hidden.
-        status
-            :: commitReviewHeader
-            :: noReviewsDisplayedText
-            :: fileReviews
+        div [] [ statusSection, reviewsSection ]
 
 
 type alias RenderStatusConfig =
@@ -244,82 +251,133 @@ renderStatus config =
                 , docReviewTagIds = config.docReviewTagIds
                 , submitDocReviewState = config.submitDocReviewState
                 }
-    in
-    div
-        []
-        [ div
-            [ class "title" ]
-            [ text "Pull Request Status" ]
-        , Progress.progress
-            { height = "30px"
-            , bars =
-                [ { color = Progress.Success
-                  , widthPercent = toFloat config.approvedTagCount / toFloat config.totalTagCount * 100
-                  , text = Just "approved"
-                  }
-                , { color = Progress.Danger
-                  , widthPercent = toFloat config.rejectedTagCount / toFloat config.totalTagCount * 100
-                  , text = Just "rejected"
-                  }
-                ]
-            }
-        , div
-            [ class "section"
-            , style "padding-top" "10px"
-            ]
-            [ div
-                []
-                [ text <|
-                    Words.singularAndPlural
-                        { count = config.totalTagCount
-                        , singular = "There is 1 tag."
-                        , pluralPrefix = "There are a total of "
-                        , pluralSuffix = " tags."
-                        }
-                ]
-            , div
-                []
-                [ text <|
-                    Words.singularAndPlural
-                        { count = config.approvedTagCount
-                        , singular = "1 tag has been approved."
-                        , pluralPrefix = ""
-                        , pluralSuffix = " tags have been approved."
-                        }
-                ]
-            , div
-                []
-                [ text <|
-                    Words.singularAndPlural
-                        { count = config.rejectedTagCount
-                        , singular = "1 tag has been rejected."
-                        , pluralPrefix = ""
-                        , pluralSuffix = " tags have been rejected."
-                        }
-                ]
-            , div
-                []
-                [ text <|
-                    Words.singularAndPlural
-                        { count = config.unresolvedTagCount
-                        , singular = "1 tag remains unresolved."
-                        , pluralPrefix = ""
-                        , pluralSuffix = " tags remain unresolved."
-                        }
-                ]
-            , div
-                [ class "level"
-                , style "margin-top" "10px"
-                ]
-                [ a
-                    [ class "level-left"
-                    , href <| Github.githubPullRequestLink config.repoFullName config.pullRequestNumber
+
+        progress =
+            Progress.progress
+                { height = "5px"
+                , width = "100%"
+                , bars =
+                    [ { color = Progress.Success
+                      , widthPercent = toFloat config.approvedTagCount / toFloat config.totalTagCount * 100
+                      , text = Nothing
+                      }
+                    , { color = Progress.Danger
+                      , widthPercent = toFloat config.rejectedTagCount / toFloat config.totalTagCount * 100
+                      , text = Nothing
+                      }
                     ]
-                    [ span [ class "level-item" ] [ text "View PR on GitHub" ] ]
-                ]
+                }
+    in
+    div [ class "section is-small has-text-centered-mobile" ]
+        [ div
+            [ class "box"
+            , style "margin-bottom" "50px"
             ]
-        , submitReviewButton
+            [ div [ class "title" ] [ text "Completion Status" ]
+            , progress
+            , subProgressText
+                { totalTagCount = config.totalTagCount
+                , approvedTagCount = config.approvedTagCount
+                , rejectedTagCount = config.rejectedTagCount
+                , unresolvedTagCount = config.unresolvedTagCount
+                }
+            , submitReviewButton
+            ]
         ]
+
+
+subProgressText :
+    { totalTagCount : Int
+    , approvedTagCount : Int
+    , rejectedTagCount : Int
+    , unresolvedTagCount : Int
+    }
+    -> Html msg
+subProgressText { totalTagCount, approvedTagCount, rejectedTagCount, unresolvedTagCount } =
+    let
+        approvedSubText =
+            span
+                [ classList
+                    [ ( "level-item", True )
+                    , ( "is-hidden", approvedTagCount == 0 )
+                    ]
+                ]
+                [ text <|
+                    Words.singularAndPlural
+                        { count = approvedTagCount
+                        , singular = "1 approved."
+                        , pluralPrefix = ""
+                        , pluralSuffix = " approved."
+                        }
+                ]
+
+        rejectedSubText =
+            span
+                [ classList
+                    [ ( "level-item", True )
+                    , ( "is-hidden", rejectedTagCount == 0 )
+                    ]
+                ]
+                [ text <|
+                    Words.singularAndPlural
+                        { count = rejectedTagCount
+                        , singular = "1 rejected."
+                        , pluralPrefix = ""
+                        , pluralSuffix = " rejected."
+                        }
+                ]
+
+        unresolvedSubText =
+            span
+                [ classList
+                    [ ( "level-item", True )
+                    , ( "is-hidden", unresolvedTagCount == 0 )
+                    ]
+                ]
+                [ text <|
+                    Words.singularAndPlural
+                        { count = unresolvedTagCount
+                        , singular = "1 unresolved."
+                        , pluralPrefix = ""
+                        , pluralSuffix = " unresolved."
+                        }
+                ]
+    in
+    div [ class "level", style "margin-top" "10px" ] <|
+        if unresolvedTagCount == totalTagCount then
+            [ span
+                [ class "level-item" ]
+                [ text <| "No documentation has been reviewed." ]
+            ]
+
+        else if approvedTagCount == totalTagCount then
+            [ span
+                [ class "level-item" ]
+                [ text <| "All documentation has been approved." ]
+            ]
+
+        else if rejectedTagCount == totalTagCount then
+            [ span
+                [ class "level-item" ]
+                [ text <| "All documentation has been rejected." ]
+            ]
+
+        else
+            [ approvedSubText, rejectedSubText, unresolvedSubText ]
+
+
+
+-- , div
+--     [ class "level"
+--     , style "margin-top" "10px"
+--     ]
+--     [ a
+--         [ class "level-left"
+--         , href <| Github.githubPullRequestLink config.repoFullName config.pullRequestNumber
+--         ]
+--         [ span [ class "level-item" ] [ text "View PR on GitHub" ] ]
+--     ]
+--  ,   submitReviewButton
 
 
 type alias RenderSubmitReviewButtonConfig =

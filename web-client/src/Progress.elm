@@ -9,6 +9,7 @@ import Html.Attributes exposing (class, classList, style)
 
 type alias ProgressConfig =
     { height : String
+    , width : String
     , bars : List BarConfig
     }
 
@@ -36,7 +37,9 @@ progress config =
         , style "overflow" "hidden"
         , style "font-size" "1rem"
         , style "background-color" "#e9ecef"
-        , style "border-radius" "5px"
+        , style "border-radius" "0"
+        , style "margin" "auto"
+        , style "width" config.width
         ]
     <|
         List.map (renderBar config.height) config.bars
