@@ -32,6 +32,21 @@ $vd-spark-dark: #45A29E;
     }
 }
 
+.vd-toggle-buttons {
+
+  button {
+    color: $vd-base-dark;
+    border-color: lightgrey;
+    color: #4A4A4A;
+
+    &.is-active, &:hover {
+      border-color: #dbdbdb;
+      background-color: #F4F4F4;
+    }
+
+  }
+}
+
 .is-vd-hero-title {
     // font-size: 110px !important;
     color: $vd-spark-bright !important;
@@ -84,10 +99,13 @@ $vd-spark-dark: #45A29E;
 // Bulma variables
 $primary: $vd-base-medium;
 $link: $vd-spark-dark;
-$family-primary: 'Raleway', sans-serif;
+$family-primary: 'Roboto', sans-serif;
 $box-radius: 2px;
 $modal-card-head-radius: 2px;
 $modal-card-foot-radius: 2px;
+$tabs-toggle-link-active-background-color: #F4F4F4;
+$tabs-toggle-link-active-border-color: #dbdbdb;
+$tabs-toggle-link-active-color: #666;
 
 @import "~bulma/sass/utilities/_all.sass";
 @import "~bulma/sass/base/_all.sass";
@@ -96,6 +114,7 @@ $modal-card-foot-radius: 2px;
 @import "~bulma/sass/components/modal.sass";
 @import "~bulma/sass/components/navbar.sass";
 @import "~bulma/sass/components/menu.sass";
+@import "~bulma/sass/components/tabs.sass";
 
 @import "~bulma/sass/elements/box.sass";
 @import "~bulma/sass/elements/button.sass";
