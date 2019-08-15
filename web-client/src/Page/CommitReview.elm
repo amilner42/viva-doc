@@ -611,7 +611,7 @@ renderFileReview config fileReview =
                 CommitReview.NewFileReview tags ->
                     renderTags
                         config.username
-                        "This tag has been added to a new file"
+                        "This tag is being added to a new file."
                         config.isCommitStale
                         fileReview.currentLanguage
                         tags
@@ -619,7 +619,7 @@ renderFileReview config fileReview =
                 CommitReview.DeletedFileReview tags ->
                     renderTags
                         config.username
-                        "This tag is being removed inside a deleted file"
+                        "This tag is being removed inside a deleted file."
                         config.isCommitStale
                         fileReview.currentLanguage
                         tags
@@ -719,13 +719,13 @@ renderReviews username isCommitStale language reviews =
                 , description =
                     case review.reviewType of
                         CommitReview.ReviewNewTag _ ->
-                            "This tag has been added to an existing file"
+                            "This tag is being added to an existing file."
 
                         CommitReview.ReviewDeletedTag _ ->
-                            "This tag has been deleted from an existing file"
+                            "This tag is being deleted from an existing file."
 
                         CommitReview.ReviewModifiedTag _ ->
-                            "This tag has been modified"
+                            "This tag is being modified."
                 , isCommitStale = isCommitStale
                 , maybeReview = Just review
                 , language = language
@@ -746,10 +746,26 @@ renderTagOrReview :
     -> Html.Html Msg
 renderTagOrReview config tag =
     let
-        ownerGroups =
-            renderOwnerGroupsForTag
-                tag.ownerGroups
-                tag.userAssessments
+        editor =
+            div
+                [ class "column is-8" ]
+                [ div
+                    [ class "has-code-editor" ]
+                    [ CodeEditor.codeEditor tag.tagId ]
+                ]
+
+        editorInfoBox =
+            div
+                [ class "column is-4", style "margin-bottom" "30px" ]
+                [ renderEditorInfoBox
+                    { tag = tag
+                    , description = config.description
+                    , username = config.username
+                    , isCommitStale = config.isCommitStale
+                    , maybeReview = config.maybeReview
+                    , language = config.language
+                    }
+                ]
     in
     div
         [ classList
@@ -759,145 +775,102 @@ renderTagOrReview config tag =
         ]
         [ div
             [ class "columns" ]
-            [ div
-                [ class "column is-8 has-code-editor" ]
-                [ CodeEditor.codeEditor tag.tagId ]
-            , div
-                [ class "column is-4"
-                ]
-                [ div [ style "width" "100%" ]
-                    [ div
-                        [ class "box is-light-grey"
-                        , style "width" "100%"
-                        , style "border-radius" "0"
-                        ]
-                        [ div
-                            [ class "content is-small" ]
-                            [ dl [] <|
-                                [ dt
-                                    []
-                                    [ div [ class "level" ]
-                                        [ div [ class "level-left" ]
-                                            [ text <| CommitReview.readableTagType tag.tagType ]
-                                        , case tag.approvedState of
-                                            CommitReview.Neutral ->
-                                                div
-                                                    [ class "level-right has-text-grey-light" ]
-                                                    [ text "Unresolved" ]
+            [ editor, editorInfoBox ]
+        ]
 
-                                            CommitReview.InDocReview assessmentType ->
-                                                div
-                                                    [ class "level-right has-text-grey-light" ]
-                                                    [ text <| "You " ++ UA.prettyPrintAssessmentType assessmentType ++ " this tag" ]
 
-                                            CommitReview.InDocReviewBeingSubmitted assessmentType ->
-                                                div
-                                                    [ class "level-right has-text-grey-light" ]
-                                                    [ text <| "Requesting " ++ UA.prettyPrintAssessmentType assessmentType ++ "..." ]
+type alias RenderEditorInfoBoxConfig =
+    { tag : CommitReview.Tag
+    , description : String
+    , username : String
+    , isCommitStale : Bool
+    , maybeReview : Maybe CommitReview.Review
+    , language : Language.Language
+    }
 
-                                            CommitReview.NonNeutral assessmentType ->
-                                                div
-                                                    [ classList
-                                                        [ ( "level-right", True )
-                                                        , ( "has-text-success", UA.isApproved assessmentType )
-                                                        , ( "has-text-danger", UA.isRejected assessmentType )
-                                                        ]
-                                                    ]
-                                                    [ text <| UA.prettyPrintAssessmentTypeWithCapital assessmentType ]
 
-                                            CommitReview.RequestFailed err ->
-                                                div [ class "is-hidden" ] []
-                                        ]
-                                    ]
-                                ]
-                                    ++ ownerGroups
-                            , p [ style "margin-top" "20px" ] [ text config.description ]
-                            ]
-                        , div [ class "buttons" ] <|
-                            (if
-                                (not <| OG.isUserInAnyGroup config.username tag.ownerGroups)
-                                    || List.any (UA.isForUser config.username) tag.userAssessments
-                             then
-                                []
+renderEditorInfoBox : RenderEditorInfoBoxConfig -> Html Msg
+renderEditorInfoBox config =
+    let
+        ownerGroups =
+            renderOwnerGroupsForTag
+                config.tag.ownerGroups
+                config.tag.userAssessments
 
-                             else
-                                case tag.approvedState of
-                                    CommitReview.Neutral ->
-                                        [ button
-                                            [ class "button is-success is-fullwidth has-text-white"
-                                            , onClick <| AddToDocReview UA.Approved tag.tagId
-                                            , disabled <| config.isCommitStale
-                                            ]
-                                            [ text "Docs look good" ]
-                                        , button
-                                            [ class "button is-danger is-fullwidth has-text-white"
-                                            , onClick <| AddToDocReview UA.Rejected tag.tagId
-                                            , disabled <| config.isCommitStale
-                                            ]
-                                            [ text "Docs require fix" ]
-                                        ]
+        description =
+            p [ class "has-text-grey", style "margin-left" "0" ] [ text config.description ]
 
-                                    CommitReview.InDocReview assessmentType ->
-                                        [ button
-                                            [ class "button is-fullwidth is-outlined"
-                                            , onClick <| RemoveFromDocReview tag.tagId
-                                            , disabled <| config.isCommitStale
-                                            ]
-                                            [ text "Remove from Doc Review" ]
-                                        ]
-
-                                    CommitReview.InDocReviewBeingSubmitted assessmentType ->
-                                        [ button
-                                            [ class "button is-fullwidth is-outlined is-loading" ]
-                                            []
-                                        ]
-
-                                    CommitReview.NonNeutral assessmentType ->
-                                        []
-
-                                    -- TODO handle error better?
-                                    CommitReview.RequestFailed err ->
-                                        [ button
-                                            [ class "button is-danger is-fullwidth"
-                                            , disabled True
-                                            ]
-                                            [ text "Internal Error" ]
-                                        ]
-                            )
-                                ++ [ case config.maybeReview of
-                                        Nothing ->
-                                            div [ class "is-hidden" ] []
-
-                                        Just review ->
-                                            let
-                                                diffButton showingDiff =
-                                                    button
-                                                        [ class "button is-info is-fullwidth"
-                                                        , onClick <| SetShowAlteredLines config.language review
-                                                        ]
-                                                        [ text <|
-                                                            if showingDiff then
-                                                                "Hide Diff"
-
-                                                            else
-                                                                "Show Diff"
-                                                        ]
-                                            in
-                                            case review.reviewType of
-                                                CommitReview.ReviewNewTag showingDiff ->
-                                                    diffButton showingDiff
-
-                                                CommitReview.ReviewDeletedTag _ ->
-                                                    div [ class "is-hidden" ] []
-
-                                                CommitReview.ReviewModifiedTag showingDiff ->
-                                                    diffButton showingDiff
-                                   ]
-                        ]
-                    ]
-                ]
+        tagActionButtons =
+            renderTagActionButtons
+                { username = config.username
+                , tag = config.tag
+                , isCommitStale = config.isCommitStale
+                , maybeReview = config.maybeReview
+                , language = config.language
+                }
+    in
+    div
+        [ class "box is-light-grey"
+        , style "width" "100%"
+        , style "border-radius" "0"
+        , style "margin-bottom" "20px"
+        ]
+        [ div
+            [ class "content is-small" ]
+            [ renderInfoBoxTopBar { tag = config.tag }
+            , description
+            , dl [ style "margin" "15px 0 10px 0" ] ownerGroups
+            , tagActionButtons
             ]
         ]
+
+
+type alias RenderInfoBoxTopBarConfig =
+    { tag : CommitReview.Tag }
+
+
+renderInfoBoxTopBar : RenderInfoBoxTopBarConfig -> Html msg
+renderInfoBoxTopBar config =
+    let
+        tagTypeTitle =
+            div [ class "level-left" ]
+                [ p
+                    [ class "title is-6", style "font-weight" "400" ]
+                    [ text <| CommitReview.readableTagType config.tag.tagType ]
+                ]
+
+        approvalStateTitle =
+            case config.tag.approvedState of
+                CommitReview.Neutral ->
+                    div
+                        [ class "level-right has-text-grey" ]
+                        [ text "Unresolved" ]
+
+                CommitReview.InDocReview assessmentType ->
+                    div
+                        [ class "level-right has-text-grey" ]
+                        [ text <| "Marked as " ++ UA.prettyPrintAssessmentType assessmentType ]
+
+                CommitReview.InDocReviewBeingSubmitted assessmentType ->
+                    div
+                        [ class "level-right has-text-grey" ]
+                        [ text <| "Requesting..." ]
+
+                CommitReview.NonNeutral assessmentType ->
+                    div
+                        [ classList
+                            [ ( "level-right", True )
+                            , ( "has-text-success", UA.isApproved assessmentType )
+                            , ( "has-text-danger", UA.isRejected assessmentType )
+                            ]
+                        ]
+                        [ text <| UA.prettyPrintAssessmentTypeWithCapital assessmentType ]
+
+                CommitReview.RequestFailed err ->
+                    div [ class "is-hidden" ] []
+    in
+    div [ class "level is-mobile", style "margin-bottom" "15px" ]
+        [ tagTypeTitle, approvalStateTitle ]
 
 
 renderOwnerGroupsForTag : List OG.OwnerGroup -> List UA.UserAssessment -> List (Html msg)
@@ -924,15 +897,17 @@ renderOwnerGroupsForTag ownerGroups userAssessments =
                         group
             in
             dd
-                [ class "level"
+                [ class "level is-mobile"
+                , style "overflow-x" "scroll"
+                , style "overflow-y" "hidden"
                 , style "margin" "5px 0 5px 10px"
                 ]
-                [ div [ class "level-left" ] <|
+                [ div [ class "level-left", style "margin-left" "1px" ] <|
                     [ span [ class "icon is-small" ]
                         [ i
                             [ classList
                                 [ ( "material-icons", True )
-                                , ( "has-text-light", not isApprovedGroup && not isRejectedGroup )
+                                , ( "has-text-grey", not isApprovedGroup && not isRejectedGroup )
                                 , ( "has-text-success", isApprovedGroup )
                                 , ( "has-text-danger", isRejectedGroup )
                                 ]
@@ -958,21 +933,132 @@ renderOwnerGroupsForTag ownerGroups userAssessments =
                 ]
 
         renderOwner owner =
+            let
+                isSuccessOwner =
+                    List.any (UA.isAll [ UA.isForUser owner, .assessmentType >> UA.isApproved ]) userAssessments
+
+                isDangerOwner =
+                    List.any (UA.isAll [ UA.isForUser owner, .assessmentType >> UA.isRejected ]) userAssessments
+            in
             span
                 [ style "white-space" "pre"
-                , classList
-                    [ ( "has-text-success"
-                      , List.any (UA.isAll [ UA.isForUser owner, .assessmentType >> UA.isApproved ]) userAssessments
-                      )
-                    , ( "has-text-danger"
-                      , List.any (UA.isAll [ UA.isForUser owner, .assessmentType >> UA.isRejected ]) userAssessments
-                      )
-                    ]
+                , class <|
+                    case ( isSuccessOwner, isDangerOwner ) of
+                        ( True, _ ) ->
+                            "has-text-success"
+
+                        ( _, True ) ->
+                            "has-text-danger"
+
+                        _ ->
+                            "has-text-grey"
                 ]
                 [ text <| "  " ++ owner ]
     in
-    [ dt [] [ text <| "Owner Groups" ] ]
-        ++ List.map renderGroup ownerGroups
+    List.map renderGroup ownerGroups
+
+
+type alias RenderTagActionButtonsConfig =
+    { username : String
+    , tag : CommitReview.Tag
+    , isCommitStale : Bool
+    , maybeReview : Maybe CommitReview.Review
+    , language : Language.Language
+    }
+
+
+renderTagActionButtons : RenderTagActionButtonsConfig -> Html Msg
+renderTagActionButtons config =
+    if
+        (not <| OG.isUserInAnyGroup config.username config.tag.ownerGroups)
+            || List.any (UA.isForUser config.username) config.tag.userAssessments
+    then
+        div [ class "is-hidden" ] []
+
+    else
+        div
+            [ class "buttons is-centered is-ancestor"
+            , style "margin-top" "20px"
+            ]
+        <|
+            case config.tag.approvedState of
+                CommitReview.Neutral ->
+                    [ button
+                        [ class "button is-danger has-text-white tile"
+                        , style "border-radius" "2px"
+                        , onClick <| AddToDocReview UA.Rejected config.tag.tagId
+                        , disabled <| config.isCommitStale
+                        ]
+                        [ text "requires fix" ]
+                    , button
+                        [ class "button is-success has-text-white tile"
+                        , style "border-radius" "2px"
+                        , onClick <| AddToDocReview UA.Approved config.tag.tagId
+                        , disabled <| config.isCommitStale
+                        ]
+                        [ text "looks good" ]
+                    ]
+
+                CommitReview.InDocReview assessmentType ->
+                    [ button
+                        [ class "button is-fullwidth is-light"
+                        , style "border-radius" "2px"
+                        , onClick <| RemoveFromDocReview config.tag.tagId
+                        , disabled <| config.isCommitStale
+                        ]
+                        [ text "undo" ]
+                    ]
+
+                CommitReview.InDocReviewBeingSubmitted assessmentType ->
+                    [ button
+                        [ class "button is-fullwidth is-outlined is-loading" ]
+                        []
+                    ]
+
+                CommitReview.NonNeutral assessmentType ->
+                    []
+
+                -- TODO handle error better?
+                CommitReview.RequestFailed err ->
+                    [ button
+                        [ class "button is-danger is-fullwidth"
+                        , disabled True
+                        ]
+                        [ text "Internal Error" ]
+                    ]
+
+
+
+-- TODO put diff button under editor
+-- ++ [ case config.maybeReview of
+--         Nothing ->
+--             div [ class "is-hidden" ] []
+--
+--         Just review ->
+--             let
+--                 diffButton showingDiff =
+--                     button
+--                         [ class "button is-info is-fullwidth"
+--                         , onClick <| SetShowAlteredLines config.language review
+--                         ]
+--                         [ text <|
+--                             if showingDiff then
+--                                 "Hide Diff"
+--
+--                             else
+--                                 "Show Diff"
+--                         ]
+--             in
+--             case review.reviewType of
+--                 CommitReview.ReviewNewTag showingDiff ->
+--                     diffButton showingDiff
+--
+--                 CommitReview.ReviewDeletedTag _ ->
+--                     div [ class "is-hidden" ] []
+--
+--                 CommitReview.ReviewModifiedTag showingDiff ->
+--                     diffButton showingDiff
+--    ]
 
 
 renderHeadUpdatedModal : GcrResponse.CommitReviewResponseType -> String -> Route.Route -> List (Html.Html Msg)
