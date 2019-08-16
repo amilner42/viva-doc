@@ -24,9 +24,9 @@ export interface CommitReview {
 
 const CommitReviewSchema = new mongoose.Schema({
   repoId: { type: Number, required: [true, "can't be blank"], index: true },
-  repoName: { type: String, required: [true, "can't be blank"], index: true },
-  repoFullName: { type: String, required: [true, "can't be blank"], index: true },
-  branchName: { type: String, required: [true, "can't be blank"], index: true },
+  repoName: { type: String, required: [true, "can't be blank"] },
+  repoFullName: { type: String, required: [true, "can't be blank"] },
+  branchName: { type: String, required: [true, "can't be blank"] },
   commitId: { type: String, required: [true, "can't be blank"], index: true },
   pullRequestNumber: { type: Number, required: [true, "can't be blank"] },
   fileReviews: { type: mongoose.Schema.Types.Mixed, required: [true, "can't be blank"] },
