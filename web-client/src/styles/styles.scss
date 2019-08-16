@@ -149,3 +149,10 @@ $tabs-toggle-link-active-color: #666;
 .modal-card {
   border-radius: 2px;
 }
+
+.has-negative-top-margin-on-mobile {
+
+  @media screen and (max-width: $tablet) {
+    margin-top: -10px;
+  }
+}

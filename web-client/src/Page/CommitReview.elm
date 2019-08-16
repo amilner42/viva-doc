@@ -810,7 +810,7 @@ renderEditorInfoBox config =
                 }
     in
     div
-        [ class "box is-light-grey"
+        [ class "box is-light-grey has-negative-top-margin-on-mobile"
         , style "width" "100%"
         , style "border-radius" "0"
         , style "margin-bottom" "20px"
