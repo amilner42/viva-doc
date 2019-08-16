@@ -11,6 +11,7 @@ import Ports
 import Route
 import Session
 import Viewer
+import Words
 
 
 type alias Model =
@@ -95,10 +96,10 @@ renderDocumentation ({ session, documentationTab } as model) =
     div
         [ class "columns" ]
         [ div
-            [ class "column is-one-quarter" ]
+            [ class "column is-one-quarter-desktop is-one-third-tablet" ]
             [ renderSidebar documentationTab ]
         , div
-            [ class "column is-three-quarters" ]
+            [ class "column is-three-quarters-desktop is-two-thirds-tablet" ]
             [ section [ class "section" ] [ renderDocTabContent model ] ]
         ]
 
@@ -422,18 +423,13 @@ type alias RenderCodeEditorColumnsConfig =
     }
 
 
-toPixels : Int -> String
-toPixels pixels =
-    String.fromInt pixels ++ "px"
-
-
 renderCodeEditorColumns : RenderCodeEditorColumnsConfig -> Html msg
 renderCodeEditorColumns { renderConfig, textAboveEditor, editorSubText, editorHeight } =
     div
         []
         [ p [ style "max-width" "700px", style "margin-bottom" "20px" ] [ text textAboveEditor ]
         , div
-            [ class "has-code-editor", style "height" <| toPixels editorHeight, style "max-width" "700px" ]
+            [ class "has-code-editor", style "height" <| Words.pixelify editorHeight, style "max-width" "700px" ]
             [ CodeEditor.codeEditor renderConfig.tagId ]
         , div [ class "has-text-grey-light", style "margin-bottom" "40px" ] [ text editorSubText ]
         ]

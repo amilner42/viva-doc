@@ -125,14 +125,14 @@ renderInstalledRepoLink repo =
             Core.getRepoNameAndOwner repo
     in
     div
-        [ class "column is-4" ]
+        [ class "column is-one-quarter-desktop is-one-third-tablet" ]
         [ div
             [ class "box has-text-centered"
             , style "height" "100px"
             , style "padding" "10px"
             ]
             [ div
-                [ class "level"
+                [ class "level is-mobile"
                 , style "width" "100%"
                 , style "height" "20px"
                 , style "margin-bottom" "5px"

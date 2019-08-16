@@ -1,4 +1,4 @@
-module CommitReview exposing (AlteredLine, ApprovedState(..), CommitReview, DocReviewTagIds, EditType(..), FileReview, FileReviewType(..), Review, ReviewOrTag(..), ReviewType(..), Status(..), Tag, ViewFilterOption(..), countVisibleReviewsAndTags, decodeCommitReview, docReviewTagIdsToTagAndApprovalState, extractRenderEditorConfigs, getTagCountBreakdownForFiles, getTagIdsInDocReview, hasTagsInDocReview, markedForApprovalCount, markedForRejectionCount, readableTagType, renderConfigForReviewOrTag, updateApprovalStatesForTags, updateCommitReviewForDisplayFilter, updateReviews, updateTag, updateTagApprovalState, updateTags)
+module CommitReview exposing (AlteredLine, ApprovedState(..), AuthorFilter(..), CommitReview, DocReviewTagIds, EditType(..), FileReview, FileReviewType(..), Review, ReviewOrTag(..), ReviewStateFilter(..), ReviewType(..), Status(..), Tag, countVisibleReviewsAndTags, decodeCommitReview, docReviewTagIdsToTagAndApprovalState, extractRenderEditorConfigs, getTagCountBreakdownForFiles, getTagIdsInDocReview, hasTagsInDocReview, markedForApprovalCount, markedForRejectionCount, readableTagType, renderConfigForReviewOrTag, updateApprovalStatesForTags, updateCommitReviewForFilters, updateReviews, updateTag, updateTagApprovalState, updateTags)
 
 import Api.Responses.PostUserAssessments as PuaResponse
 import Dict
@@ -109,23 +109,32 @@ type Status
     | Unconfirmed Int
 
 
-type ViewFilterOption
-    = ViewAllTags
-    | ViewTagsThatRequireUserAssessment String
-    | ViewTagsInCurrentDocReview
+type AuthorFilter
+    = HasAuthor String
+    | NotAuthor String
+    | AnyAuthor
 
 
-updateCommitReviewForDisplayFilter : ViewFilterOption -> CommitReview -> CommitReview
-updateCommitReviewForDisplayFilter displayFilter commitReview =
-    { commitReview | fileReviews = List.map (updateFileReviewForDisplayFilter displayFilter) commitReview.fileReviews }
+type ReviewStateFilter
+    = Unresolved
+    | Resolved
+    | AnyReviewState
 
 
-updateFileReviewForDisplayFilter : ViewFilterOption -> FileReview -> FileReview
-updateFileReviewForDisplayFilter displayFilter fileReview =
+updateCommitReviewForFilters : AuthorFilter -> ReviewStateFilter -> CommitReview -> CommitReview
+updateCommitReviewForFilters authorFilter reviewStateFilter commitReview =
+    { commitReview
+        | fileReviews =
+            List.map (updateFileReviewForFilters authorFilter reviewStateFilter) commitReview.fileReviews
+    }
+
+
+updateFileReviewForFilters : AuthorFilter -> ReviewStateFilter -> FileReview -> FileReview
+updateFileReviewForFilters authorFilter reviewStateFilter fileReview =
     let
         filterTagsForSearch =
             List.map
-                (\tag -> { tag | isHidden = getNewHiddenValue displayFilter tag })
+                (\tag -> { tag | isHidden = getNewHiddenValue authorFilter reviewStateFilter tag })
 
         filterReviewsForSearch =
             List.map
@@ -134,7 +143,12 @@ updateFileReviewForDisplayFilter displayFilter fileReview =
                         reviewTag =
                             review.tag
                     in
-                    { review | tag = { reviewTag | isHidden = getNewHiddenValue displayFilter reviewTag } }
+                    { review
+                        | tag =
+                            { reviewTag
+                                | isHidden = getNewHiddenValue authorFilter reviewStateFilter reviewTag
+                            }
+                    }
                 )
     in
     case fileReview.fileReviewType of
@@ -191,43 +205,46 @@ updateFileReviewForDisplayFilter displayFilter fileReview =
             }
 
 
-getNewHiddenValue : ViewFilterOption -> Tag -> Bool
-getNewHiddenValue displayFilter tag =
-    case displayFilter of
-        ViewAllTags ->
+getNewHiddenValue : AuthorFilter -> ReviewStateFilter -> Tag -> Bool
+getNewHiddenValue authorFilter reviewStateFilter tag =
+    hiddenValueForAuthorFilter authorFilter tag
+        || hiddenValueForReviewStateFilter reviewStateFilter tag
+
+
+hiddenValueForAuthorFilter : AuthorFilter -> Tag -> Bool
+hiddenValueForAuthorFilter authorFilter tag =
+    case authorFilter of
+        AnyAuthor ->
             False
 
-        ViewTagsInCurrentDocReview ->
-            case tag.approvedState of
-                InDocReview _ ->
-                    False
+        HasAuthor username ->
+            not <| OG.isUserInAnyGroup username tag.ownerGroups
 
-                InDocReviewBeingSubmitted _ ->
+        NotAuthor username ->
+            OG.isUserInAnyGroup username tag.ownerGroups
+
+
+hiddenValueForReviewStateFilter : ReviewStateFilter -> Tag -> Bool
+hiddenValueForReviewStateFilter reviewStateFilter tag =
+    case reviewStateFilter of
+        AnyReviewState ->
+            False
+
+        Resolved ->
+            case tag.approvedState of
+                NonNeutral _ ->
                     False
 
                 _ ->
                     True
 
-        ViewTagsThatRequireUserAssessment username ->
+        Unresolved ->
             case tag.approvedState of
                 NonNeutral _ ->
                     True
 
-                InDocReview _ ->
-                    True
-
-                InDocReviewBeingSubmitted _ ->
-                    True
-
                 _ ->
-                    if
-                        OG.isUserInAnyGroup username tag.ownerGroups
-                            && not (List.any (UA.isForUser username) tag.userAssessments)
-                    then
-                        False
-
-                    else
-                        True
+                    False
 
 
 type alias TagBreakdown =
