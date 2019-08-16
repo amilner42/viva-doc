@@ -747,12 +747,11 @@ renderTagOrReview :
 renderTagOrReview config tag =
     let
         editor =
-            div
-                [ class "column is-8" ]
-                [ div
-                    [ class "has-code-editor" ]
-                    [ CodeEditor.codeEditor tag.tagId ]
-                ]
+            renderEditorColumn
+                { tagId = tag.tagId
+                , maybeReview = config.maybeReview
+                , language = config.language
+                }
 
         editorInfoBox =
             div
@@ -777,6 +776,67 @@ renderTagOrReview config tag =
             [ class "columns" ]
             [ editor, editorInfoBox ]
         ]
+
+
+type alias RenderEditorColumnConfig =
+    { tagId : String
+    , maybeReview : Maybe CommitReview.Review
+    , language : Language.Language
+    }
+
+
+renderEditorColumn : RenderEditorColumnConfig -> Html Msg
+renderEditorColumn config =
+    let
+        maybeShowDiffValAndToggleMsg : Maybe ( Bool, Msg )
+        maybeShowDiffValAndToggleMsg =
+            config.maybeReview
+                |> Maybe.andThen
+                    (\review ->
+                        case review.reviewType of
+                            CommitReview.ReviewNewTag showingDiff ->
+                                Just ( showingDiff, ToggleShowAlteredLines config.language review )
+
+                            CommitReview.ReviewDeletedTag _ ->
+                                Nothing
+
+                            CommitReview.ReviewModifiedTag showingDiff ->
+                                Just ( showingDiff, ToggleShowAlteredLines config.language review )
+                    )
+
+        hasCodeEditorDiv =
+            div
+                [ class "has-code-editor" ]
+                [ CodeEditor.codeEditor config.tagId ]
+
+        showDiffText showDiffVal =
+            if showDiffVal then
+                "hide diff"
+
+            else
+                "show diff"
+    in
+    div [ class "column is-8" ] <|
+        case maybeShowDiffValAndToggleMsg of
+            Nothing ->
+                [ hasCodeEditorDiv ]
+
+            Just ( showDiffVal, toggleMsg ) ->
+                [ div
+                    [ class "buttons is-right buttons-above-editor-mobile" ]
+                    [ button
+                        [ class "button is-outlined is-medium is-link right-button"
+                        , onClick <| toggleMsg
+                        ]
+                        [ text <| showDiffText showDiffVal ]
+                    ]
+                , hasCodeEditorDiv
+                , div
+                    [ class "has-text-right is-hidden-mobile sub-editor-action-word"
+                    , onClick <| toggleMsg
+                    ]
+                    [ text <| showDiffText showDiffVal ]
+                ]
 
 
 type alias RenderEditorInfoBoxConfig =
@@ -1028,39 +1088,6 @@ renderTagActionButtons config =
                     ]
 
 
-
--- TODO put diff button under editor
--- ++ [ case config.maybeReview of
---         Nothing ->
---             div [ class "is-hidden" ] []
---
---         Just review ->
---             let
---                 diffButton showingDiff =
---                     button
---                         [ class "button is-info is-fullwidth"
---                         , onClick <| SetShowAlteredLines config.language review
---                         ]
---                         [ text <|
---                             if showingDiff then
---                                 "Hide Diff"
---
---                             else
---                                 "Show Diff"
---                         ]
---             in
---             case review.reviewType of
---                 CommitReview.ReviewNewTag showingDiff ->
---                     diffButton showingDiff
---
---                 CommitReview.ReviewDeletedTag _ ->
---                     div [ class "is-hidden" ] []
---
---                 CommitReview.ReviewModifiedTag showingDiff ->
---                     diffButton showingDiff
---    ]
-
-
 renderHeadUpdatedModal : GcrResponse.CommitReviewResponseType -> String -> Route.Route -> List (Html.Html Msg)
 renderHeadUpdatedModal gcrResponseType modalText headCommitRoute =
     [ div
@@ -1215,7 +1242,7 @@ renderGetCommitReviewErrorModal httpError =
 
 type Msg
     = CompletedGetCommitReview (Result.Result (Core.HttpError GcrError.GetCommitReviewError) GcrResponse.CommitReviewResponse)
-    | SetShowAlteredLines Language.Language CommitReview.Review
+    | ToggleShowAlteredLines Language.Language CommitReview.Review
     | SetModalClosed Bool GcrResponse.CommitReviewResponseType
     | SetAuthorFilter CommitReview.AuthorFilter
     | SetReviewStateFilter CommitReview.ReviewStateFilter
@@ -1278,7 +1305,7 @@ update msg model =
             , Cmd.none
             )
 
-        SetShowAlteredLines language forReview ->
+        ToggleShowAlteredLines language forReview ->
             let
                 updatedReview =
                     { forReview

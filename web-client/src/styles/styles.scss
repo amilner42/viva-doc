@@ -94,6 +94,13 @@ $vd-spark-dark: #45A29E;
   height: 1px;
   background-image: linear-gradient(to right, rgba(0, 0, 0, 0.05), rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.05));
 }
+
+.sub-editor-action-word {
+  margin-top: 3px;
+  color: $vd-spark-dark;
+  cursor: pointer;
+}
+
 /** Bulma CSS and internal CSS requiring Bulma to be loaded. */
 
 // Bulma variables
@@ -154,5 +161,23 @@ $tabs-toggle-link-active-color: #666;
 
   @media screen and (max-width: $tablet) {
     margin-top: -10px;
+  }
+}
+
+.buttons-above-editor-mobile {
+
+  button {
+    border-radius: 2px;
+    margin-bottom: 0px;
+
+    &.right-button {
+      margin-right: 0px !important;
+    }
+  }
+
+  margin-bottom: 0px !important;
+
+  @media screen and (min-width: $tablet) {
+    display: none !important;
   }
 }
