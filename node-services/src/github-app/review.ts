@@ -460,6 +460,61 @@ export const getTagsWithMetadata = (fileReview: FileReviewWithMetadata): TagWith
   }
 }
 
+export const getExistantTagsWithMetadata = (fileReview: FileReviewWithMetadata): TagWithMetadata[] => {
+
+  const allTags = getTagsWithExistanceStatus(fileReview);
+  const existantTags = R.filter(({ existance, tagWithMetadata}) => {
+    return existance === "present";
+  }, allTags);
+
+  return R.map((({ tagWithMetadata }) => tagWithMetadata), existantTags);
+
+}
+
+
+type TagExistance = "present" | "removed";
+
+
+type TagWithExistanceStatus = {
+  existance: TagExistance;
+  tagWithMetadata: TagWithMetadata;
+}
+
+
+const createTagWithExistance = R.curry(
+  (existance: TagExistance, tagWithMetadata: TagWithMetadata): TagWithExistanceStatus => {
+    return { existance, tagWithMetadata };
+  }
+);
+
+
+export const getTagsWithExistanceStatus =
+  ( fileReview: FileReviewWithMetadata ): TagWithExistanceStatus[] => {
+
+  switch ( fileReview.fileReviewType ) {
+
+    case "deleted-file":
+      return fileReview.tags.map(createTagWithExistance("removed"));
+
+    case "new-file":
+      return fileReview.tags.map(createTagWithExistance("present"));
+
+    case "renamed-file":
+    case "modified-file":
+      return fileReview.reviews.map((review) => {
+        switch ( review.reviewType ) {
+
+          case "new":
+          case "modified":
+            return createTagWithExistance("present", review.tag);
+
+          case "deleted":
+            return createTagWithExistance("removed", review.tag);
+        }
+      })
+  }
+}
+
 
 export const matchesTagId = R.curry(
   (tagId: string, tagWithMetadata: TagWithMetadata) => {

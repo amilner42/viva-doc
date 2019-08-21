@@ -749,9 +749,9 @@ export const calculateCarryOversFromLastAnalyzedCommit =
           return diffAgainstIntermediateCommit.previousFilePath;
       }
     })();
-    const tagsAgainstBase = Review.getTagsWithMetadata(fileReviewAgainstBase);
+    const existantTagsAgainstBase = Review.getExistantTagsWithMetadata(fileReviewAgainstBase);
     const unalteredTagsSinceIntermediateCommit = await getUnalteredTagsAcrossDiff(
-      tagsAgainstBase,
+      existantTagsAgainstBase,
       diffAgainstIntermediateCommit,
       () => { return retrieveFile(intermediateAnalyzedCommitId, intermediateFilePath); },
       intermediateFilePath
