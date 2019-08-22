@@ -61,7 +61,7 @@ if ( isProduction ) {
 
 } else {
   // Dev mode
-  webClientOrigin = "http://localhost:8080";
+  webClientOrigin = "https://localhost:8080";
   mongoDbUri = "mongodb://localhost/viva-doc-dev";
   port = 3001;
   sessionSecret = "dev-secret-123";

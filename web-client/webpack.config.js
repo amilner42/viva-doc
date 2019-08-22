@@ -10,7 +10,7 @@ const StringReplacePlugin = require("string-replace-webpack-plugin");
 // to extract the css as a separate file
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 
-const PROD_API_URL = "http://52.53.218.152:8888/api"
+const PROD_API_URL = "https://api.vivadoc.io:8888/api"
 
 var MODE =
     process.env.npm_lifecycle_event === "prod" ? "production" : "development";
@@ -99,7 +99,7 @@ if (MODE === "development") {
                             {
                                 pattern: /__WEBPACK_CONSTANT_API_BASE_URL__/g,
                                 replacement: function (match, p1, offset, string) {
-                                   return "http://localhost:3001/api";
+                                   return "https://localhost:3001/api";
                                 }
                            }
                        ]
@@ -124,6 +124,7 @@ if (MODE === "development") {
         },
         devServer: {
             inline: true,
+            https: true,
             stats: "errors-only",
             contentBase: path.join(__dirname, "src"),
             historyApiFallback: true,
