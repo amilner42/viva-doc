@@ -99,7 +99,7 @@ if (MODE === "development") {
                             {
                                 pattern: /__WEBPACK_CONSTANT_API_BASE_URL__/g,
                                 replacement: function (match, p1, offset, string) {
-                                   return "https://localhost:3001/api";
+                                   return "http://localhost:3001/api";
                                 }
                            }
                        ]
@@ -124,7 +124,6 @@ if (MODE === "development") {
         },
         devServer: {
             inline: true,
-            https: true,
             stats: "errors-only",
             contentBase: path.join(__dirname, "src"),
             historyApiFallback: true,

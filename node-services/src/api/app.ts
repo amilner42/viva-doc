@@ -6,10 +6,7 @@ import passport from "passport";
 const errorhandler = require("errorhandler");
 import fs from "fs";
 import https from "https";
-
-const privateKey  = fs.readFileSync('./certs/vivadoc-private-key.pem', 'utf8');
-const certificate = fs.readFileSync('./certs/vivadoc.cert', 'utf8');
-const credentials = { key: privateKey, cert: certificate };
+import http from "http";
 
 import * as config from "./config";
 
@@ -77,5 +74,14 @@ const handleErrors: ErrorRequestHandler = async (err, req, res, next) => {
 app.use(handleErrors);
 
 // finally, let's start our server...
-const httpsServer = https.createServer(credentials, app);
-httpsServer.listen(config.port);
+if (config.isProduction) {
+  const privateKey  = fs.readFileSync('./certs/vivadoc-private-key.pem', 'utf8');
+  const certificate = fs.readFileSync('./certs/vivadoc.cert', 'utf8');
+  const credentials = { key: privateKey, cert: certificate };
+
+  const httpsServer = https.createServer(credentials, app);
+  httpsServer.listen(config.port);
+} else {
+  const httpServer = http.createServer(app);
+  httpServer.listen(config.port);
+}
