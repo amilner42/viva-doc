@@ -26,14 +26,14 @@ oAuthSignInLink clientID =
 
 oauthClientId : String
 oauthClientId =
-    "d887c8b5dea7b99a76af"
+    "__WEBPACK_CONSTANT_OAUTH_CLIENT_ID__"
 
 
 installAppOnRepositoriesLink : String
 installAppOnRepositoriesLink =
     UB.crossOrigin
         githubUrl
-        [ "apps", "vivadoc" ]
+        [ "apps", "__WEBPACK_CONSTANT_GITHUB_APP_NAME__" ]
         []
 
 

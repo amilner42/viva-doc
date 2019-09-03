@@ -13,6 +13,8 @@ can avoid state-related bugs when spinning up new instances but it's not urgent 
 
  [ always ] env.VD_GITHUB_CLIENT_SECRET
  [ always ] env.VD_GITHUB_CLIENT_ID
+ [ always ] env.PRIVATE_KEY_PATH
+ [ always ] env.APP_ID
 
  @VD amilner42 file
 */
@@ -23,6 +25,8 @@ export const isProduction = env.NODE_ENV === 'production';
 
 let githubClientSecret: string;
 let githubClientId: string;
+let githubAppCertPath: string;
+let githubAppId: string;
 
 let webClientOrigin : string;
 let mongoDbUri : string;
@@ -31,11 +35,16 @@ let sessionSecret : string;
 
 
 // Check always required variables.
-if ( env.VD_GITHUB_CLIENT_SECRET === undefined || env.VD_GITHUB_CLIENT_ID === undefined) {
+if ( env.VD_GITHUB_CLIENT_SECRET === undefined
+      || env.VD_GITHUB_CLIENT_ID === undefined
+      || env.PRIVATE_KEY_PATH === undefined
+      || env.APP_ID === undefined ) {
   throw "You have undefined environment variables that are required in dev/prod";
 }
 githubClientSecret = env.VD_GITHUB_CLIENT_SECRET;
 githubClientId = env.VD_GITHUB_CLIENT_ID;
+githubAppCertPath = env.PRIVATE_KEY_PATH;
+githubAppId = env.APP_ID;
 
 
 if ( isProduction ) {
@@ -74,6 +83,8 @@ const githubCallbackUrl = `${webClientOrigin}/oauth_redirect`;
 export {
   githubClientSecret,
   githubClientId,
+  githubAppCertPath,
+  githubAppId,
   webClientOrigin,
   mongoDbUri,
   port,

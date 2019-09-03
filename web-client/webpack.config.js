@@ -101,6 +101,18 @@ if (MODE === "development") {
                                 replacement: function (match, p1, offset, string) {
                                    return "http://localhost:3001/api";
                                 }
+                           },
+                           {
+                               pattern: /__WEBPACK_CONSTANT_OAUTH_CLIENT_ID__/g,
+                               replacement: function(match, p1, offset, string) {
+                                   return "d033011503a00c1223df";
+                               }
+                           },
+                           {
+                               pattern: /__WEBPACK_CONSTANT_GITHUB_APP_NAME__/g,
+                               replacement: function(match, p1, offset, string) {
+                                   return "vivadocdev"
+                               }
                            }
                        ]
                    })
@@ -170,6 +182,18 @@ if (MODE === "production") {
                                 replacement: function (match, p1, offset, string) {
                                    return PROD_API_URL;
                                 }
+                           },
+                           {
+                               pattern: /__WEBPACK_CONSTANT_OAUTH_CLIENT_ID__/g,
+                               replacement: function(match, p1, offset, string) {
+                                   return "d887c8b5dea7b99a76af";
+                               }
+                           },
+                           {
+                               pattern: /__WEBPACK_CONSTANT_GITHUB_APP_NAME__/g,
+                               replacement: function(match, p1, offset, string) {
+                                   return "vivadoc"
+                               }
                            }
                        ]
                    })
