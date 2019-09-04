@@ -5,16 +5,16 @@ can avoid state-related bugs when spinning up new instances but it's not urgent 
 
   Env variables to set:
 
+  [ always ] env.APP_ID
+  [ always ] env.WEBHOOK_SECRET
+
+  [ dev ] env.LOG_LEVEL
+  [ dev ] env.WEBHOOK_PROXY_URL
+
   [ prod ] env.NODE_ENV = 'production'
+  [ prod ] env.PRIVATE_KEY_PATH
   [ prod ] env.VD_WEB_CLIENT_ORIGIN
   [ prod ] env.VD_MONGODB_URI
-
-There are also environment variables used by probot that must be set. It does not work to pass these as flags to probot,
-it appears that in production it wants them as enviornment variables.
-
-  [ probot prod ] env.APP_ID
-  [ probot prod ] env.PRIVATE_KEY_PATH
-  [ probot prod ] env.WEBHOOK_SECRET
 
   @VD amilner42 file
 */
@@ -26,13 +26,29 @@ const isProduction = env.NODE_ENV === 'production';
 let webClientOrigin: string;
 let mongoDbUri: string;
 
+
+// Variables required in both dev/prod.
+if ( env.APP_ID === undefined || env.WEBHOOK_SECRET === undefined ) {
+  throw "You have undefined env variables required in both dev/prod";
+}
+
+
+// Variables required by probot only in dev
+if ( !isProduction ) {
+
+  //  Use `trace` to get verbose logging or `info` to show less
+  if ( env.LOG_LEVEL === undefined || env.WEBHOOK_PROXY_URL === undefined ) {
+    throw "You have undefined env variables required in dev";
+  }
+}
+
+
+// Variables required only in prod.
 if ( isProduction ) {
 
   if (env.VD_WEB_CLIENT_ORIGIN === undefined
       || env.VD_MONGODB_URI === undefined
-      || env.APP_ID === undefined
-      || env.PRIVATE_KEY_PATH === undefined
-      || env.WEBHOOK_SECRET === undefined ) {
+      || env.PRIVATE_KEY_PATH === undefined ) {
     throw "You have undefined production environement variables."
   }
 
