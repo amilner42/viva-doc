@@ -7,14 +7,14 @@ can avoid state-related bugs when spinning up new instances but it's not urgent 
 
   [ always ] env.APP_ID
   [ always ] env.WEBHOOK_SECRET
+  [ always ] env.VD_WEB_CLIENT_ORIGIN
+  [ always ] env.VD_MONGODB_URI
 
   [ dev ] env.LOG_LEVEL
   [ dev ] env.WEBHOOK_PROXY_URL
 
   [ prod ] env.NODE_ENV = 'production'
   [ prod ] env.PRIVATE_KEY_PATH
-  [ prod ] env.VD_WEB_CLIENT_ORIGIN
-  [ prod ] env.VD_MONGODB_URI
 
   @VD amilner42 file
 */
@@ -22,23 +22,30 @@ can avoid state-related bugs when spinning up new instances but it's not urgent 
 
 const env = process.env;
 const isProduction = env.NODE_ENV === 'production';
+const isDev = !isProduction;
 
 let webClientOrigin: string;
 let mongoDbUri: string;
 
 
 // Variables required in both dev/prod.
-if ( env.APP_ID === undefined || env.WEBHOOK_SECRET === undefined ) {
-  throw "You have undefined env variables required in both dev/prod";
+if ( env.APP_ID === undefined
+      || env.WEBHOOK_SECRET === undefined
+      || env.VD_MONGODB_URI === undefined
+      || env.VD_WEB_CLIENT_ORIGIN === undefined ) {
+  throw { message: "You have undefined env variables required in both dev/prod" };
 }
+webClientOrigin = env.VD_WEB_CLIENT_ORIGIN;
+mongoDbUri = env.VD_MONGODB_URI;
 
 
 // Variables required by probot only in dev
-if ( !isProduction ) {
+if ( isDev ) {
 
-  //  Use `trace` to get verbose logging or `info` to show less
+  // Use `trace` to get verbose logging or `info` to show less. Usually on 'debug' in dev.
+  // Use webhook_proxy_url for the smee proxy to localhost.
   if ( env.LOG_LEVEL === undefined || env.WEBHOOK_PROXY_URL === undefined ) {
-    throw "You have undefined env variables required in dev";
+    throw { message: "You have undefined env variables required in dev" };
   }
 }
 
@@ -46,18 +53,10 @@ if ( !isProduction ) {
 // Variables required only in prod.
 if ( isProduction ) {
 
-  if (env.VD_WEB_CLIENT_ORIGIN === undefined
-      || env.VD_MONGODB_URI === undefined
-      || env.PRIVATE_KEY_PATH === undefined ) {
-    throw "You have undefined production environement variables."
+  if ( env.PRIVATE_KEY_PATH === undefined ) {
+    throw { message: "You have undefined production environement variables." };
   }
 
-  webClientOrigin = env.VD_WEB_CLIENT_ORIGIN;
-  mongoDbUri = env.VD_MONGODB_URI;
-
-} else {
-  webClientOrigin = "http://localhost:8080";
-  mongoDbUri = "mongodb://localhost/viva-doc-dev";
 }
 
 
