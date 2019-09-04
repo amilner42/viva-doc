@@ -4,6 +4,9 @@ import bodyParser from "body-parser";
 import cors from "cors";
 import passport from "passport";
 const errorhandler = require("errorhandler");
+import fs from "fs";
+import https from "https";
+import http from "http";
 
 import * as config from "./config";
 
@@ -71,6 +74,14 @@ const handleErrors: ErrorRequestHandler = async (err, req, res, next) => {
 app.use(handleErrors);
 
 // finally, let's start our server...
-var server = app.listen(config.port, function() {
-  console.log(`Listening on: ${JSON.stringify(server.address())}`);
-});
+if (config.isProduction) {
+  const privateKey  = fs.readFileSync('./certs/vivadoc-private-key.pem', 'utf8');
+  const certificate = fs.readFileSync('./certs/vivadoc.cert', 'utf8');
+  const credentials = { key: privateKey, cert: certificate };
+
+  const httpsServer = https.createServer(credentials, app);
+  httpsServer.listen(config.port);
+} else {
+  const httpServer = http.createServer(app);
+  httpServer.listen(config.port);
+}
