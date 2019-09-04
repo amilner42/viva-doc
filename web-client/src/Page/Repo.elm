@@ -5,7 +5,7 @@ import Api.Core as Core
 import Api.Errors.GetOpenPullRequests as GoprError
 import FetchData
 import Github
-import Html exposing (a, button, div, h1, section, span, text)
+import Html exposing (a, button, div, h1, h3, section, span, text)
 import Html.Attributes exposing (class, style)
 import Loading
 import PullRequest
@@ -71,11 +71,17 @@ renderPullRequests repoId pullRequests =
         [ h1
             [ class "title is-4 has-text-centered" ]
             [ text "Open Pull Requests" ]
-        , div
-            [ class "columns is-multiline"
-            , style "margin" "0px"
-            ]
-            (List.map (renderPullRequest repoId) pullRequests)
+        , if List.isEmpty pullRequests then
+            div
+                [ class "section is-small has-text-centered" ]
+                [ text "this repository has no open pull requests" ]
+
+          else
+            div
+                [ class "columns is-multiline"
+                , style "margin" "0px"
+                ]
+                (List.map (renderPullRequest repoId) pullRequests)
         ]
 
 
