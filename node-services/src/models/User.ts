@@ -15,7 +15,7 @@ export interface User {
 const UserSchema = new mongoose.Schema({
   githubId: {type: String, unique: true, required: [true, "can't be blank"], index: true},
   username: {type: String, unique: false, required: [true, "can't be blank"] },
-  displayName: {type: String, unique: false, required: [true, "can't be blank"] },
+  displayName: {type: String, unique: false },
   profileUrl: {type: String, unique: false, required: [true, "can't be blank"] },
   accessToken: {type: String, unique: false, required: [true, "can't be blank"]}
 }, {timestamps: true});
