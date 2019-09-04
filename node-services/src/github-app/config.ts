@@ -9,6 +9,7 @@ can avoid state-related bugs when spinning up new instances but it's not urgent 
   [ always ] env.WEBHOOK_SECRET
   [ always ] env.VD_WEB_CLIENT_ORIGIN
   [ always ] env.VD_MONGODB_URI
+  [ always ] env.VD_COMMIT_STATUS_NAME
 
   [ dev ] env.LOG_LEVEL
   [ dev ] env.WEBHOOK_PROXY_URL
@@ -26,17 +27,20 @@ const isDev = !isProduction;
 
 let webClientOrigin: string;
 let mongoDbUri: string;
+let commitStatusName: string;
 
 
 // Variables required in both dev/prod.
 if ( env.APP_ID === undefined
       || env.WEBHOOK_SECRET === undefined
       || env.VD_MONGODB_URI === undefined
-      || env.VD_WEB_CLIENT_ORIGIN === undefined ) {
+      || env.VD_WEB_CLIENT_ORIGIN === undefined
+      || env.VD_COMMIT_STATUS_NAME === undefined ) {
   throw { message: "You have undefined env variables required in both dev/prod" };
 }
 webClientOrigin = env.VD_WEB_CLIENT_ORIGIN;
 mongoDbUri = env.VD_MONGODB_URI;
+commitStatusName = env.VD_COMMIT_STATUS_NAME;
 
 
 // Variables required by probot only in dev
@@ -63,5 +67,6 @@ if ( isProduction ) {
 export const config = {
   isProduction,
   webClientOrigin,
-  mongoDbUri
+  mongoDbUri,
+  commitStatusName
 }

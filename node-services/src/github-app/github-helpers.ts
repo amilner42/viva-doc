@@ -5,9 +5,7 @@ import * as R from "ramda";
 import * as Probot from 'probot';
 import * as T from "../types";
 import * as AppError from "../app-error";
-
-
-const VIVA_DOC_STATUS_NAME = "continuous-documentation/viva-doc"
+import { config } from "./config";
 
 
 // @THROWS only `AppError.LogFriendlyGithubAppError` upon failure to retrieve open PRs.
@@ -162,7 +160,7 @@ export const setCommitStatus = R.curry(
       owner,
       repo: repoName,
       sha: commitId,
-      context: VIVA_DOC_STATUS_NAME,
+      context: config.commitStatusName,
       state: statusState
     }
 

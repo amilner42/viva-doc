@@ -15,6 +15,7 @@ can avoid state-related bugs when spinning up new instances but it's not urgent 
  [ always ] env.VD_MONGODB_URI
  [ always ] env.VD_COOKIE_SECRET
  [ always ] env.VD_PORT
+ [ always ] env.VD_COMMIT_STATUS_NAME
 
  @VD amilner42 file
 */
@@ -31,6 +32,7 @@ let webClientOrigin : string;
 let mongoDbUri : string;
 let sessionSecret : string;
 let port : number;
+let commitStatusName: string;
 
 
 // Check always required variables.
@@ -41,7 +43,8 @@ if ( env.VD_GITHUB_CLIENT_SECRET === undefined
       || env.VD_WEB_CLIENT_ORIGIN === undefined
       || env.VD_MONGODB_URI === undefined
       || env.VD_COOKIE_SECRET === undefined
-      || env.VD_PORT === undefined ) {
+      || env.VD_PORT === undefined
+      || env.VD_COMMIT_STATUS_NAME === undefined ) {
   throw { message: "You have undefined environment variables that are required in dev/prod" };
 }
 
@@ -52,6 +55,7 @@ githubAppId = env.APP_ID;
 webClientOrigin = env.VD_WEB_CLIENT_ORIGIN;
 mongoDbUri = env.VD_MONGODB_URI;
 sessionSecret = env.VD_COOKIE_SECRET;
+commitStatusName = env.VD_COMMIT_STATUS_NAME;
 
 
 const portAsInt = parseInt(env.VD_PORT, 10);
@@ -73,5 +77,6 @@ export {
   mongoDbUri,
   port,
   sessionSecret,
-  githubCallbackUrl
+  githubCallbackUrl,
+  commitStatusName
 };

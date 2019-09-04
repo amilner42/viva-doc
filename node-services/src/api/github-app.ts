@@ -5,9 +5,6 @@ import fs from 'fs';
 import * as config from './config';
 
 
-const VIVA_DOC_STATUS_NAME = "continuous-documentation/viva-doc"
-
-
 const app = createApp({
   id: config.githubAppId,
   cert: fs.readFileSync(config.githubAppCertPath)
@@ -28,7 +25,7 @@ export const putSuccessStatusOnCommit =
     owner,
     repo: repoName,
     sha: commitId,
-    context: VIVA_DOC_STATUS_NAME,
+    context: config.commitStatusName,
     state: "success",
     description: "All tags have been approved",
     target_url: `${config.webClientOrigin}/review/repo/${repoId}/pr/${prNumber}/commit/${commitId}`
