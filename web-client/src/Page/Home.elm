@@ -193,7 +193,7 @@ renderLandingPageIconTextCombo config =
         , style "height" "190px"
         ]
         [ div
-            [ class "level level-item"
+            [ class "level level-item has-text-centered-mobile"
             , style "height" "100%"
             , style "padding" "10px"
             ]
