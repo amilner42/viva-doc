@@ -958,7 +958,7 @@ renderOwnerGroupsForTag ownerGroups userAssessments =
             in
             dd
                 [ class "level is-mobile"
-                , style "overflow-x" "scroll"
+                , style "overflow-x" "auto"
                 , style "overflow-y" "hidden"
                 , style "margin" "5px 0 5px 10px"
                 ]
