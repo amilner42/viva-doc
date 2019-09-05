@@ -353,7 +353,7 @@ update msg model =
                             { relativeUrl =
                                 Route.Repo repoId |> Route.routeToString
                             }
-                , Nav.load <| Github.oAuthSignInLink Github.oauthClientId
+                , Nav.load Github.oAuthSignInLink
                 ]
             )
 

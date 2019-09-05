@@ -105,13 +105,19 @@ if (MODE === "development") {
                            {
                                pattern: /__WEBPACK_CONSTANT_OAUTH_CLIENT_ID__/g,
                                replacement: function(match, p1, offset, string) {
-                                   return "d033011503a00c1223df";
+                                   return "Iv1.aca2ea3b5a164445";
                                }
                            },
                            {
                                pattern: /__WEBPACK_CONSTANT_GITHUB_APP_NAME__/g,
                                replacement: function(match, p1, offset, string) {
                                    return "vivadocdev"
+                               }
+                           },
+                           {
+                               pattern: /__WEBPACK_CONSTANT_REDIRECT_URI__/g,
+                               replacement: function(match, p1, offset, string) {
+                                   return "http://localhost:8080/oauth_redirect";
                                }
                            }
                        ]
@@ -186,13 +192,19 @@ if (MODE === "production") {
                            {
                                pattern: /__WEBPACK_CONSTANT_OAUTH_CLIENT_ID__/g,
                                replacement: function(match, p1, offset, string) {
-                                   return "d887c8b5dea7b99a76af";
+                                   return "Iv1.5f4d835ee23e3947";
                                }
                            },
                            {
                                pattern: /__WEBPACK_CONSTANT_GITHUB_APP_NAME__/g,
                                replacement: function(match, p1, offset, string) {
                                    return "vivadoc"
+                               }
+                           },
+                           {
+                               pattern: /__WEBPACK_CONSTANT_REDIRECT_URI__/g,
+                               replacement: function(match, p1, offset, string) {
+                                   return "https://www.vivadoc.io/oauth_redirect";
                                }
                            }
                        ]

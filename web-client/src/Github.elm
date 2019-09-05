@@ -1,4 +1,4 @@
-module Github exposing (githubIcon, githubPullRequestLink, githubRepoLink, installAppOnRepositoriesLink, oAuthSignInLink, oauthClientId)
+module Github exposing (githubIcon, githubPullRequestLink, githubRepoLink, installAppOnRepositoriesLink, oAuthSignInLink)
 
 {-| A module for all things relating to Github.
 -}
@@ -14,19 +14,14 @@ import Url.Builder as UB
 The `clientID` is from the github oauth app.
 
 -}
-oAuthSignInLink : String -> String
-oAuthSignInLink clientID =
+oAuthSignInLink : String
+oAuthSignInLink =
     UB.crossOrigin
         githubUrl
         [ "login", "oauth", "authorize" ]
-        [ UB.string "client_id" clientID
-        , UB.string "scope" "repo read:org"
+        [ UB.string "client_id" "__WEBPACK_CONSTANT_OAUTH_CLIENT_ID__"
+        , UB.string "redirect_uri" "__WEBPACK_CONSTANT_REDIRECT_URI__"
         ]
-
-
-oauthClientId : String
-oauthClientId =
-    "__WEBPACK_CONSTANT_OAUTH_CLIENT_ID__"
 
 
 installAppOnRepositoriesLink : String

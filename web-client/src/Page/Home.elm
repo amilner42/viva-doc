@@ -240,7 +240,7 @@ update msg model =
     case msg of
         SignUpWithGithub ->
             ( model
-            , Nav.load <| Github.oAuthSignInLink Github.oauthClientId
+            , Nav.load Github.oAuthSignInLink
             )
 
 
