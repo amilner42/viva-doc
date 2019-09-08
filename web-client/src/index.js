@@ -32,12 +32,12 @@ const getAceModeNameFromLanguage = (language) => {
 
   switch (language) {
 
-    case "Javascript":
+    case "JavaScript":
       langSuffix = "javascript"
       break;
 
 
-    case "Typescript":
+    case "TypeScript":
       langSuffix = "typescript"
       break;
 
@@ -47,9 +47,8 @@ const getAceModeNameFromLanguage = (language) => {
       break;
 
 
-    case "Header":
-    case "CPlusPlus":
     case "C":
+    case "C++":
       langSuffix = "c_cpp"
       break;
 

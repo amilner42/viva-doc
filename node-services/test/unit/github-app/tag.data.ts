@@ -47,19 +47,19 @@ export const func = () => {
 const VALID_JAVASCRIPT_TESTS: TestTable = [
   [
     "Blank file",
-    "Javascript",
+    "JavaScript",
     "",
     []
   ],
   [
     "VD tag with no space shouldn't trigger",
-    "Javascript",
+    "JavaScript",
     "//@VD amilner42 line",
     []
   ],
   [
     "Javascript file with many tags",
-    "Javascript",
+    "JavaScript",
     JAVASCRIPT_MANY_TAGS_TEXT,
     [
       {
@@ -90,7 +90,7 @@ const VALID_JAVASCRIPT_TESTS: TestTable = [
   ],
   [
     "Javascript many tags with annotations in multiline comments",
-    "Javascript",
+    "JavaScript",
     JAVASCRIPT_MANY_MULTILINE_COMMENT_TAGS_TEXT,
     [
       {
@@ -168,7 +168,7 @@ some code
 const INVALID_JAVASCRIPT_TESTS: TestTable = [
   [
     "Invalid @VD block tag - no end-block",
-    "Javascript",
+    "JavaScript",
     `// @VD amilner42 block
     const a = 5
     `,
@@ -176,37 +176,37 @@ const INVALID_JAVASCRIPT_TESTS: TestTable = [
   ],
   [
     "Invalid random @VD annotation without username and tag type",
-    "Javascript",
+    "JavaScript",
     "// @VD ",
     null
   ],
   [
     "Invalid @VD annotation with improper tag type banana",
-    "Javascript",
+    "JavaScript",
     "// @VD amilner42 banana ",
     null
   ],
   [
     "Invalid @VD annotation with improper tag type lines",
-    "Javascript",
+    "JavaScript",
     "// @VD amilner42 lines ",
     null
   ],
   [
     "Invalid @VD line annotation on the last line",
-    "Javascript",
+    "JavaScript",
     "/* @VD amilner42 line */",
     null
   ],
   [
     "Invalid - multiple block tags with same ending block annotation",
-    "Javascript",
+    "JavaScript",
     JAVASCRIPT_BLOCKS_END_IN_SAME_END_BLOCK_TEXT,
     null
   ],
   [
     "Invalid - ambiguous block tag endings (feature not supported yet)",
-    "Javascript",
+    "JavaScript",
     JAVASCRIPT_OVERLAPPING_BLOCK_TAGS_TEXT,
     null
   ]

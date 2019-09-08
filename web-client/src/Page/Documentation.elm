@@ -468,7 +468,7 @@ example1a =
             , " ..."
             , "}"
             ]
-        , language = Language.toString Language.Typescript
+        , language = Language.toString Language.TypeScript
         }
     , textAboveEditor = "Let us take a look at a single function in an imaginary public booking service API."
     , editorSubText = "The code for the function is omitted."
@@ -493,7 +493,7 @@ example1b =
             , "}"
             , "// @VD end-block"
             ]
-        , language = Language.toString Language.Typescript
+        , language = Language.toString Language.TypeScript
         }
     , textAboveEditor = """If I wanted to assign myself, amilner42, to be directly responsible for this documentation
     all I have to do is add a documentation tag.
@@ -521,7 +521,7 @@ example1c =
             , "}"
             , "// @VD end-block"
             ]
-        , language = Language.toString Language.Typescript
+        , language = Language.toString Language.TypeScript
         }
     , textAboveEditor = """It may be the case though that you don't want to be the only one directly responsible. If
     you would like to require approval from multiple users you simply list all users separated by commas. In the
@@ -548,7 +548,7 @@ example1d =
             , "}"
             , "// @VD end-block"
             ]
-        , language = Language.toString Language.Typescript
+        , language = Language.toString Language.TypeScript
         }
     , textAboveEditor = """Had I instead wanted to require approval from either of us, I simply would
     use the following syntax. You can use as many commas and pipes as you need."""
@@ -577,7 +577,7 @@ example1e =
             , "}"
             , "// @VD end-block"
             ]
-        , language = Language.toString Language.Typescript
+        , language = Language.toString Language.TypeScript
         }
     , textAboveEditor = """Let us now imagine someone changes the code but does not update the documentation to reflect
     this new change."""
@@ -606,7 +606,7 @@ example1f =
             , "}"
             , "// @VD end-block"
             ]
-        , language = Language.toString Language.Typescript
+        , language = Language.toString Language.TypeScript
         }
     , textAboveEditor = """Luckily VivaDoc would require my review, and upon VivaDoc showing me the diff and the docs
     it would be rather obvious that the documentation has not been updated properly. I can commit a simple fix preventing
@@ -630,9 +630,9 @@ renderSupportedLanguagesTabView =
             [ class "has-text-weight-semibold", style "padding-left" "30px" ]
             [ dt [] [ text "C" ]
             , dt [] [ text "C++" ]
-            , dt [] [ text "Javascript" ]
             , dt [] [ text "Java" ]
-            , dt [] [ text "Typescript" ]
+            , dt [] [ text "JavaScript" ]
+            , dt [] [ text "TypeScript" ]
             ]
         , p [] [ text "More languages will be supported as VivaDoc continues to grow." ]
         , p
@@ -722,7 +722,7 @@ docTagsCodeEditor1 =
             , " */"
             , "... code ..."
             ]
-        , language = Language.toString Language.Javascript
+        , language = Language.toString Language.JavaScript
         }
     , textAboveEditor = "VivaDoc documentation tags always use the following syntax."
     , editorSubText = "multi-line comment"
@@ -744,7 +744,7 @@ docTagsCodeEditor2 =
             , "// @VD <ownership-groups> <tag-type>"
             , "... code ..."
             ]
-        , language = Language.toString Language.Javascript
+        , language = Language.toString Language.JavaScript
         }
     , textAboveEditor = """VivaDoc will detect and group multiple single line comments that start at the same
     indentation level into a single doc - use whatever you prefer."""
@@ -788,7 +788,7 @@ fileTagEditor1 =
             , ""
             , "... code ..."
             ]
-        , language = Language.toString Language.Javascript
+        , language = Language.toString Language.JavaScript
         }
     , textAboveEditor = """A file tag will associate the documentation with everything in the entire file.
     Any changes made to any parts of the file will require approval."""
@@ -824,7 +824,7 @@ lineTagEditor1 =
             , ""
             , "... code ..."
             ]
-        , language = Language.toString Language.Typescript
+        , language = Language.toString Language.TypeScript
         }
     , textAboveEditor = """A line tag will associate the documentation with the following line. Any changes
     made to the documentation or the following line will require approval."""
@@ -864,7 +864,7 @@ blockTagEditor1 =
             , "...code..."
             , "// @VD end-block"
             ]
-        , language = Language.toString Language.Typescript
+        , language = Language.toString Language.TypeScript
         }
     , textAboveEditor = """A block tag will associate the documentation with a block of code. Any changes
     made to the documentation or the block of code will require approval. Unlike the other tags, block tags require
