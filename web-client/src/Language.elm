@@ -3,23 +3,24 @@ module Language exposing (Language(..), decodeLanguage, toString)
 import Json.Decode as Decode
 
 
+{-| This file matches the backend languages heree: /node-services/src/github-app/languages/languages.ts
+-}
 type Language
-    = Javascript
-    | Typescript
+    = JavaScript
+    | TypeScript
     | Java
     | C
     | CPlusPlus
-    | Header
 
 
 toString : Language -> String
 toString language =
     case language of
-        Javascript ->
-            "Javascript"
+        JavaScript ->
+            "JavaScript"
 
-        Typescript ->
-            "Typescript"
+        TypeScript ->
+            "TypeScript"
 
         Java ->
             "Java"
@@ -28,10 +29,7 @@ toString language =
             "C"
 
         CPlusPlus ->
-            "CPlusPlus"
-
-        Header ->
-            "Header"
+            "C++"
 
 
 decodeLanguage : Decode.Decoder Language
@@ -40,11 +38,11 @@ decodeLanguage =
         |> Decode.andThen
             (\strLang ->
                 case strLang of
-                    "Javascript" ->
-                        Decode.succeed Javascript
+                    "JavaScript" ->
+                        Decode.succeed JavaScript
 
-                    "Typescript" ->
-                        Decode.succeed Typescript
+                    "TypeScript" ->
+                        Decode.succeed TypeScript
 
                     "Java" ->
                         Decode.succeed Java
@@ -52,11 +50,8 @@ decodeLanguage =
                     "C" ->
                         Decode.succeed C
 
-                    "CPlusPlus" ->
+                    "C++" ->
                         Decode.succeed CPlusPlus
-
-                    "Header" ->
-                        Decode.succeed Header
 
                     _ ->
                         Decode.fail <| "Unsupported language: " ++ strLang
