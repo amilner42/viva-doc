@@ -11,6 +11,8 @@ type Language
     | Java
     | C
     | CPlusPlus
+    | CSharp
+    | Go
 
 
 toString : Language -> String
@@ -30,6 +32,12 @@ toString language =
 
         CPlusPlus ->
             "C++"
+
+        CSharp ->
+            "C#"
+
+        Go ->
+            "Go"
 
 
 decodeLanguage : Decode.Decoder Language
@@ -52,6 +60,12 @@ decodeLanguage =
 
                     "C++" ->
                         Decode.succeed CPlusPlus
+
+                    "C#" ->
+                        Decode.succeed CSharp
+
+                    "Go" ->
+                        Decode.succeed Go
 
                     _ ->
                         Decode.fail <| "Unsupported language: " ++ strLang

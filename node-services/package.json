@@ -11,13 +11,14 @@
     "lint": "standard **/*.ts --fix",
     "test": "jest",
     "test:watch": "jest --watch --notify --notifyMode=change --coverage",
+    "github-app-start": "probot run ./lib/src/github-app/index.js",
+    "github-app-grammar:standard-comments": "cd src/github-app/languages/standard-comments/ && antlr4ts -visitor ./*.g4",
+    "api-start": "node ./lib/src/api/app.js",
     "forever-list": "forever list",
     "forever-stop": "forever stop",
-    "github-app-start": "probot run ./lib/github-app/index.js",
-    "github-app-forever-start": "forever start ./node_modules/probot/bin/probot-run.js ./lib/github-app/index.js",
-    "github-app-grammar:standard-comments": "cd src/github-app/languages/standard-comments/ && antlr4ts -visitor ./*.g4",
-    "api-start": "node ./lib/api/app.js",
-    "api-forever-start": "forever start ./lib/api/app.js"
+    "forever-github-app-start": "forever start ./node_modules/probot/bin/probot-run.js ./lib/src/github-app/index.js",
+    "forever-api-start": "forever start ./lib/src/api/app.js",
+    "forever-restartall": "forever restartall"
   },
   "dependencies": {
     "@types/body-parser": "^1.17.0",
