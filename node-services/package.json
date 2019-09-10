@@ -16,6 +16,7 @@
     "api-start": "node ./lib/src/api/app.js",
     "forever-list": "forever list",
     "forever-stop": "forever stop",
+    "forever-stopall": "forever stopall",
     "forever-github-app-start": "forever start ./node_modules/probot/bin/probot-run.js ./lib/src/github-app/index.js",
     "forever-api-start": "forever start ./lib/src/api/app.js",
     "forever-restartall": "forever restartall"
