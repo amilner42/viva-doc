@@ -5,6 +5,7 @@
 
 export type Language
   = "C"
+  | "C#"
   | "C++"
   | "Java"
   | "JavaScript"
@@ -23,6 +24,13 @@ export const LANGUAGES: { [ Key in Language ]: LanguageData } = {
       ".cats",
       ".h",
       ".idc"
+    ]
+  },
+  "C#": {
+    "extensions": [
+      ".cs",
+      ".cake",
+      ".csx"
     ]
   },
   "C++": {

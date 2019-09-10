@@ -52,6 +52,10 @@ const getAceModeNameFromLanguage = (language) => {
       langSuffix = "c_cpp"
       break;
 
+    case "C#":
+      langSuffix = "csharp"
+      break;
+
     default:
       throw "unsupported language error"
   }

@@ -629,6 +629,7 @@ renderSupportedLanguagesTabView =
         , dl
             [ class "has-text-weight-semibold", style "padding-left" "30px" ]
             [ dt [] [ text "C" ]
+            , dt [] [ text "C#" ]
             , dt [] [ text "C++" ]
             , dt [] [ text "Java" ]
             , dt [] [ text "JavaScript" ]
