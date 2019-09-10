@@ -7,6 +7,7 @@ export type Language
   = "C"
   | "C#"
   | "C++"
+  | "Go"
   | "Java"
   | "JavaScript"
   | "TypeScript";
@@ -52,6 +53,11 @@ export const LANGUAGES: { [ Key in Language ]: LanguageData } = {
       ".re",
       ".tcc",
       ".tpp"
+    ]
+  },
+  "Go": {
+    "extensions": [
+      ".go"
     ]
   },
   "Java": {

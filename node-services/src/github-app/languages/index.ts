@@ -11,6 +11,7 @@ import * as Tag from "../tag"
 import * as c from "./c"
 import * as cplusplus from "./c++"
 import * as csharp from "./c#"
+import * as go from "./go"
 import * as java from "./java"
 import * as javascript from "./javascript"
 import * as typescript from "./typescript"
@@ -82,6 +83,9 @@ export const parse = (language: Language, fileContent: string, filePath: string)
     case "C++":
       return cplusplus.parse(fileContent, filePath);
 
+    case "Go":
+      return go.parse(fileContent, filePath);
+
     case "Java":
       return java.parse(fileContent, filePath);
 
@@ -113,6 +117,9 @@ export const astToTags =
 
     case "C++":
       return cplusplus.astToTags(reducedFileAst, fileContent, filePath)
+
+    case "Go":
+      return go.astToTags(reducedFileAst, fileContent, filePath)
 
     case "Java":
       return java.astToTags(reducedFileAst, fileContent, filePath)

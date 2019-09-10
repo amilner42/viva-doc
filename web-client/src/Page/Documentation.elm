@@ -631,6 +631,7 @@ renderSupportedLanguagesTabView =
             [ dt [] [ text "C" ]
             , dt [] [ text "C#" ]
             , dt [] [ text "C++" ]
+            , dt [] [ text "Go" ]
             , dt [] [ text "Java" ]
             , dt [] [ text "JavaScript" ]
             , dt [] [ text "TypeScript" ]
