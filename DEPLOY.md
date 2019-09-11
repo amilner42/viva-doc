@@ -62,10 +62,16 @@ an appropriate region and instance size.
 [ec2-user ~/viva-doc/node-services]$ npm install
 [ec2-user ~/viva-doc/node-services]$ npm run build
 
-# WARNING set the environment variables or this script will complain
+# WARNING set the environment variables or this script will complain. The required environment variables can be found
+#         in `node-services/src/api/config/index.ts`
+#
 # You will need the private `.pem` file to be able to deploy, ask Arie for that file.
 [ec2-user ~/viva-doc/node-services]$ npm run forever-api-start
 ```
+
+##### Commands to start / stop / read logs / check status of the API
+
+Everything is in the `node-services/package.json` - importantly, the `forever` commands.
 
 ### GitHub App
 
@@ -91,7 +97,13 @@ an appropriate region and instance size.
 [ec2-user ~/viva-doc/node-services]$ npm install
 [ec2-user ~/viva-doc/node-services]$ npm run build
 
-# WARNING set the environment variables or this script will complain
-# You will need the private `.pem` file to be able to deploy, ask Arie for that file.
+# WARNING set the environment variables or this script will complain. The required environment variables can be found
+#         in `node-services/src/github-app/config.ts`
+#
+# You will also need the private `.pem` file to be able to deploy, ask Arie for that file.
 [ec2-user ~/viva-doc/node-services]$ npm run forever-github-app-start
 ```
+
+##### Commands to start / stop / read logs / check status of the GitHub App
+
+Everything is in the `node-services/package.json` - importantly, the `forever` commands.
