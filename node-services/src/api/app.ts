@@ -37,7 +37,7 @@ app.use(expressSession({
     secret: config.sessionSecret,
     resave: true,
     saveUninitialized: true,
-    store: new MongoStore({url: config.mongoDbUri})
+    store: new MongoStore({ mongooseConnection: mongoose.connection })
 }));
 app.use(require('method-override')());
 
