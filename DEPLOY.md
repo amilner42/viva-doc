@@ -1,93 +1,97 @@
 # Deployment
 
-## Amazon AWS
+We have 4 things we have deployed separately:
 
-Currently everything is hosted on AWS - a single EC2 instance and an S3 bucket.
+1. The Web Client
+1. The Mongo Database
+1. The API
+1. The Github App
 
-The ec2 runs:
-  - The `api`
-  - The `github-app` (gets webhooks from github and calculates reviews).
-  - Mongo
+###### AWS
 
-The s3 bucket hosts the web client.
+[VivaDoc AWS Console Login](https://257184581980.signin.aws.amazon.com/console/)
 
-### Console
+###### Mongo Atlas
 
-[AWS Console Login](https://257184581980.signin.aws.amazon.com/console/)
+[Mongo Atlas Login](https://cloud.mongodb.com/user#/atlas/login)
 
-### EC2 Instance
 
-Currently the API is [here](http://52.53.218.152:8888/api).
+### The Web Client
 
-SSH example with current instance:
+The domain name and advanced DNS configuration are being done on NameCheap under Arie's account. With A-Records we:
+  - point the api subdomain to the API
+  - point the webhook subdomain to the GitHub App
 
-```bash
-ssh -i "viva-doc.pem" ec2-user@ec2-52-53-218-152.us-west-1.compute.amazonaws.com
-```
+The web client itself is an SPA so the static files and assets are deployed on an S3 bucket on AWS. We then use
+CloudFront to cache the files to make faster loads (this is also needed for `https` support).
 
-#### Launch Steps
-
-1. Go to amazon and create a new ec2 instance (I've been using NCAl for the region)
-2. Pick the Amazon Linux Distro
-  - I've used a micro size so far.
-3. ssh to the instance
-4. Install mongo 3.6 using yum as specified [here](https://docs.mongodb.com/v3.6/tutorial/install-mongodb-on-amazon/)
- - Start the mongod background daemon
-5. Install NVM simply with `yum install nvm`
-6. Install node 11.2.0 with nvm.
-7. Install git with yum.
-8. Clone repo.
-9. `cd` into `node-services` and `npm install` to get the prod dependencies.
-10. Set env variables in the `~/.bashrc`, here is an example:
+Currently you must deploy manually:
 
 ```bash
-# User specific aliases and functions
-
-alias vimbash='vim ~/.bashrc'
-alias sourcebash='source ~/.bashrc'
-
-export NODE_ENV="production"
-export VD_WEB_CLIENT_ORIGIN="http://viva-doc.s3-website-us-west-1.amazonaws.com"
-export VD_MONGODB_URI="mongodb://localhost/viva-doc"
-export VD_PORT="8888"
-export VD_COOKIE_SECRET="<some-secret>"
-export VD_GITHUB_CLIENT_SECRET="<some-secret>"
-export VD_GITHUB_CLIENT_ID="<some-client-id>"
-export APP_ID="23724" # the app id
-export PRIVATE_KEY_PATH="<full-path-to-.pm>"
-export WEBHOOK_SECRET="<the-set-webhook-secret>"
-
-export NVM_DIR="/home/ec2-user/.nvm"
+web-client: npm run prod # builds into `dist/`
 ```
 
- - Don't forget to `source ~/.bashrc` to set env vars in the current terminal session.
+You then copy the new files into the S3 bucket, and you must also run invalidations on CloudFront (to refresh the
+cache). You can copy the existing validations and re-run them (it is always the same invalidation).
 
-11. `npm run github-app-forever-start` and `npm run api-forever-start`
-  - Starts background processes with `forever`.
-12. `npm run forever-list` to find logs / PID to stop instances.
+### Mongo Database
 
-### S3 Bucket
+The database is being hosted on Mongo Atlas. This has the benefit of having replica sets, automatic metrics, and
+automatic backups. To scale or change any configuration, you will need to log into mongo atlas with Arie's account.
 
-[Info about hosting on S3](https://docs.aws.amazon.com/AmazonS3/latest/dev/WebsiteHosting.html)
+All instances needing to connect to the database can then use the connection string with the appropriate username and
+password. Remember, an IP must be whitelisted to be able to access the database.
 
-Currently the web-client is hosted [here](http://viva-doc.s3-website-us-west-1.amazonaws.com)
+### The API
 
-#### Launch Steps
+The API runs on an ec2 instance. Currently deployments are done by ssh-ing to instance, pulling the code from git,
+building the project with `npm run build`, and then restarting the `forever` instance (which runs the code forever)
+with the npm command `npm run forever-restartall`.
 
-Create a new bucket. Settings:
-  - "Block all public access - off"
-  - In the `properties` tab, find `static-website-hosting` and set both the index document and error document to `index.html`.
+##### Setting up a new ec2 instance
 
-Build the web-client for prod.
+Create the ec2 instance with the appropriate config (security groups for the API port and SSH; an elastic IP). Pick
+an appropriate region and instance size.
 
 ```bash
-viva-doc: cd web-client;
-web-client: npm run prod;
+[ec2-user ~]$ curl -o- https://raw.githubusercontent.com/creationix/nvm/v0.32.0/install.sh | bash # installs nvm
+[ec2-user ~]$ nvm install 11.2.0 # Get this version of node
+[ec2-user ~]$ sudo yum install git
+[ec2-user ~]$ git clone <vivadoc-repo>
+[ec2-user ~]$ cd viva-doc/node-services
+[ec2-user ~/viva-doc/node-services]$ npm install
+[ec2-user ~/viva-doc/node-services]$ npm run build
+
+# WARNING set the environment variables or this script will complain
+# You will need the private `.pem` file to be able to deploy, ask Arie for that file.
+[ec2-user ~/viva-doc/node-services]$ npm run forever-api-start
 ```
 
-Drag and drop `dist/` in the bucket.
-  - Make sure the objects are public.
+### GitHub App
 
-It should be online.
+The GitHub app is under the VivaDoc GitHub organization, so settings and configuration to the app must be made
+[here](https://github.com/organizations/VivaDoc/settings/apps/vivadoc) by those who have permissions.
 
-TODO Add steps for connecting the domain name.
+GitHub will trigger and send our GitHub app data according to which webhooks we are subscribed to. The GitHub app
+runs on an ec2 instance. Currently deployments are done by ssh-ing to instance, pulling the code from git,
+building the project with `npm run build`, and then restarting the `forever` instance (which runs the code forever)
+with the npm command `npm run forever-restartall`.
+
+##### Setting up a new ec2 instance
+
+Create the ec2 instance with the appropriate config (security groups for the webhook port and SSH; an elastic IP). Pick
+an appropriate region and instance size.
+
+```bash
+[ec2-user ~]$ curl -o- https://raw.githubusercontent.com/creationix/nvm/v0.32.0/install.sh | bash # installs nvm
+[ec2-user ~]$ nvm install 11.2.0 # Get this version of node
+[ec2-user ~]$ sudo yum install git
+[ec2-user ~]$ git clone <vivadoc-repo>
+[ec2-user ~]$ cd viva-doc/node-services
+[ec2-user ~/viva-doc/node-services]$ npm install
+[ec2-user ~/viva-doc/node-services]$ npm run build
+
+# WARNING set the environment variables or this script will complain
+# You will need the private `.pem` file to be able to deploy, ask Arie for that file.
+[ec2-user ~/viva-doc/node-services]$ npm run forever-github-app-start
+```
