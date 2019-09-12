@@ -44,6 +44,7 @@ type alias Model =
     , isLoggingIn : Bool
     , isLoggingOut : Bool
     , pageModel : PageModel
+    , videoModalOpen : Bool
     }
 
 
@@ -76,6 +77,7 @@ init flags url navKey =
                 , pageModel = Redirect (Session.Guest navKey) Redirect.FetchingUser
                 , isLoggingIn = True
                 , isLoggingOut = False
+                , videoModalOpen = False
                 }
 
         -- Otherwise we've hit the website and should try to get the user
@@ -97,6 +99,7 @@ init flags url navKey =
                                 Redirect.FetchingUser
               , isLoggingIn = True
               , isLoggingOut = False
+              , videoModalOpen = False
               }
             , Api.getUser (CompletedGetUser maybeRoute)
             )
@@ -154,7 +157,12 @@ view model =
                 (case viewer of
                     Nothing ->
                         { showHomeButton = False
-                        , showHero = Page.LandingHero LandingPageScrollDown
+                        , showHero =
+                            Page.LandingHero
+                                { scrollMsg = LandingPageScrollDown
+                                , videoModalOpen = model.videoModalOpen
+                                , setVideoModalOpenValue = ToggleVideoOpenModal
+                                }
                         , selectedTab = Page.NoTab
                         }
 
@@ -223,6 +231,7 @@ type Msg
     | GotAboutUsMsg AboutUs.Msg
     | GotPricingMsg Pricing.Msg
     | LandingPageScrollDown
+    | ToggleVideoOpenModal Bool
 
 
 toSession : Model -> Session
@@ -451,6 +460,12 @@ update msg model =
             )
 
         ( LandingPageScrollDown, _ ) ->
+            ( model, Cmd.none )
+
+        ( ToggleVideoOpenModal newVideoOpenValue, Home _ ) ->
+            ( { model | videoModalOpen = newVideoOpenValue }, Cmd.none )
+
+        ( ToggleVideoOpenModal newVideoOpenValue, _ ) ->
             ( model, Cmd.none )
 
         ( GotHomeMsg pageMsg, Home homeModel ) ->

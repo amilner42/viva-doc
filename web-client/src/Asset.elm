@@ -1,4 +1,4 @@
-module Asset exposing (Image, arie, githubLogo, jake, src, vdLandingIcon1, vdLandingIcon2, vdLandingIcon3, vdLogo, vdTitle)
+module Asset exposing (Image, arie, githubLogo, jake, playVid, src, vdLandingIcon1, vdLandingIcon2, vdLandingIcon3, vdLogo, vdTitle)
 
 {-| Assets, such as images, videos, and audio.
 
@@ -47,6 +47,11 @@ vdLandingIcon2 =
 vdLandingIcon3 : Image
 vdLandingIcon3 =
     image "vd-landing-icon-3.svg"
+
+
+playVid : Image
+playVid =
+    image "play-vid.svg"
 
 
 jake : Image
