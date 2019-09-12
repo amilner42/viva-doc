@@ -51,6 +51,8 @@ type HighlightableTab
     = NoTab
     | HomeTab
     | DocumentationTab
+    | AboutUsTab
+    | PricingTab
 
 
 type alias RenderNavbarConfig msg =
@@ -177,6 +179,21 @@ renderNavbar config maybeViewer =
                         [ ( "navbar-item", True )
                         , ( "is-border-bottom-underlined"
                           , case config.selectedTab of
+                                PricingTab ->
+                                    True
+
+                                _ ->
+                                    False
+                          )
+                        ]
+                    , Route.href Route.Pricing
+                    ]
+                    [ text "Pricing" ]
+                , a
+                    [ classList
+                        [ ( "navbar-item", True )
+                        , ( "is-border-bottom-underlined"
+                          , case config.selectedTab of
                                 DocumentationTab ->
                                     True
 
@@ -187,6 +204,21 @@ renderNavbar config maybeViewer =
                     , Route.href <| Route.Documentation Route.OverviewTab
                     ]
                     [ text "Docs" ]
+                , a
+                    [ classList
+                        [ ( "navbar-item", True )
+                        , ( "is-border-bottom-underlined"
+                          , case config.selectedTab of
+                                AboutUsTab ->
+                                    True
+
+                                _ ->
+                                    False
+                          )
+                        ]
+                    , Route.href <| Route.AboutUs
+                    ]
+                    [ text "About" ]
                 , div [ class "navbar-item" ]
                     (case maybeViewer of
                         Nothing ->

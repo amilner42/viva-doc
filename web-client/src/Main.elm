@@ -17,11 +17,13 @@ import Http exposing (Error(..))
 import Json.Decode as Decode
 import LocalStorage
 import Page
+import Page.AboutUs as AboutUs
 import Page.CommitReview as CommitReview
 import Page.Documentation as Documentation
 import Page.Home as Home
 import Page.NotFound as NotFound
 import Page.OAuthRedirect as OAuthRedirect
+import Page.Pricing as Pricing
 import Page.Redirect as Redirect
 import Page.Repo as Repo
 import Ports
@@ -53,6 +55,8 @@ type PageModel
     | CommitReview CommitReview.Model
     | Documentation Documentation.Model
     | Repo Repo.Model
+    | AboutUs AboutUs.Model
+    | Pricing Pricing.Model
 
 
 {-| On init we have 2 cases:
@@ -184,6 +188,18 @@ view model =
                 GotRepoMsg
                 (Repo.view repoModel)
 
+        AboutUs aboutUsModel ->
+            viewPageWithNavbar
+                { showHomeButton = True, showHero = Page.NoHero, selectedTab = Page.AboutUsTab }
+                GotAboutUsMsg
+                (AboutUs.view aboutUsModel)
+
+        Pricing pricingModel ->
+            viewPageWithNavbar
+                { showHomeButton = True, showHero = Page.NoHero, selectedTab = Page.PricingTab }
+                GotPricingMsg
+                (Pricing.view pricingModel)
+
 
 
 -- UPDATE
@@ -204,6 +220,8 @@ type Msg
     | GotOAuthRedirectMsg OAuthRedirect.Msg
     | GotDocumentationMsg Documentation.Msg
     | GotRepoMsg Repo.Msg
+    | GotAboutUsMsg AboutUs.Msg
+    | GotPricingMsg Pricing.Msg
     | LandingPageScrollDown
 
 
@@ -229,6 +247,12 @@ toSession { pageModel } =
             session
 
         Repo { session } ->
+            session
+
+        AboutUs { session } ->
+            session
+
+        Pricing { session } ->
             session
 
 
@@ -274,6 +298,14 @@ changeRouteTo maybeRoute model =
         Just (Route.Repo repoId) ->
             Repo.init session repoId
                 |> updatePageModel Repo GotRepoMsg model
+
+        Just Route.AboutUs ->
+            AboutUs.init session
+                |> updatePageModel AboutUs GotAboutUsMsg model
+
+        Just Route.Pricing ->
+            Pricing.init session
+                |> updatePageModel Pricing GotPricingMsg model
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -342,17 +374,20 @@ update msg model =
                     OAuthRedirect _ ->
                         Cmd.none
 
-                    Documentation { documentationTab } ->
-                        LocalStorage.saveModel
-                            { relativeUrl =
-                                Route.Documentation documentationTab |> Route.routeToString
-                            }
+                    Documentation _ ->
+                        Cmd.none
 
                     Repo { repoId } ->
                         LocalStorage.saveModel
                             { relativeUrl =
                                 Route.Repo repoId |> Route.routeToString
                             }
+
+                    AboutUs _ ->
+                        Cmd.none
+
+                    Pricing _ ->
+                        Cmd.none
                 , Nav.load Github.oAuthSignInLink
                 ]
             )
@@ -457,6 +492,20 @@ update msg model =
             Repo.update pageMsg repoModel
                 |> updatePageModel Repo GotRepoMsg model
 
+        ( GotAboutUsMsg pageMsg, AboutUs aboutUsModel ) ->
+            AboutUs.update pageMsg aboutUsModel
+                |> updatePageModel AboutUs GotAboutUsMsg model
+
+        ( GotAboutUsMsg _, _ ) ->
+            ( model, Cmd.none )
+
+        ( GotPricingMsg pageMsg, Pricing pricingModel ) ->
+            Pricing.update pageMsg pricingModel
+                |> updatePageModel Pricing GotPricingMsg model
+
+        ( GotPricingMsg _, _ ) ->
+            ( model, Cmd.none )
+
         ( GotRepoMsg _, _ ) ->
             ( model, Cmd.none )
 
@@ -509,6 +558,12 @@ subscriptions model =
                 Sub.none
 
             Repo _ ->
+                Sub.none
+
+            AboutUs _ ->
+                Sub.none
+
+            Pricing _ ->
                 Sub.none
         ]
 
