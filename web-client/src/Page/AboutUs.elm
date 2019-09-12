@@ -32,17 +32,25 @@ aboutUsView =
         []
         [ div
             [ class "section has-text-centered" ]
-            [ h1
-                [ class "title is-2" ]
-                [ text "Our Mission" ]
-            , p
-                [ class "content" ]
-                [ text vivaDocMissionStatement ]
+            [ div
+                [ class "columns is-centered" ]
+                [ div
+                    [ class "column is-two-thirds" ]
+                    [ h1
+                        [ class "title is-2" ]
+                        [ text "Our Mission" ]
+                    , p
+                        [ class "content" ]
+                        [ text vivaDocMissionStatement ]
+                    ]
+                ]
             ]
         , div
             [ class "section has-text-centered" ]
             [ h1
-                [ class "title is-2" ]
+                [ class "title is-2"
+                , style "padding-bottom" "30px"
+                ]
                 [ text "Meet the Team" ]
             , div
                 [ class "columns" ]
@@ -56,7 +64,9 @@ aboutUsView =
 renderUserBio : BioData -> Html.Html Msg
 renderUserBio { name, image, bio } =
     div
-        [ class "column is-one-half" ]
+        [ class "column is-one-half"
+        , style "padding-bottom" "50px"
+        ]
         [ img
             [ Asset.src image
             , style "width" "100%"

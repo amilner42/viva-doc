@@ -218,7 +218,7 @@ renderNavbar config maybeViewer =
                         ]
                     , Route.href <| Route.AboutUs
                     ]
-                    [ text "About Us" ]
+                    [ text "About" ]
                 , div [ class "navbar-item" ]
                     (case maybeViewer of
                         Nothing ->
