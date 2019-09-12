@@ -6,8 +6,8 @@ module Page exposing (DisplayHeroOption(..), HighlightableTab(..), viewWithHeade
 import Asset
 import Browser exposing (Document)
 import Github
-import Html exposing (Html, a, button, div, h1, i, img, li, nav, p, section, span, strong, text, ul)
-import Html.Attributes exposing (class, classList, href, style)
+import Html exposing (Html, a, button, div, h1, i, iframe, img, li, nav, p, section, span, strong, text, ul)
+import Html.Attributes exposing (attribute, class, classList, height, href, src, style, width)
 import Html.Events exposing (onClick)
 import Route exposing (Route)
 import Session exposing (Session)
@@ -16,7 +16,14 @@ import Viewer exposing (Viewer)
 
 type DisplayHeroOption msg
     = NoHero
-    | LandingHero msg
+    | LandingHero (LandingHeroConfig msg)
+
+
+type alias LandingHeroConfig msg =
+    { scrollMsg : msg
+    , videoModalOpen : Bool
+    , setVideoModalOpenValue : Bool -> msg
+    }
 
 
 type alias RenderHeaderConfig msg =
@@ -40,8 +47,10 @@ viewWithHeader { showHero, renderNavbarConfig } maybeViewer { title, content } t
             NoHero ->
                 renderNavbar renderNavbarConfig maybeViewer
 
-            LandingHero scrollMsg ->
-                renderLandingHero scrollMsg <| renderNavbar renderNavbarConfig maybeViewer
+            LandingHero landingHeroConfig ->
+                renderLandingHero
+                    landingHeroConfig
+                    (renderNavbar renderNavbarConfig maybeViewer)
         , Html.map toMsg content
         ]
     }
@@ -67,13 +76,36 @@ type alias RenderNavbarConfig msg =
     }
 
 
-renderLandingHero : msg -> Html msg -> Html msg
-renderLandingHero scrollMsg navbar =
+renderLandingHero : LandingHeroConfig msg -> Html msg -> Html msg
+renderLandingHero { scrollMsg, videoModalOpen, setVideoModalOpenValue } navbar =
     section
         [ class "hero is-fullheight is-primary is-bold" ]
         [ navbar
+        , if videoModalOpen then
+            renderVideoModal { closeVideoModal = setVideoModalOpenValue False }
+
+          else
+            div [ class "is-hidden" ] []
         , div
-            [ class "hero-body" ]
+            [ class "hero-title" ]
+            [ div
+                [ class "has-text-centered"
+                , style "padding-top" "3rem"
+                ]
+                [ img
+                    [ Asset.src Asset.playVid
+                    , class "play-vid-svg is-hidden-mobile"
+                    , style "width" "64px"
+                    , style "height" "64px"
+                    , onClick <| setVideoModalOpenValue True
+                    ]
+                    []
+                ]
+            ]
+        , div
+            [ class "hero-body"
+            , style "padding-top" "0"
+            ]
             [ div
                 [ class "container has-text-centered" ]
                 [ img
@@ -108,6 +140,34 @@ renderLandingHero scrollMsg navbar =
                 , style "margin" "0 10px 10px 0"
                 ]
                 [ text "Alpha Version 1" ]
+            ]
+        ]
+
+
+renderVideoModal : { closeVideoModal : msg } -> Html.Html msg
+renderVideoModal { closeVideoModal } =
+    div
+        [ class "modal is-active" ]
+        [ div
+            [ class "modal-background"
+            , style "opacity" "0.7"
+            , onClick closeVideoModal
+            ]
+            []
+        , div
+            [ class "modal-content"
+            , style "width" "768px"
+            , style "height" "480px"
+            , style "overflow" "hidden"
+            ]
+            [ iframe
+                [ class "vd-landing-vid"
+                , attribute "frameborder" "0"
+                , attribute "allow" "accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
+                , attribute "allowFullscreen" "true"
+                , src "https://www.youtube.com/embed/CCB04j7kr3M?autoplay=1"
+                ]
+                []
             ]
         ]
 

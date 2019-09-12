@@ -101,6 +101,21 @@ $vd-spark-dark: #45A29E;
   cursor: pointer;
 }
 
+.play-vid-svg {
+  cursor: pointer;
+
+  &:hover {
+    opacity: 0.7;
+  }
+}
+
+iframe {
+  &.vd-landing-vid {
+    width:  100% !important;
+    height: 100% !important;
+  }
+}
+
 /** Bulma CSS and internal CSS requiring Bulma to be loaded. */
 
 // Bulma variables
