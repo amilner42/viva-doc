@@ -94,7 +94,7 @@ renderLandingHero { scrollMsg, videoModalOpen, setVideoModalOpenValue } navbar =
                 ]
                 [ img
                     [ Asset.src Asset.playVid
-                    , class "play-vid-svg"
+                    , class "play-vid-svg is-hidden-mobile"
                     , style "width" "64px"
                     , style "height" "64px"
                     , onClick <| setVideoModalOpenValue True
@@ -150,13 +150,14 @@ renderVideoModal { closeVideoModal } =
         [ class "modal is-active" ]
         [ div
             [ class "modal-background"
+            , style "opacity" "0.7"
             , onClick closeVideoModal
             ]
             []
         , div
             [ class "modal-content"
-            , style "width" "941px"
-            , style "height" "588px"
+            , style "width" "768px"
+            , style "height" "480px"
             , style "overflow" "hidden"
             ]
             [ iframe
